@@ -34,17 +34,16 @@ KEEP_COLUMNS = [
 
 def find_provider_file() -> Path:
     """
-    Dynamically locate the main provider CSV file inside the weekly NPPES folder.
-
-    We avoid hardcoding filenames because CMS releases files with new dates each week/month.
-    This makes the pipeline more reusable and production-friendly.
+    Locate the actual provider data CSV (not the header file).
     """
     files = list(DATA_DIR.glob("npidata*.csv"))
 
+    # remove header definition files
+    files = [f for f in files if "fileheader" not in f.name.lower()]
+
     if not files:
         raise FileNotFoundError(
-            "No provider file found in NPPES raw directory. "
-            "Check that weekly data was downloaded correctly."
+            "No valid provider data file found. Check raw NPPES folder."
         )
 
     return files[0]
