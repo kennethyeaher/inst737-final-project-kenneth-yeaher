@@ -1,6 +1,6 @@
 from etl.extract import extract_nppes
 from etl.transform import transform_nppes
-
+from analysis.eda_provider import run_eda
 
 def main():
     """
@@ -19,6 +19,10 @@ def main():
     print("[PIPELINE] ===== TRANSFORM STAGE COMPLETE =====\n")
 
     print("[PIPELINE] Workflow finished successfully.")
+
+    print("[PIPELINE] ===== EDA STAGE START =====")
+    run_eda()
+    print("[PIPELINE] ===== EDA STAGE COMPLETE =====\n")
 
 
 if __name__ == "__main__":
