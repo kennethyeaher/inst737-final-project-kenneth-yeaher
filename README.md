@@ -1,6 +1,3 @@
-# inst737-final-project-kennethyeaher
-Data science pipeline analyzing geographic access to reproductive endocrinology specialists and identifying underserved markets.
-
 # INST737 Final Project — Healthcare Provider Access Modeling
 
 ## Project Overview
@@ -109,12 +106,45 @@ Run full workflow: "python main.py"
 
 ## Modeling Direction (Next Steps)
 
-Planned modeling components include:
+Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network-based approaches to better understand healthcare access dynamics.
 
-- Provider density scoring
-- Metro clustering analysis
-- Access risk classification
-- Underserved market detection
+### Provider Density & Access Risk Modeling
+- Construction of metro-level provider supply indicators
+- Population-normalized density scoring (providers per 100k residents)
+- Identification of statistically underserved metropolitan markets
+- Classification models to predict access risk zones
+
+### Market Segmentation & Clustering
+- Unsupervised clustering of metropolitan areas based on:
+  - provider supply
+  - taxonomy diversity
+  - provider growth trends
+  - population scale
+- Detection of similar healthcare infrastructure patterns across regions
+
+### Network & Graph Modeling (Neo4j Integration)
+
+Future extensions of this project will incorporate graph data modeling using Neo4j to represent relationships between:
+
+- Providers
+- ZIP codes
+- Counties
+- Metropolitan statistical areas (CBSAs)
+
+Graph-based analysis will support:
+
+- Provider accessibility path analysis
+- Network centrality scoring for healthcare hubs
+- Detection of structurally underserved geographic clusters
+- Community detection algorithms to identify healthcare service ecosystems
+- Graph embeddings for advanced access risk modeling
+
+This network perspective enables modeling healthcare access not just as geographic density, but as a connected infrastructure system.
+
+### Decision Intelligence Outputs
+- Ranked metro opportunity scoring
+- Provider expansion targeting signals
+- Visualization-driven market intelligence dashboards
 
 ## Visualization, HCI & Decision Support Design
 
@@ -150,6 +180,11 @@ Planned enhancements include:
 - Risk alert visualization components for underserved metro detection
 
 These design considerations align the project with modern analytics UX principles where insight delivery, not just model performance, determines real world impact.
+
+
+
+
+
 
 ## Author
 
