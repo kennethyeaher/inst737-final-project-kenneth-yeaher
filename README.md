@@ -41,7 +41,7 @@ https://www.census.gov/programs-surveys/metro-micro.html
 - vis/ = EDA visualizations
 - data/
 	•	extracted/ = raw standardized datasets
-	•	transformed/ = cleaned modeling-ready datasets
+	•	transformed/ = cleaned modeling ready datasets
 	•	load/ = feature engineered datasets
 	•	visualizations/ = generated charts
 
@@ -111,9 +111,9 @@ Output: data/load/provider_geo_features.csv
 
 ### 5. Metro Reference Dataset Construction
 
-Builds Census-aligned metropolitan reference dataset:
+Builds Census aligned metropolitan reference dataset:
 
-- County → CBSA mapping
+- County to CBSA mapping
 - Metro population estimates
 - Supports later provider density modeling
 
@@ -126,11 +126,11 @@ Run full workflow: "python main.py"
 
 ## Modeling Direction (Next Steps)
 
-Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network-based approaches to better understand healthcare access dynamics.
+Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network based approaches to better understand healthcare access dynamics.
 
 ### Provider Density & Access Risk Modeling
 - Construction of metro level provider supply indicators
-- Population-normalized density scoring (providers per 100k residents)
+- Population normalized density scoring (providers per 100k residents)
 - Identification of statistically underserved metropolitan markets
 - Classification models to predict access risk zones
 
@@ -168,13 +168,13 @@ This network perspective enables modeling healthcare access not just as geograph
 
 ## Visualization, HCI & Decision Support Design
 
-Beyond technical modeling, this project emphasizes human-centered analytics design to ensure outputs are interpretable and actionable for real stakeholders such as healthcare planners, policy analysts, and provider network strategists.
+Beyond technical modeling, this project emphasizes human centered analytics design to ensure outputs are interpretable and actionable for real stakeholders such as healthcare planners, policy analysts, and provider network strategists.
 
 Visualization improvements focus on:
 
 ### Geographic Decision Interfaces
 - Metro-level provider density mapping
-- Underserved market highlighting through color-encoded risk scoring
+- Underserved market highlighting through color encoded risk scoring
 - Spatial clustering overlays for market segmentation analysis
 
 ### Multi-Level Analytical Views
@@ -196,7 +196,7 @@ Planned enhancements include:
 
 - Interactive dashboards (Plotly / Power BI / Tableau)
 - Map-based exploration interfaces
-- User persona–driven analytic views (policy analyst vs healthcare operator)
+- User persona driven analytic views (policy analyst vs healthcare operator)
 - Risk alert visualization components for underserved metro detection
 
 These design considerations align the project with modern analytics UX principles where insight delivery, not just model performance, determines real world impact.
