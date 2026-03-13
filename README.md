@@ -36,7 +36,7 @@ https://www.census.gov/programs-surveys/metro-micro.html
 ---
 
 ## Project Structure
-- analysis/ → modeling dataset construction + analytics modules
+- analysis/ = modeling dataset construction + analytics modules
 - etl/ = extract + transform pipeline scripts
 - vis/ = EDA visualizations
 - data/
