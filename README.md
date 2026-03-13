@@ -48,6 +48,26 @@ https://www.census.gov/programs-surveys/metro-micro.html
 - main.py = full pipeline entry point
 - requirements.txt = dependencies
 
+## Reference Tables
+
+The project uses reference tables to improve interpretability and reduce hard coded geographic logic in the pipeline.
+
+Current reference assets include:
+
+- `cbsa_reference_dataset.csv`  
+  Census derived metropolitan reference table containing CBSA codes, metro titles, county FIPS relationships, and metro population estimates.
+
+- `data_dictionary_nppes_provider_clean.csv`  
+  Data dictionary for the cleaned provider level analytical dataset.
+
+- `data_dictionary_provider_geo_features.csv`  
+  Data dictionary for the ZIP level engineered provider feature dataset.
+
+- `data_dictionary_cbsa_reference_dataset.csv`  
+  Data dictionary for the Census based CBSA reference dataset.
+
+These files support reproducibility, downstream joins, and clearer interpretation of modeling outputs.
+
 ## Pipeline Stages
 
 ### 1. Extract Stage
