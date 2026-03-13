@@ -9,7 +9,7 @@ Using national provider registry data (NPPES) and Census metropolitan population
 - Access risk modeling
 - Market opportunity analysis
 - Healthcare infrastructure planning
-- Metro-level clustering and segmentation
+- Metro level clustering and segmentation
 
 The pipeline follows a modular data engineering + analytics architecture similar to real industry data science workflows.
 
@@ -37,16 +37,16 @@ https://www.census.gov/programs-surveys/metro-micro.html
 
 ## Project Structure
 - analysis/ → modeling dataset construction + analytics modules
-- etl/ → extract + transform pipeline scripts
-- vis/ → EDA visualizations
+- etl/ = extract + transform pipeline scripts
+- vis/ = EDA visualizations
 - data/
-	•	extracted/ → raw standardized datasets
-	•	transformed/ → cleaned modeling-ready datasets
-	•	load/ → feature engineered datasets
-	•	visualizations/ → generated charts
+	•	extracted/ = raw standardized datasets
+	•	transformed/ = cleaned modeling-ready datasets
+	•	load/ = feature engineered datasets
+	•	visualizations/ = generated charts
 
-- main.py → full pipeline entry point
-- requirements.txt → dependencies
+- main.py = full pipeline entry point
+- requirements.txt = dependencies
 
 ## Pipeline Stages
 
@@ -109,7 +109,7 @@ Run full workflow: "python main.py"
 Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network-based approaches to better understand healthcare access dynamics.
 
 ### Provider Density & Access Risk Modeling
-- Construction of metro-level provider supply indicators
+- Construction of metro level provider supply indicators
 - Population-normalized density scoring (providers per 100k residents)
 - Identification of statistically underserved metropolitan markets
 - Classification models to predict access risk zones
@@ -131,7 +131,7 @@ Future extensions of this project will incorporate graph data modeling using Neo
 - Counties
 - Metropolitan statistical areas (CBSAs)
 
-Graph-based analysis will support:
+Graph based analysis will support:
 
 - Provider accessibility path analysis
 - Network centrality scoring for healthcare hubs
@@ -144,7 +144,7 @@ This network perspective enables modeling healthcare access not just as geograph
 ### Decision Intelligence Outputs
 - Ranked metro opportunity scoring
 - Provider expansion targeting signals
-- Visualization-driven market intelligence dashboards
+- Visualization driven market intelligence dashboards
 
 ## Visualization, HCI & Decision Support Design
 
@@ -158,9 +158,9 @@ Visualization improvements focus on:
 - Spatial clustering overlays for market segmentation analysis
 
 ### Multi-Level Analytical Views
-- National → Metro → ZIP drill-down capability
+- National, Metro, ZIP drill down capability
 - Aggregated dashboards that allow users to transition from macro trends to localized insights
-- Comparative metro benchmarking visuals (e.g., provider supply vs population demand)
+- Comparative metro benchmarking visuals such as provider supply vs population demand
 
 ### Cognitive Load Reduction
 - Consistent chart labeling and standardized feature naming
