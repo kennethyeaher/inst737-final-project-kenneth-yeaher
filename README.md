@@ -40,10 +40,10 @@ https://www.census.gov/programs-surveys/metro-micro.html
 - etl/ = extract + transform pipeline scripts
 - vis/ = EDA visualizations
 - data/
-	•	extracted/ = raw standardized datasets
-	•	transformed/ = cleaned modeling ready datasets
-	•	load/ = feature engineered datasets
-	•	visualizations/ = generated charts
+	-	extracted/ = raw standardized datasets
+	-	transformed/ = cleaned modeling ready datasets
+	- load/ = feature engineered datasets
+	-	visualizations/ = generated charts
 
 - main.py = full pipeline entry point
 - requirements.txt = dependencies
