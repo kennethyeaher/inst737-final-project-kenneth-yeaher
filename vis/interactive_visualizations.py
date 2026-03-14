@@ -274,18 +274,32 @@ def top_overserved_chart(df: pd.DataFrame) -> None:
 
     save_html(fig, "top_overserved_states.html")
 
+
 def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     """
-    Build a predicted vs actual provider density scatterplot and label
-    the most meaningful underserved and over served outliers.
+    Create a predicted vs actual provider density scatterplot and label
+    the most important underserved and overserved outliers.
 
-    Outliers are defined as:
-    - lowest residuals = most underserved
-    - highest residuals = most over-served
+    Points below the ideal fit line indicate lower actual provider density
+    than predicted. Points above the line indicate stronger than expected supply.
     """
-    chart_df = df.copy()
     outlier_count = 5
+    chart_df = df.copy()
 
+    # identify strongest negative and positive residual outliers
+    underserved = chart_df.nsmallest(outlier_count, "residual").copy()
+    underserved["label_text"] = underserved["practice_state"] + " (underserved)"
+
+    overserved = chart_df.nlargest(outlier_count, "residual").copy()
+    overserved["label_text"] = overserved["practice_state"] + " (over-served)"
+
+    labeled_outliers = (
+        pd.concat([underserved, overserved], ignore_index=True)
+        .drop_duplicates(subset="practice_state")
+        .copy()
+    )
+
+    # main scatterplot
     fig = px.scatter(
         chart_df,
         x="predicted_provider_density",
@@ -298,6 +312,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
             "taxonomy_diversity": ":.2f",
             "recent_provider_growth": ":.0f",
             "provider_count": ":,.0f",
+            "residual": ":.2f",
         },
     )
 
@@ -320,33 +335,30 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
         line=dict(dash="dash", width=2),
     )
 
-    # label the strongest negative and positive residual outliers
-    underserved = chart_df.nsmallest(outlier_count, "residual")
-    overserved = chart_df.nlargest(outlier_count, "residual")
-
-    label_df = (
-        pd.concat([underserved, overserved], ignore_index=True)
-        .drop_duplicates(subset="practice_state")
-        .copy()
-    )
-
+    # label only the most meaningful outliers
     fig.add_scatter(
-        x=label_df["predicted_provider_density"],
-        y=label_df["providers_per_100k"],
+        x=labeled_outliers["predicted_provider_density"],
+        y=labeled_outliers["providers_per_100k"],
         mode="text",
-        text=label_df["practice_state"],
+        text=labeled_outliers["label_text"],
         textposition="top center",
         showlegend=False,
     )
 
     fig = apply_standard_layout(
         fig,
-        title="Predicted vs Actual Provider Density with Key Outliers Labeled",
+        title=(
+            "Predicted vs Actual Provider Density"
+            "<br><sup>Points below the dashed line have lower provider density than expected</sup>"
+        ),
         x_title="Predicted Providers per 100k",
         y_title="Actual Providers per 100k",
     )
 
-    fig.update_layout(coloraxis_colorbar_title="Residual")
+    fig.update_layout(
+        coloraxis_colorbar_title="Residual",
+        margin=dict(l=40, r=40, t=90, b=40),
+    )
 
     save_html(fig, "annotated_predicted_vs_actual_density.html")
 
