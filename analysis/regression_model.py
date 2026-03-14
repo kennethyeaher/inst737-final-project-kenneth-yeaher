@@ -33,6 +33,12 @@ def load_model_data() -> pd.DataFrame:
     df = df.replace([float("inf"), float("-inf")], pd.NA)
     df = df.dropna(subset=required_cols).copy()
 
+    if df.empty:
+        raise ValueError(
+            "No modeling rows available after filtering. "
+            "Check access_model_dataset merge and required feature columns."
+    )
+
     print(f"[REGRESSION] Modeling rows: {df.shape[0]}")
     return df
 

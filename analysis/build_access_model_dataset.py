@@ -21,85 +21,146 @@ STATE_ABBR_TO_NAME = {
     "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming"
 }
 
+SUPPLY_REQUIRED_COLUMNS = {
+    "practice_state",
+    "provider_count",
+    "unique_taxonomies",
+    "avg_provider_enum_year",
+    "recent_provider_growth",
+}
+
+POP_REQUIRED_COLUMNS = {
+    "State Name",
+    "population_2024",
+}
+
+#helper code
+def normalize_state_name(series: pd.Series) -> pd.Series:
+    """Normalize state names for safer joins."""
+    return series.astype(str).str.strip().str.lower()
+
+def validate_columns(df: pd.DataFrame, required: set[str], df_name: str) -> None:
+    """Fail fast if expected columns are missing."""
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"{df_name} is missing required columns: {sorted(missing)}")
+    
+#pipline stages
+
 def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
-    #Load provider geographic features and CBSA reference dataset
+    """
+    Load provider geographic features and Census CBSA reference data.
+    """
     print("\n[ACCESS-MODEL] ===== BUILDING ACCESS MODEL DATASET =====")
 
     providers = pd.read_csv(PROVIDER_FILE)
     cbsa_ref = pd.read_csv(CBSA_REF_FILE)
+
+    validate_columns(providers, SUPPLY_REQUIRED_COLUMNS, "provider_geo_features")
+    validate_columns(cbsa_ref, POP_REQUIRED_COLUMNS, "cbsa_reference_dataset")
 
     print(f"[ACCESS-MODEL] Provider rows: {providers.shape[0]}")
     print(f"[ACCESS-MODEL] CBSA reference rows: {cbsa_ref.shape[0]}")
 
     return providers, cbsa_ref
 
+
 def build_supply_features(providers: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggregate provider supply to a state level proxy.
-    This is a temporary approximation until the full ZIP to CBSA merge is finished.
+    Build state level supply features as a temporary access modeling proxy
+    until the full ZIP to CBSA merge is implemented.
     """
+    providers = providers[providers["practice_state"].isin(STATE_ABBR_TO_NAME)].copy()
+
     supply = (
         providers.groupby("practice_state", as_index=False)
         .agg(
             provider_count=("provider_count", "sum"),
             taxonomy_diversity=("unique_taxonomies", "mean"),
             avg_provider_enum_year=("avg_provider_enum_year", "mean"),
-            recent_provider_growth=("recent_provider_growth", "sum")
+            recent_provider_growth=("recent_provider_growth", "sum"),
         )
     )
-   
+
     # map state abbreviation to full state name for merge compatibility
-    supply["state_name"] = supply["practice_state"].map(STATE_ABBR_TO_NAME)
+    supply["state_name"] = normalize_state_name(
+        supply["practice_state"].map(STATE_ABBR_TO_NAME)
+    )
 
     print(f"[ACCESS-MODEL] Aggregated supply rows: {supply.shape[0]}")
     return supply
 
 def build_population_proxy(cbsa_ref: pd.DataFrame) -> pd.DataFrame:
     """
-    Create a temporary state-level population proxy from the CBSA reference dataset.
+    Aggregate metro population totals to the state level.
+    This acts as a temporary denominator for provider density estimation.
     """
-    cbsa_ref["population_2024"] = pd.to_numeric(cbsa_ref["population_2024"], errors="coerce")
+    pop = cbsa_ref.copy()
+    pop["population_2024"] = pd.to_numeric(pop["population_2024"], errors="coerce")
+    pop["state_name"] = normalize_state_name(pop["State Name"])
 
     pop = (
-        cbsa_ref.groupby("State Name", as_index=False)
+        pop.groupby("state_name", as_index=False)
         .agg(metro_population=("population_2024", "sum"))
-        .rename(columns={"State Name": "state_name"})
     )
 
     return pop
 
 def merge_access_features(supply: pd.DataFrame, pop: pd.DataFrame) -> pd.DataFrame:
-    """Merge supply features with population proxy and compute density."""
-    df = supply.merge(pop, on="state_name", how="left")
+    """
+    Merge supply features with population proxy and compute provider density.
+    """
+    df = supply.merge(pop, on="state_name", how="left", validate="one_to_one")
 
-    # avoid divide by zero issues before density calculation
     df["metro_population"] = pd.to_numeric(df["metro_population"], errors="coerce")
     df.loc[df["metro_population"] <= 0, "metro_population"] = pd.NA
 
     df["providers_per_100k"] = (
-        df["provider_count"] / df["metro_population"]
-    ) * 100000
+        df["provider_count"] / df["metro_population"] * 100000
+    )
+
+    missing_population = df["metro_population"].isna().sum()
 
     print(f"[ACCESS-MODEL] Rows after merge: {df.shape[0]}")
-    print(f"[ACCESS-MODEL] Rows missing population: {df['metro_population'].isna().sum()}")
+    print(f"[ACCESS-MODEL] Rows missing population: {missing_population}")
+
+    # reorder columns to make final file easier to inspect
+    ordered_cols = [
+        "practice_state",
+        "state_name",
+        "provider_count",
+        "taxonomy_diversity",
+        "avg_provider_enum_year",
+        "recent_provider_growth",
+        "metro_population",
+        "providers_per_100k",
+    ]
+    df = df[ordered_cols]
 
     return df
 
 def save_output(df: pd.DataFrame) -> None:
-    """Save the access modeling dataset."""
+    """
+    Save the access modeling dataset for downstream regression and scoring.
+    """
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
+
     print(f"[ACCESS-MODEL] Saved → {OUTPUT_FILE}")
     print("[ACCESS-MODEL] ===== DATASET READY =====")
 
 def build_access_model_dataset() -> pd.DataFrame:
-    """Run the full access-model dataset workflow."""
+    """
+    Full workflow:
+    load to validate to aggregate supply to aggregate population to merge then save
+    """
     providers, cbsa_ref = load_inputs()
     supply = build_supply_features(providers)
     pop = build_population_proxy(cbsa_ref)
-    df = merge_access_features(supply, pop)
-    save_output(df)
-    return df
+    access_model_df = merge_access_features(supply, pop)
+    save_output(access_model_df)
+
+    return access_model_df
 
 if __name__ == "__main__":
     build_access_model_dataset()
