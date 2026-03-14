@@ -291,7 +291,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     underserved["label_text"] = underserved["practice_state"] + " (underserved)"
 
     overserved = chart_df.nlargest(outlier_count, "residual").copy()
-    overserved["label_text"] = overserved["practice_state"] + " (over-served)"
+    overserved["label_text"] = overserved["practice_state"] + " (overserved)"
 
     labeled_outliers = (
         pd.concat([underserved, overserved], ignore_index=True)
