@@ -72,6 +72,10 @@ def merge_access_features(supply: pd.DataFrame, pop: pd.DataFrame) -> pd.DataFra
     """Merge supply features with population proxy and compute density."""
     df = supply.merge(pop, on="state_name", how="left")
 
+    # avoid divide by zero issues before density calculation
+    df["metro_population"] = pd.to_numeric(df["metro_population"], errors="coerce")
+    df.loc[df["metro_population"] <= 0, "metro_population"] = pd.NA
+
     df["providers_per_100k"] = (
         df["provider_count"] / df["metro_population"]
     ) * 100000
@@ -99,4 +103,3 @@ def build_access_model_dataset() -> pd.DataFrame:
 
 if __name__ == "__main__":
     build_access_model_dataset()
-    
