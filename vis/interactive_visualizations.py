@@ -1,8 +1,9 @@
 import pandas as pd
 from pathlib import Path
-import plotly.express as px
 import plotly.graph_objects as go
 from typing import Optional
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 
 # file path 
@@ -259,7 +260,7 @@ def top_overserved_chart(df: pd.DataFrame) -> None:
 
     fig = apply_standard_layout(
         fig,
-        title="Top 10 Most Over-Served States by Provider Access Residual",
+        title="Top 10 Most Over Served States by Provider Access Residual",
         x_title="State",
         y_title="Residual (Actual - Predicted Density)",
     )
@@ -317,6 +318,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     )
 
     # add ideal fit reference line where actual = predicted
+    
     axis_min = min(
         chart_df["predicted_provider_density"].min(),
         chart_df["providers_per_100k"].min(),
@@ -336,6 +338,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     )
 
     # label only the most meaningful outliers
+    
     fig.add_scatter(
         x=labeled_outliers["predicted_provider_density"],
         y=labeled_outliers["providers_per_100k"],
@@ -362,6 +365,166 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
 
     save_html(fig, "annotated_predicted_vs_actual_density.html")
 
+
+def build_access_dashboard(df: pd.DataFrame) -> None:
+    """
+    Build an integrated decision support dashboard showing:
+
+    1. Top underserved states based on regression residuals
+    2. Model fit through predicted vs actual provider density
+    3. Geographic provider density distribution across states
+
+    This dashboard is meant to summarize the model outputs in a way that is
+    easier for interpert, improving user experince. 
+    """
+    print("[VIS] Building access decision dashboard...")
+
+    # prepare data 
+    underserved = (
+        df.nsmallest(10, "residual")
+        .copy()
+        .sort_values("residual", ascending=True)
+    )
+    underserved["residual_label"] = underserved["residual"].round(2)
+
+    axis_min = min(
+        df["predicted_provider_density"].min(),
+        df["providers_per_100k"].min(),
+    )
+    axis_max = max(
+        df["predicted_provider_density"].max(),
+        df["providers_per_100k"].max(),
+    )
+
+    # create dashboard layout 
+
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        specs=[
+            [{"type": "bar"}, {"type": "scatter"}],
+            [{"type": "choropleth", "colspan": 2}, None],
+        ],
+        subplot_titles=(
+            "Top 10 Most Underserved States",
+            "Predicted vs Actual Provider Density",
+            "Provider Density by State",
+        ),
+        vertical_spacing=0.14,
+        horizontal_spacing=0.08,
+    )
+
+    # panel one, underserverd ranking
+    
+    fig.add_trace(
+        go.Bar(
+            x=underserved["residual"],
+            y=underserved["practice_state"],
+            orientation="h",
+            text=underserved["residual_label"],
+            textposition="outside",
+            marker=dict(
+                color=underserved["residual"],
+                colorscale="Reds_r",
+                showscale=False,
+            ),
+            hovertemplate=(
+                "<b>%{y}</b><br>"
+                "Residual: %{x:.2f}<br>"
+                "<extra></extra>"
+            ),
+            name="Residual",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # panel two, model fit scatter 
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["predicted_provider_density"],
+            y=df["providers_per_100k"],
+            mode="markers",
+            text=df["practice_state"],
+            marker=dict(
+                size=10,
+                color=df["residual"],
+                colorscale="RdBu",
+                showscale=True,
+                colorbar=dict(title="Residual"),
+            ),
+            hovertemplate=(
+                "<b>%{text}</b><br>"
+                "Predicted Density: %{x:.2f}<br>"
+                "Actual Density: %{y:.2f}<br>"
+                "Residual: %{marker.color:.2f}<br>"
+                "<extra></extra>"
+            ),
+            name="States",
+        ),
+        row=1,
+        col=2,
+    )
+
+    # ideal line fit
+
+    fig.add_trace(
+        go.Scatter(
+            x=[axis_min, axis_max],
+            y=[axis_min, axis_max],
+            mode="lines",
+            line=dict(dash="dash", width=2),
+            hoverinfo="skip",
+            showlegend=False,
+            name="Ideal Fit",
+        ),
+        row=1,
+        col=2,
+    )
+
+    # panel three, geograhic density map
+    
+    fig.add_trace(
+        go.Choropleth(
+            locations=df["practice_state"],
+            z=df["providers_per_100k"],
+            locationmode="USA-states",
+            colorscale="Blues",
+            colorbar=dict(title="Providers per 100k"),
+            hovertemplate=(
+                "<b>%{location}</b><br>"
+                "Provider Density: %{z:.2f}<br>"
+                "<extra></extra>"
+            ),
+            name="Density",
+        ),
+        row=2,
+        col=1,
+    )
+
+    # final layout postioning, organizing, and polishing
+
+    fig.update_layout(
+        title=(
+            "U.S. Specialist Access Dashboard"
+            "<br><sup>Residuals highlight where provider supply is below or above model expectations</sup>"
+        ),
+        template="plotly_white",
+        height=900,
+        width=1250,
+        title_x=0.5,
+        margin=dict(l=40, r=40, t=90, b=40),
+    )
+
+    fig.update_xaxes(title_text="Residual", row=1, col=1)
+    fig.update_yaxes(title_text="State", row=1, col=1)
+
+    fig.update_xaxes(title_text="Predicted Providers per 100k", row=1, col=2)
+    fig.update_yaxes(title_text="Actual Providers per 100k", row=1, col=2)
+
+    save_html(fig, "access_decision_dashboard.html")
+
 # workflow manager
 
 def run_interactive_visualizations() -> None:
@@ -374,6 +537,7 @@ def run_interactive_visualizations() -> None:
     predicted_vs_actual_chart(df)
     state_choropleth(df)
     annotated_predicted_vs_actual_chart(df)
+    build_access_dashboard(df) 
 
     print("[VIS] ===== INTERACTIVE VISUALIZATIONS COMPLETE =====")
 
