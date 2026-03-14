@@ -176,12 +176,112 @@ def state_choropleth(df: pd.DataFrame) -> None:
 
     save_html(fig, "state_provider_density_map.html")
 
+def top_underserved_chart(df: pd.DataFrame) -> None:
+    """
+    Create a ranked bar chart of the most underserved states.
+
+    More negative residual values indicate that actual provider density
+    is lower than the model predicted, which signals potential access gaps.
+    """
+    chart_df = (
+        df.nsmallest(10, "residual")
+        .copy()
+        .sort_values("residual", ascending=True)
+    )
+
+    chart_df["access_gap_label"] = chart_df["residual"].round(2)
+
+    fig = px.bar(
+        chart_df,
+        x="practice_state",
+        y="residual",
+        color="residual",
+        color_continuous_scale="Reds_r",
+        text="access_gap_label",
+        hover_data={
+            "providers_per_100k": ":.2f",
+            "predicted_provider_density": ":.2f",
+            "provider_count": ":,.0f",
+            "metro_population": ":,.0f",
+            "practice_state": False,
+            "access_gap_label": False,
+        },
+    )
+
+    fig = apply_standard_layout(
+        fig,
+        title="Top 10 Most Underserved States by Provider Access Residual",
+        x_title="State",
+        y_title="Residual (Actual - Predicted Density)",
+    )
+
+    fig.update_traces(textposition="outside")
+
+    fig.update_layout(
+        coloraxis_showscale=False,
+        uniformtext_minsize=8,
+        uniformtext_mode="hide",
+    )
+
+    save_html(fig, "top_underserved_states.html")
+
+def top_overserved_chart(df: pd.DataFrame) -> None:
+    """
+    Create a ranked bar chart of the most over-served states.
+
+    More positive residual values indicate that actual provider density
+    is higher than the model predicted, which suggests stronger than expected supply.
+    """
+    chart_df = (
+        df.nlargest(10, "residual")
+        .copy()
+        .sort_values("residual", ascending=False)
+    )
+
+    chart_df["access_surplus_label"] = chart_df["residual"].round(2)
+
+    fig = px.bar(
+        chart_df,
+        x="practice_state",
+        y="residual",
+        color="residual",
+        color_continuous_scale="Blues",
+        text="access_surplus_label",
+        hover_data={
+            "providers_per_100k": ":.2f",
+            "predicted_provider_density": ":.2f",
+            "provider_count": ":,.0f",
+            "metro_population": ":,.0f",
+            "practice_state": False,
+            "access_surplus_label": False,
+        },
+    )
+
+    fig = apply_standard_layout(
+        fig,
+        title="Top 10 Most Over-Served States by Provider Access Residual",
+        x_title="State",
+        y_title="Residual (Actual - Predicted Density)",
+    )
+
+    fig.update_traces(textposition="outside")
+
+    fig.update_layout(
+        coloraxis_showscale=False,
+        uniformtext_minsize=8,
+        uniformtext_mode="hide",
+    )
+
+    save_html(fig, "top_overserved_states.html")
+
 # workflow manager
 
 def run_interactive_visualizations() -> None:
     """Run the full interactive visualization workflow."""
     df = load_regression_results()
 
+    top_underserved_chart(df)
+    top_overserved_chart(df)
     residual_ranking_chart(df)
     predicted_vs_actual_chart(df)
     state_choropleth(df)
