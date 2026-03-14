@@ -30,6 +30,7 @@ def load_model_data() -> pd.DataFrame:
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
+    df = df.replace([float("inf"), float("-inf")], pd.NA)
     df = df.dropna(subset=required_cols).copy()
 
     print(f"[REGRESSION] Modeling rows: {df.shape[0]}")
@@ -77,4 +78,3 @@ def run_regression_model() -> pd.DataFrame:
 
 if __name__ == "__main__":
     run_regression_model()
-    
