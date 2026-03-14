@@ -3,6 +3,8 @@ from etl.transform import transform_nppes
 from analysis.eda_provider import run_eda
 from analysis.build_model_dataset import build_provider_geo_features
 from analysis.build_metro_dataset import build_metro_dataset
+from analysis.build_access_model_dataset import build_access_model_dataset
+
 
 def main():
     """
@@ -30,6 +32,10 @@ def main():
     print("\n[PIPELINE] ===== METRO REFERENCE STAGE START =====")
     build_metro_dataset()
     print("[PIPELINE] ===== METRO REFERENCE STAGE COMPLETE =====")
+
+    print("\n[PIPELINE] ===== ACCESS MODEL STAGE START =====")
+    build_access_model_dataset()
+    print("[PIPELINE] ===== ACCESS MODEL STAGE COMPLETE =====")
 
     print("[PIPELINE] Workflow finished successfully.")
 
