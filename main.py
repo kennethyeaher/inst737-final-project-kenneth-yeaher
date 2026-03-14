@@ -5,6 +5,8 @@ from analysis.build_model_dataset import build_provider_geo_features
 from analysis.build_metro_dataset import build_metro_dataset
 from analysis.build_access_model_dataset import build_access_model_dataset
 from analysis.regression_model import run_regression_model
+from vis.interactive_visualizations import run_interactive_visualizations
+
 
 def main():
     """
@@ -40,6 +42,10 @@ def main():
     print("\n[PIPELINE] ===== REGRESSION MODEL STAGE START =====")
     run_regression_model()
     print("[PIPELINE] ===== REGRESSION MODEL STAGE COMPLETE =====")
+
+    print("\n[PIPELINE] ===== INTERACTIVE VISUALIZATION STAGE START =====")
+    run_interactive_visualizations()
+    print("[PIPELINE] ===== INTERACTIVE VISUALIZATION STAGE COMPLETE =====")
 
     print("[PIPELINE] Workflow finished successfully.")
 
