@@ -4,7 +4,7 @@ from analysis.eda_provider import run_eda
 from analysis.build_model_dataset import build_provider_geo_features
 from analysis.build_metro_dataset import build_metro_dataset
 from analysis.build_access_model_dataset import build_access_model_dataset
-
+from analysis.regression_model import run_regression_model
 
 def main():
     """
@@ -36,6 +36,10 @@ def main():
     print("\n[PIPELINE] ===== ACCESS MODEL STAGE START =====")
     build_access_model_dataset()
     print("[PIPELINE] ===== ACCESS MODEL STAGE COMPLETE =====")
+
+    print("\n[PIPELINE] ===== REGRESSION MODEL STAGE START =====")
+    run_regression_model()
+    print("[PIPELINE] ===== REGRESSION MODEL STAGE COMPLETE =====")
 
     print("[PIPELINE] Workflow finished successfully.")
 
