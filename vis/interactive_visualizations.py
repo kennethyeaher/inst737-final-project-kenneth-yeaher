@@ -670,6 +670,81 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
     )
     return fig
 
+# summary and ui components
+
+def generate_summary(df: pd.DataFrame) -> str:
+    """Produce a 3 to 4 sentence executive summary from the residuals."""
+    n_states = df["practice_state"].nunique()
+    if n_states == 0:
+        return "No state-level data available for summary."
+
+    avg_density = df["providers_per_100k"].mean()
+
+    underserved = df[df["residual"] < 0]
+    n_under = len(underserved)
+    pct_under = round(n_under / n_states * 100)
+
+    worst_3 = df.nsmallest(3, "residual")
+    worst_names = ", ".join(worst_3["practice_state"].tolist())
+    worst_avg_gap = worst_3["residual"].mean()
+
+    best = df.nlargest(1, "residual").iloc[0]
+
+    return (
+        f"Across {n_states} states analyzed, the average provider density is "
+        f"{avg_density:.1f} per 100k residents. "
+        f"{n_under} states ({pct_under}%) fall below model-predicted supply levels, "
+        f"indicating potential access gaps. "
+        f"The three most underserved states — {worst_names} — average a residual of "
+        f"{worst_avg_gap:.2f}, meaning actual provider supply is substantially "
+        f"below expectations. "
+        f"{best['practice_state']} shows the strongest over-supply "
+        f"at +{best['residual']:.2f}."
+    )
+
+
+def _kpi_card(
+    title: str,
+    value: str,
+    subtitle: str = "",
+    color: str = COLORS["text"],
+) -> dbc.Card:
+    """Reusable KPI card with consistent styling."""
+    children = [
+        html.P(
+            title,
+            className="mb-1",
+            style={
+                "fontSize": "0.85rem",
+                "color": COLORS["text_muted"],
+                "fontWeight": "600",
+                "textTransform": "uppercase",
+                "letterSpacing": "0.05em",
+            },
+        ),
+        html.H2(
+            value,
+            className="mb-0",
+            style={"fontSize": "2.2rem", "fontWeight": "700", "color": color},
+        ),
+    ]
+
+    if subtitle:
+        children.append(html.P(
+            subtitle,
+            className="mb-0 mt-1",
+            style={"fontSize": "0.8rem", "color": COLORS["text_muted"]},
+        ))
+
+    return dbc.Card(dbc.CardBody(children), style={**CARD_STYLE, "textAlign": "center"})
+
+
+def _chart_card(graph_id: str, figure: go.Figure) -> dbc.Card:
+    """Wrap a Plotly figure in a styled card with hidden mode bar."""
+    return dbc.Card(
+        dcc.Graph(id=graph_id, figure=figure, config={"displayModeBar": False}),
+        style=CARD_STYLE,
+    )
 
 def build_access_dashboard(df: pd.DataFrame) -> None:
     """
