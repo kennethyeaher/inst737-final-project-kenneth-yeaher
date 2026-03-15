@@ -255,20 +255,7 @@ def state_choropleth(df: pd.DataFrame) -> None:
         },
         color_continuous_scale="Blues",
     )
-
-    fig = go.Figure(go.Choropleth(
-        locations=df["practice_state"],
-        z=df["residual"],
-        locationmode="USA-states",
-        colorscale=UNIFIED_COLORSCALE,
-        zmin=-res_max,
-        zmax=res_max,
-        zmid=0,
-        marker={"line": {"color": "white", "width": 1.5}},
-        colorbar={"title": "Access Gap", "thickness": 14, "len": 0.6},
-        hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
-    ))
-
+    
     fig = apply_standard_layout(
         fig,
         title="Provider Density by State",
@@ -657,7 +644,7 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
 
 
 def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
-    """Full width US choropleth with unified color scale."""
+    """Full width US choropleth with unified color scale and polished geo styling."""
     res_max = _shared_range(df)
 
     fig = go.Figure(go.Choropleth(
@@ -668,8 +655,21 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         zmin=-res_max,
         zmax=res_max,
         zmid=0,
-        colorbar={"title": "Access Gap", "thickness": 14, "len": 0.6},
-        hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
+        marker={"line": {"color": "white", "width": 1.5}},
+        colorbar={
+            "title": "Access Gap",
+            "thickness": 14,
+            "len": 0.75,
+            "x": 1.01,
+            "y": 0.5,
+            "tickfont": {"size": 11},
+            "title_font": {"size": 12},
+        },
+        hovertemplate=(
+            "<b>%{location}</b><br>"
+            "Access Gap: %{z:.2f}<br>"
+            "<extra></extra>"
+        ),
     ))
 
     fig.update_layout(
@@ -679,10 +679,14 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
             scope="usa",
             projection_type="albers usa",
             showland=True,
-            landcolor="rgb(245,245,245)",
+            landcolor="#f0f0f0",
             showlakes=True,
-            lakecolor="rgb(232,240,250)",
+            lakecolor="#e8f0fa",
+            showframe=False,
+            bgcolor="rgba(0,0,0,0)",
+            fitbounds="locations",
         ),
+        dragmode=False,
     )
     return fig      
 
@@ -779,10 +783,30 @@ def _kpi_card(
     )
 
 
-def _chart_card(graph_id: str, figure: go.Figure) -> dbc.Card:
-    """Wrap a Plotly figure in a styled card with hidden mode bar."""
+# chart interaction config
+
+CHART_CONFIG: Final[dict] = {
+    "displayModeBar": False,
+    "scrollZoom": False,
+    "doubleClick": False,
+    "staticPlot": False,
+}
+
+MAP_CONFIG: Final[dict] = {
+    "displayModeBar": False,
+    "scrollZoom": False,
+    "doubleClick": False,
+}
+
+
+def _chart_card(graph_id: str, figure: go.Figure, is_map: bool = False) -> dbc.Card:
+    """Wrap a Plotly figure in a styled card with locked interactions."""
     return dbc.Card(
-        dcc.Graph(id=graph_id, figure=figure, config={"displayModeBar": False}),
+        dcc.Graph(
+            id=graph_id,
+            figure=figure,
+            config=MAP_CONFIG if is_map else CHART_CONFIG,
+        ),
         style=CARD_STYLE,
     )
 
@@ -873,7 +897,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                             dcc.Graph(
                                 id="bar-chart",
                                 figure=build_dashboard_bar(chart_df),
-                                config={"displayModeBar": False},
+                                config=CHART_CONFIG,
                             ),
                             html.Div(
                                 dbc.Button(
@@ -900,7 +924,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
 
             dbc.Row(
                 dbc.Col(
-                    _chart_card("choropleth", build_dashboard_choropleth(chart_df)),
+                    _chart_card("choropleth", build_dashboard_choropleth(chart_df), is_map=True),
                     width=12,
                 ),
                 className="mb-3",
