@@ -146,22 +146,101 @@ def taxonomy_distribution(df: pd.DataFrame):
  
  
 def provider_growth_trend(df: pd.DataFrame):
-    """Line chart showing provider enumeration trend over time."""
+    """Bar chart of annual provider enumerations with data quality handling."""
     print("[EDA] Building provider growth trend chart...")
  
     trend = (
         df.assign(year=df["provider_enumeration_date"].dt.year)
         .groupby("year")
         .size()
-        .sort_index()
     )
  
-    plt.figure(figsize=(12, 6))
-    trend.plot()
+    # separate complete years from partial / artifact data
+    complete_years = trend[trend.index <= 2024]
+    partial_2025 = trend[trend.index == 2025]
  
-    plt.title("Provider Enumeration Trend")
-    plt.ylabel("New Providers")
+    years = complete_years.index.tolist()
+    values = complete_years.values.tolist()
  
+    fig, ax = plt.subplots(figsize=(13, 6.5))
+ 
+    accent = "#2563EB"
+    muted = "#CBD5E1"
+ 
+    bar_colors = [accent if v >= 1000 else muted for v in values]
+    bars = ax.bar(years, values, color=bar_colors, width=0.75, edgecolor="none")
+ 
+    # 2025 partial year as hatched bar
+    if not partial_2025.empty:
+        ax.bar(
+            2025, partial_2025.values[0],
+            color="none", edgecolor=accent, linewidth=1.5,
+            width=0.75, hatch="///", label="2025 (partial year)",
+        )
+ 
+    # value labels on bars with 700+ providers
+    for bar, val in zip(bars, values):
+        if val >= 700:
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 20,
+                f"{val:,}",
+                ha="center", va="bottom",
+                fontsize=9, color="#334155",
+            )
+ 
+    if not partial_2025.empty:
+        ax.text(
+            2025, partial_2025.values[0] + 20,
+            f"{partial_2025.values[0]:,}",
+            ha="center", va="bottom",
+            fontsize=9, color=accent,
+        )
+ 
+    # annotate key inflection points
+    ax.annotate(
+        "NPI system\nlaunched",
+        xy=(2006, 1668), xytext=(2008.5, 1750),
+        fontsize=9, color="#64748B",
+        arrowprops=dict(arrowstyle="->", color="#94A3B8", lw=1.2),
+        ha="center",
+    )
+ 
+    ax.annotate(
+        "steady acceleration\nsince 2015",
+        xy=(2019, 818), xytext=(2016, 1350),
+        fontsize=9, color="#64748B",
+        arrowprops=dict(arrowstyle="->", color="#94A3B8", lw=1.2),
+        ha="center",
+    )
+ 
+    ax.set_title(
+        "Annual Provider Enumeration Trend (2005–2024)",
+        fontsize=16, fontweight="bold", loc="left", pad=25,
+    )
+ 
+    ax.text(
+        0, 1.02,
+        "New NPI registrations per year  •  2025 shown as partial  •  2026 excluded (batch artifact)",
+        transform=ax.transAxes,
+        fontsize=10.5, color="#64748B",
+    )
+ 
+    ax.set_ylabel("New Providers", fontsize=11, color="#64748B")
+    ax.set_xlabel("")
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_color("#E2E8F0")
+    ax.spines["left"].set_color("#E2E8F0")
+    ax.tick_params(axis="both", colors="#94A3B8")
+ 
+    ax.set_xticks(range(2005, 2026))
+    ax.set_xticklabels(range(2005, 2026), rotation=45, ha="right", fontsize=9)
+ 
+    ax.legend(loc="upper left", fontsize=10, frameon=False)
+ 
+    plt.tight_layout()
     save_plot("provider_growth_trend.png")
 
 # Pipeline runner
