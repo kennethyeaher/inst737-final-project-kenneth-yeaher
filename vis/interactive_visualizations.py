@@ -644,7 +644,7 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
 
 
 def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
-    """Full width US choropleth with unified color scale and polished geo styling."""
+    """Full width US choropleth with unified color scale and selection styling."""
     res_max = _shared_range(df)
 
     fig = go.Figure(go.Choropleth(
@@ -656,6 +656,8 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         zmax=res_max,
         zmid=0,
         marker={"line": {"color": "white", "width": 1.5}},
+        selected={"marker": {"opacity": 1.0}},
+        unselected={"marker": {"opacity": 0.3}},
         colorbar={
             "title": "Access Gap",
             "thickness": 14,
@@ -675,6 +677,7 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         **{**BASE_LAYOUT, "height": 520, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
         title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
+        clickmode="event+select",
         geo=dict(
             scope="usa",
             projection_type="albers usa",
@@ -684,11 +687,11 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
             lakecolor="#e8f0fa",
             showframe=False,
             bgcolor="rgba(0,0,0,0)",
-            
+
         ),
-        dragmode=False,
+
     )
-    return fig      
+    return fig     
 
 # summary and ui components
 
@@ -983,6 +986,28 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
 
         clicked_state = click_data["points"][0]["location"]
         return build_dashboard_bar(chart_df, selected_states=[clicked_state])
+    
+    # callback click map to highlight selected state
+
+    @app.callback(
+        Output("choropleth", "figure"),
+        Input("choropleth", "clickData"),
+        Input("reset-bar", "n_clicks"),
+    )
+    def highlight_state(click_data, _n_clicks):
+        if ctx.triggered_id == "reset-bar" or click_data is None:
+            return build_dashboard_choropleth(chart_df)
+
+        clicked_state = click_data["points"][0]["location"]
+        fig = build_dashboard_choropleth(chart_df)
+
+        # find index of clicked state and set as selected
+        state_list = chart_df["practice_state"].tolist()
+        if clicked_state in state_list:
+            idx = state_list.index(clicked_state)
+            fig.update_traces(selectedpoints=[idx])
+
+        return fig
 
     # launch
 
