@@ -1,18 +1,43 @@
 import pandas as pd
+import numpy as np
+import json
 from pathlib import Path 
 
 # file path 
 
 INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_FILE = Path("data/model_outputs/access_risk_classified.csv")
+SUMMARY_FILE = Path("data/model_outputs/access_risk_summary.csv")
+METADATA_FILE = Path("data/model_outputs/access_risk_metadata.json")
 
-# risk tier thresholds based on residual quartiles
+# tiers definitions
+# states are binned by residual: most negative = most underserved 
 
-RISK_TIERS = {
-    "high_risk": 0.25,
-    "moderate_risk": 0.50,
-    "adequate": 0.75,
-}
+TIER_BOUNDS = [
+    ("high_risk", 0.25),
+    ("moderate_risk", 0.50),
+    ("adequate", 0.75),
+    ("well_served", 1.0),
+]
+
+# columns carried into final report 
+
+OUTPUT_COLUMNS = [
+    "practice_state",
+    "state_name",
+    "provider_count",
+    "metro_population",
+    "providers_per_100k",
+    "predicted_provider_density",
+    "residual",
+    "risk_score",
+    "risk_tier",
+    "supply_gap",
+    "risk_rank",
+    "taxonomy_diversity",
+    "recent_provider_growth",
+] 
+
 
 def load_regression_results() -> pd.DataFrame:
     """Load regression output with residuals."""
@@ -31,84 +56,111 @@ def load_regression_results() -> pd.DataFrame:
     print(f"[ACCESS-RISK] States loaded: {df.shape[0]}")
     return df
 
-def classify_risk_tiers(df: pd.DataFrame) -> pd.DataFrame:
+def compute_risk_score(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Assign access risk labels based on residual quartile position.
-    Large negative residuals indicate fewer providers than predicted.
+    Continuous 0-100 risk score based on residual percentile.
+    100 = most underserved, 0 = most oversupplied.
     """
-    q25 = df["residual"].quantile(RISK_TIERS["high_risk"])
-    q50 = df["residual"].quantile(RISK_TIERS["moderate_risk"])
-    q75 = df["residual"].quantile(RISK_TIERS["adequate"])
+    df["risk_score"] = (
+        df["residual"]
+        .rank(ascending=True, pct=True)
+        .rsub(1)
+        .mul(100)
+        .round(1)
+    )
  
-    def assign_tier(residual: float) -> str:
-        if residual <= q25:
-            return "high_risk"
-        elif residual <= q50:
-            return "moderate_risk"
-        elif residual <= q75:
-            return "adequate"
-        return "well_served"
- 
-    df["risk_tier"] = df["residual"].apply(assign_tier)
+    return df
 
-    # supply gap magnitude (absolute shortfall relative to prediction)
+def assign_risk_tiers(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """Bin states into risk tiers using quantile boundaries from TIER_BOUNDS."""
+    labels = [t[0] for t in TIER_BOUNDS]
+    quantiles = [t[1] for t in TIER_BOUNDS]
+ 
+    # compute threshold values from residual distribution
+    thresholds = [df["residual"].min() - 1]
+    for q in quantiles:
+        thresholds.append(df["residual"].quantile(q))
+ 
+    df["risk_tier"] = pd.cut(
+        df["residual"],
+        bins=thresholds,
+        labels=labels,
+        include_lowest=True,
+    )
+ 
+    # store thresholds for reproducibility
+    threshold_map = {
+        label: {"quantile": q, "residual_cutoff": round(df["residual"].quantile(q), 4)}
+        for label, q in TIER_BOUNDS
+    }
+ 
+    print(f"[ACCESS-RISK] Tier thresholds:")
+    for tier, info in threshold_map.items():
+        print(f"  {tier}: q={info['quantile']}  cutoff={info['residual_cutoff']}")
+ 
+    return df, threshold_map
+
+def compute_supply_gap(df: pd.DataFrame) -> pd.DataFrame:
+    """Absolute magnitude of provider shortfall relative to prediction."""
     df["supply_gap"] = df["residual"].clip(upper=0).abs()
- 
-    # rank states by severity (1 = most underserved)
+    return df
+
+def compute_risk_rank(df: pd.DataFrame) -> pd.DataFrame:
+    """Rank states by severity (1 = most underserved)."""
     df["risk_rank"] = df["residual"].rank(ascending=True, method="min").astype(int)
- 
-    print(f"[ACCESS-RISK] Quartile thresholds — Q25: {q25:.3f}  Q50: {q50:.3f}  Q75: {q75:.3f}")
-    print(f"[ACCESS-RISK] Tier counts:\n{df['risk_tier'].value_counts().to_string()}")
- 
+    
     return df
 
 def build_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate risk tier statistics for reporting."""
     summary = (
-        df.groupby("risk_tier", as_index=False)
+        df.groupby("risk_tier", observed=False, as_index=False)
         .agg(
             state_count=("state_name", "count"),
             avg_residual=("residual", "mean"),
             avg_density=("providers_per_100k", "mean"),
             avg_supply_gap=("supply_gap", "mean"),
+            avg_risk_score=("risk_score", "mean"),
         )
     )
  
-    # preserve logical tier ordering
-    tier_order = ["high_risk", "moderate_risk", "adequate", "well_served"]
-    summary["risk_tier"] = pd.Categorical(summary["risk_tier"], categories=tier_order, ordered=True)
-    summary = summary.sort_values("risk_tier").reset_index(drop=True)
+    summary = summary.sort_values("avg_residual").reset_index(drop=True)
  
     print(f"\n[ACCESS-RISK] Tier summary:\n{summary.to_string(index=False)}")
     return summary
 
-def save_results(df: pd.DataFrame) -> None:
-    """Save classified risk dataset."""
+def save_results(df: pd.DataFrame, summary: pd.DataFrame, thresholds: dict) -> None:
+    """Save classified dataset, summary table, and threshold metadata."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
  
-    ordered_cols = [
-        "practice_state",
-        "state_name",
-        "provider_count",
-        "metro_population",
-        "providers_per_100k",
-        "predicted_provider_density",
-        "residual",
-        "risk_tier",
-        "supply_gap",
-        "risk_rank",
-    ]
+    # only include columns that exist in the dataframe
+    valid_cols = [c for c in OUTPUT_COLUMNS if c in df.columns]
+    df[valid_cols].to_csv(OUTPUT_FILE, index=False)
+    print(f"\n[ACCESS-RISK] Saved classified data → {OUTPUT_FILE}")
  
-    df[ordered_cols].to_csv(OUTPUT_FILE, index=False)
-    print(f"\n[ACCESS-RISK] Saved → {OUTPUT_FILE}")
+    summary.to_csv(SUMMARY_FILE, index=False)
+    print(f"[ACCESS-RISK] Saved tier summary → {SUMMARY_FILE}")
+ 
+    metadata = {
+        "tier_thresholds": thresholds,
+        "total_states": len(df),
+        "high_risk_states": df[df["risk_tier"] == "high_risk"]["state_name"].tolist(),
+    }
+    with open(METADATA_FILE, "w") as f:
+        json.dump(metadata, f, indent=2)
+    print(f"[ACCESS-RISK] Saved metadata → {METADATA_FILE}")
+ 
     print("[ACCESS-RISK] ===== CLASSIFICATION COMPLETE =====")
 
 def run_access_risk_model() -> pd.DataFrame:
     """Full access risk classification workflow."""
     df = load_regression_results()
-    df = classify_risk_tiers(df)
-    build_risk_summary(df)
-    save_results(df)
+    df = compute_risk_score(df)
+    df, thresholds = assign_risk_tiers(df)
+    df = compute_supply_gap(df)
+    df = compute_risk_rank(df)
+    summary = build_risk_summary(df)
+    save_results(df, summary, thresholds)
     return df
 
 if __name__ == "__main__":
