@@ -1,16 +1,99 @@
+from __future__ import annotations
+ 
+import os
+from typing import Final
+ 
 import pandas as pd
-from pathlib import Path
-import plotly.express as px
 import plotly.graph_objects as go
-from typing import Optional
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
+from dash import Dash, html, dcc, Input, Output, ctx
+import dash_bootstrap_components as dbc
 
 
 # file path 
 
 INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_DIR = Path("data/visualizations")
+
+__all__ = ["build_access_dashboard"]
+ 
+# constriants 
+ 
+REQUIRED_COLUMNS: Final[set[str]] = {
+    "practice_state",
+    "providers_per_100k",
+    "predicted_provider_density",
+    "residual",
+}
+ 
+#  unified color system, defined once, referenced everywhere 
+
+COLORS: Final[dict[str, str]] = {
+    # diverging palette (red = underserved, blue = over-served)
+    "neg_strong":  "#b2182b",
+    "neg_mid":     "#ef8a62",
+    "neutral":     "#f7f7f7",
+    "pos_mid":     "#67a9cf",
+    "pos_strong":  "#2166ac",
+ 
+    # UI chrome
+    "bg":          "#f8f9fa",
+    "card_bg":     "#ffffff",
+    "card_border": "#e0e0e0",
+    "text":        "#212529",
+    "text_muted":  "#6c757d",
+    "accent":      "#2ca25f",
+    "kpi_bad":     "#c0392b",
+    "kpi_good":    "#27ae60",
+}
+ 
+UNIFIED_COLORSCALE: Final[list[list]] = [
+    [0.0,  COLORS["neg_strong"]],
+    [0.25, COLORS["neg_mid"]],
+    [0.5,  COLORS["neutral"]],
+    [0.75, COLORS["pos_mid"]],
+    [1.0,  COLORS["pos_strong"]],
+]
+ 
+# reusable layout tokens 
+FONT_STACK: Final[str] = "Inter, Segoe UI, sans-serif"
+ 
+CHART_HEIGHT: Final[int] = 380
+MAP_HEIGHT: Final[int] = 420
+ 
+CARD_STYLE: Final[dict] = {
+    "border": f"1px solid {COLORS['card_border']}",
+    "borderRadius": "10px",
+    "boxShadow": "0 1px 4px rgba(0,0,0,0.06)",
+}
+ 
+CHART_MARGIN: Final[dict] = {"l": 10, "r": 20, "t": 50, "b": 40}
+ 
+BASE_LAYOUT: Final[dict] = {
+    "template": "plotly_white",
+    "margin": CHART_MARGIN,
+    "height": CHART_HEIGHT,
+    "font": {"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
+}
+ 
+# validation
+ 
+def _validate_dataframe(df: pd.DataFrame) -> None:
+    """Raise early with a clear message if the DataFrame is malformed."""
+    if df.empty:
+        raise ValueError("DataFrame is empty — cannot build dashboard.")
+ 
+    missing = REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"DataFrame is missing required columns: {', '.join(sorted(missing))}. "
+            f"Expected: {', '.join(sorted(REQUIRED_COLUMNS))}"
+        )
+ 
+ 
+def _shared_range(df: pd.DataFrame) -> float:
+    """Symmetric color range so 0 sits at the palette center."""
+    return max(abs(df["residual"].min()), abs(df["residual"].max()))
+
 
 # required columns 
 
