@@ -210,3 +210,4 @@ data/external/
 
 echo "data/visualizations/*.html" >> .gitignore
 
+data/visualizations/
