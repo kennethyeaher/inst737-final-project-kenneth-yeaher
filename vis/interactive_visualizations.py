@@ -538,12 +538,14 @@ def _build_outlier_annotations(
         "bgcolor": "rgba(255,255,255,0.85)",
         "bordercolor": COLORS["pos_strong"],
         "borderwidth": 1,
-        "ax": 40,
-        "ay": -40,
+        "ax": 50,
+        "ay": 40,
     })
 
-    # two most underserved states
-    for _, row in df.nsmallest(2, "residual").iterrows():
+    # two most underserved states with staggered offsets
+    offsets = [{"ax": -60, "ay": -30}, {"ax": -60, "ay": 35}]
+
+    for i, (_, row) in enumerate(df.nsmallest(2, "residual").iterrows()):
         annotations.append({
             "x": row["predicted_provider_density"],
             "y": row["providers_per_100k"],
@@ -558,8 +560,7 @@ def _build_outlier_annotations(
             "bgcolor": "rgba(255,255,255,0.85)",
             "bordercolor": COLORS["neg_strong"],
             "borderwidth": 1,
-            "ax": -50,
-            "ay": -35,
+            **offsets[i],
         })
 
     # fit line label
@@ -656,19 +657,19 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
     ))
 
-    fig.update_geos(
-        scope="usa",
-        projection_type="albers usa",
-        showland=True,
-        landcolor="rgb(245,245,245)",
-        showlakes=True,
-        lakecolor="rgb(232,240,250)",
-    )
-
     fig.update_layout(
-        **{**BASE_LAYOUT, "height": MAP_HEIGHT, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
+        **{**BASE_LAYOUT, "height": 500, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
         title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
-    )      
+        geo=dict(
+            scope="usa",
+            projection_type="albers usa",
+            showland=True,
+            landcolor="rgb(245,245,245)",
+            showlakes=True,
+            lakecolor="rgb(232,240,250)",
+        ),
+    )
+    return fig      
 
 # summary and ui components
 
