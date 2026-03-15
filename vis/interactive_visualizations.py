@@ -746,228 +746,172 @@ def _chart_card(graph_id: str, figure: go.Figure) -> dbc.Card:
         style=CARD_STYLE,
     )
 
-def build_access_dashboard(df: pd.DataFrame) -> None:
-    """
-    Build an executive style access dashboard that summarizes:
-    1. Core KPIs
-    2. Most underserved states
-    3. Model fit (predicted vs actual density)
-    4. Geographic access gaps across states
+# interactive dash dashboard
 
-    Residuals are used as the main access gap signal:
-    more negative residuals indicate lower actual provider density than expected.
+def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     """
-    print("[VIS] Building executive access dashboard...")
+    Interactive Dash dashboard replacing the old static Plotly version.
+    Launches a local server at http://127.0.0.1:8050
+    """
+    validate_columns(df, {"practice_state", "providers_per_100k",
+                          "predicted_provider_density", "residual"})
 
+    print("[VIS] Launching interactive Dash dashboard...")
     chart_df = df.copy()
 
-    # kpi values
+    # pre compute kpis
 
-    states_analyzed = int(chart_df["practice_state"].nunique())
-    avg_density = round(chart_df["providers_per_100k"].mean(), 2)
-    most_underserved_state = chart_df.nsmallest(1, "residual")["practice_state"].iloc[0]
+    n_states = int(chart_df["practice_state"].nunique())
+    avg_dens = chart_df["providers_per_100k"].mean()
+    med_dens = chart_df["providers_per_100k"].median()
+    worst_row = chart_df.nsmallest(1, "residual").iloc[0]
 
-    # ranking slice 
+    # initialize dash
 
-    underserved = (
-        chart_df.nsmallest(10, "residual")
-        .copy()
-        .sort_values("residual", ascending=True)
-    )
-    underserved["residual_label"] = underserved["residual"].round(2)
-
-    # scatter refrence line range 
-
-    axis_min = min(
-        chart_df["predicted_provider_density"].min(),
-        chart_df["providers_per_100k"].min(),
-    )
-    axis_max = max(
-        chart_df["predicted_provider_density"].max(),
-        chart_df["providers_per_100k"].max(),
+    app = Dash(
+        __name__,
+        external_stylesheets=[dbc.themes.BOOTSTRAP],
+        title="Ovara — Access Dashboard",
     )
 
-    # build layout 
+    app.layout = dbc.Container(
+        [
+            # header
 
-    fig = make_subplots(
-        rows=3,
-        cols=2,
-        row_heights=[0.18, 0.42, 0.60],
-        specs=[
-            [{"type": "indicator"}, {"type": "indicator"}],
-            [{"type": "bar"}, {"type": "scatter"}],
-            [{"type": "choropleth", "colspan": 2}, None],
-        ],
-        subplot_titles=(
-            "States Analyzed",
-            "Average Provider Density",
-            "Top 10 Most Underserved States",
-            "Predicted vs Actual Provider Density",
-            "State-Level Access Gap Map",
-        ),
-        vertical_spacing=0.10,
-        horizontal_spacing=0.08,
-    )
+            dbc.Row(dbc.Col(html.Div(
+                [
+                    html.H3(
+                        "U.S. Specialist Access Dashboard",
+                        className="mb-0",
+                        style={"fontWeight": "700"},
+                    ),
+                    html.P(
+                        "Residuals highlight where provider supply falls below "
+                        "or exceeds model expectations. Click a state on the "
+                        "map to filter the bar chart.",
+                        className="mb-0",
+                        style={"color": COLORS["text_muted"], "fontSize": "0.9rem"},
+                    ),
+                ],
+                style={"textAlign": "center", "padding": "18px 0 10px 0"},
+            ), width=12)),
 
-    # kpi one 
+            html.Hr(style={"margin": "0 0 16px 0", "borderColor": COLORS["card_border"]}),
 
-    fig.add_trace(
-        go.Indicator(
-            mode="number",
-            value=states_analyzed,
-            title={"text": "States Analyzed"},
-        ),
-        row=1,
-        col=1,
-    )
+            # kpi row
 
-    # kpi two 
-   
-    fig.add_trace(
-        go.Indicator(
-            mode="number+delta",
-            value=avg_density,
-            delta={"reference": 0, "relative": False},
-            title={"text": f"Avg Providers per 100k<br><sup>Most underserved: {most_underserved_state}</sup>"},
-        ),
-        row=1,
-        col=2,
-    )
-
-    # panel one, underserved ranking
-
-    fig.add_trace(
-        go.Bar(
-            x=underserved["residual"],
-            y=underserved["practice_state"],
-            orientation="h",
-            text=underserved["residual_label"],
-            textposition="outside",
-            marker=dict(
-                color=underserved["residual"],
-                colorscale="Reds_r",
-                showscale=False,
+            dbc.Row(
+                [
+                    dbc.Col(_kpi_card("States Analyzed", str(n_states)), md=4),
+                    dbc.Col(_kpi_card(
+                        "Avg Providers / 100k",
+                        f"{avg_dens:.1f}",
+                        subtitle=f"Median: {med_dens:.1f}",
+                    ), md=4),
+                    dbc.Col(_kpi_card(
+                        "Most Underserved",
+                        worst_row["practice_state"],
+                        subtitle=f"Gap: {worst_row['residual']:.2f}",
+                        color=COLORS["kpi_bad"],
+                    ), md=4),
+                ],
+                className="g-3 mb-3",
             ),
-            hovertemplate=(
-                "<b>%{y}</b><br>"
-                "Residual: %{x:.2f}<br>"
-                "<extra></extra>"
+
+            # charts bar and scatter
+
+            dbc.Row(
+                [
+                    dbc.Col([
+                        _chart_card("bar-chart", build_dashboard_bar(chart_df)),
+                        html.Div(
+                            dbc.Button(
+                                "Reset filter",
+                                id="reset-bar",
+                                size="sm",
+                                color="secondary",
+                                outline=True,
+                                className="mt-2",
+                            ),
+                            style={"textAlign": "right"},
+                        ),
+                    ], md=5),
+                    dbc.Col(
+                        _chart_card("scatter-chart", build_dashboard_scatter(chart_df)),
+                        md=7,
+                    ),
+                ],
+                className="g-3 mb-3",
             ),
-            name="Residual",
-        ),
-        row=2,
-        col=1,
-    )
 
-    # panel two, model fit scatter 
+            # map
 
-    fig.add_trace(
-        go.Scatter(
-            x=chart_df["predicted_provider_density"],
-            y=chart_df["providers_per_100k"],
-            mode="markers",
-            text=chart_df["practice_state"],
-            marker=dict(
-                size=11,
-                color=chart_df["residual"],
-                colorscale="RdBu",
-                showscale=True,
-                colorbar=dict(
-                    title="Residual",
-                    len=0.38,
-                    thickness=12,
-                    x=1.02,
-                    y=0.66,
+            dbc.Row(
+                dbc.Col(
+                    _chart_card("choropleth", build_dashboard_choropleth(chart_df)),
+                    width=12,
                 ),
-                line=dict(width=0.5, color="white"),
+                className="mb-3",
             ),
-            hovertemplate=(
-                "<b>%{text}</b><br>"
-                "Predicted Density: %{x:.2f}<br>"
-                "Actual Density: %{y:.2f}<br>"
-                "Residual: %{marker.color:.2f}<br>"
-                "<extra></extra>"
+
+            # executive summary
+
+            dbc.Row(
+                dbc.Col(dbc.Card(
+                    dbc.CardBody([
+                        html.H6(
+                            "Executive Summary",
+                            style={
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.05em",
+                                "color": COLORS["text_muted"],
+                                "fontSize": "0.8rem",
+                            },
+                        ),
+                        html.P(
+                            generate_summary(chart_df),
+                            id="summary-text",
+                            style={
+                                "fontSize": "0.95rem",
+                                "lineHeight": "1.6",
+                                "color": COLORS["text"],
+                                "marginBottom": "0",
+                            },
+                        ),
+                    ]),
+                    style={**CARD_STYLE, "backgroundColor": "#f0f4f8"},
+                ), width=12),
+                className="mb-4",
             ),
-            name="States",
-            showlegend=False,
-        ),
-        row=2,
-        col=2,
+        ],
+        fluid=True,
+        style={
+            "backgroundColor": COLORS["bg"],
+            "fontFamily": FONT_STACK,
+            "maxWidth": "1440px",
+        },
     )
 
-    # ideal fit line
-    
-    fig.add_trace(
-        go.Scatter(
-            x=[axis_min, axis_max],
-            y=[axis_min, axis_max],
-            mode="lines",
-            line=dict(dash="dash", width=2, color="#2ca25f"),
-            hoverinfo="skip",
-            showlegend=False,
-        ),
-        row=2,
-        col=2,
+    # callback click map to filter bar and reset button restores
+
+    @app.callback(
+        Output("bar-chart", "figure"),
+        Input("choropleth", "clickData"),
+        Input("reset-bar", "n_clicks"),
     )
+    def update_bar(click_data, _n_clicks):
+        if ctx.triggered_id == "reset-bar" or click_data is None:
+            return build_dashboard_bar(chart_df)
 
-    # panel three, geograpic accesss gap map 
+        clicked_state = click_data["points"][0]["location"]
+        return build_dashboard_bar(chart_df, selected_states=[clicked_state])
 
-    fig.add_trace(
-        go.Choropleth(
-            locations=chart_df["practice_state"],
-            z=chart_df["residual"],
-            locationmode="USA-states",
-            colorscale="RdBu",
-            zmid=0,
-            colorbar=dict(
-                title="Access Gap",
-                len=0.60,
-                thickness=14,
-                x=1.02,
-                y=0.20,
-            ),
-            hovertemplate=(
-                "<b>%{location}</b><br>"
-                "Residual: %{z:.2f}<br>"
-                "<extra></extra>"
-            ),
-            name="Access Gap",
-        ),
-        row=3,
-        col=1,
-    )
+    # launch
 
-    # layout mgmt and polish 
-
-    fig.update_layout(
-        title=(
-            "U.S. Specialist Access Dashboard"
-            "<br><sup>Residuals highlight where provider supply is below or above model expectations</sup>"
-        ),
-        template="plotly_white",
-        height=930,
-        width=1400,
-        title_x=0.5,
-        margin=dict(l=35, r=40, t=95, b=30),
-        font=dict(size=14),
-    )
-
-    fig.update_xaxes(title_text="Residual", row=2, col=1)
-    fig.update_yaxes(title_text="", row=2, col=1)
-
-    fig.update_xaxes(title_text="Predicted Providers per 100k", row=2, col=2)
-    fig.update_yaxes(title_text="Actual Providers per 100k", row=2, col=2)
-
-    fig.update_geos(
-        scope="usa",
-        projection_type="albers usa",
-        showland=True,
-        landcolor="rgb(245,245,245)",
-        row=3,
-        col=1,
-    )
-
-    save_html(fig, "access_decision_dashboard.html") 
+    port = int(os.environ.get("DASH_PORT", 8050))
+    print(f"[VIS] Dashboard running at http://127.0.0.1:{port}")
+    app.run(debug=debug, port=port)
 
 # workflow manager
 
@@ -975,15 +919,17 @@ def run_interactive_visualizations() -> None:
     """Run the full interactive visualization workflow."""
     df = load_regression_results()
 
+    # static html chart exports
+
     top_underserved_chart(df)
     top_overserved_chart(df)
     residual_ranking_chart(df)
     predicted_vs_actual_chart(df)
     state_choropleth(df)
     annotated_predicted_vs_actual_chart(df)
-    build_access_dashboard(df) 
 
-    print("[VIS] ===== INTERACTIVE VISUALIZATIONS COMPLETE =====")
+    print("[VIS] ===== STATIC VISUALIZATIONS COMPLETE =====")
 
-if __name__ == "__main__":
-    run_interactive_visualizations()
+    # interactive dashboard launches server
+
+    build_access_dashboard(df, debug=True)
