@@ -684,7 +684,7 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
             lakecolor="#e8f0fa",
             showframe=False,
             bgcolor="rgba(0,0,0,0)",
-            fitbounds="locations",
+            
         ),
         dragmode=False,
     )
