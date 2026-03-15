@@ -495,9 +495,11 @@ def build_dashboard_bar(
             textfont={"size": 12, "color": COLORS["text"]},
             marker={
                 "color": subset["residual"],
-                "colorscale": UNIFIED_COLORSCALE,
-                "cmin": -res_max,
-                "cmax": res_max,
+                "colorscale": [
+                    [0.0, COLORS["neg_strong"]],
+                    [0.5, COLORS["neg_mid"]],
+                    [1.0, "#fddbc7"],
+                ],
                 "showscale": False,
             },
             hovertemplate="<b>%{y}</b><br>Residual: %{x:.2f}<extra></extra>",
@@ -658,7 +660,7 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
     ))
 
     fig.update_layout(
-        **{**BASE_LAYOUT, "height": 500, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
+        **{**BASE_LAYOUT, "height": 520, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
         title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
         geo=dict(
             scope="usa",
@@ -709,8 +711,9 @@ def _kpi_card(
     value: str,
     subtitle: str = "",
     color: str = COLORS["text"],
+    accent: str = COLORS["card_border"],
 ) -> dbc.Card:
-    """Reusable KPI card with consistent styling."""
+    """Reusable KPI card with colored top accent border."""
     children = [
         html.P(
             title,
@@ -737,7 +740,14 @@ def _kpi_card(
             style={"fontSize": "0.8rem", "color": COLORS["text_muted"]},
         ))
 
-    return dbc.Card(dbc.CardBody(children), style={**CARD_STYLE, "textAlign": "center"})
+    return dbc.Card(
+        dbc.CardBody(children),
+        style={
+            **CARD_STYLE,
+            "textAlign": "center",
+            "borderTop": f"4px solid {accent}",
+        },
+    )
 
 
 def _chart_card(graph_id: str, figure: go.Figure) -> dbc.Card:
@@ -803,17 +813,23 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
 
             dbc.Row(
                 [
-                    dbc.Col(_kpi_card("States Analyzed", str(n_states)), md=4),
+                    dbc.Col(_kpi_card(
+                        "States Analyzed",
+                        str(n_states),
+                        accent=COLORS["pos_strong"],
+                    ), md=4),
                     dbc.Col(_kpi_card(
                         "Avg Providers / 100k",
                         f"{avg_dens:.1f}",
                         subtitle=f"Median: {med_dens:.1f}",
+                        accent=COLORS["accent"],
                     ), md=4),
                     dbc.Col(_kpi_card(
                         "Most Underserved",
                         worst_row["practice_state"],
                         subtitle=f"Gap: {worst_row['residual']:.2f}",
                         color=COLORS["kpi_bad"],
+                        accent=COLORS["kpi_bad"],
                     ), md=4),
                 ],
                 className="g-3 mb-3",
@@ -891,6 +907,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             "backgroundColor": COLORS["bg"],
             "fontFamily": FONT_STACK,
             "maxWidth": "1440px",
+            "paddingBottom": "40px",
         },
     )
 
@@ -937,3 +954,4 @@ def run_interactive_visualizations() -> None:
 
 if __name__ == "__main__":
     run_interactive_visualizations()
+    
