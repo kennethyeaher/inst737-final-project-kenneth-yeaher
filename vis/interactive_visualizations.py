@@ -59,7 +59,7 @@ UNIFIED_COLORSCALE: Final[list[list]] = [
 # reusable layout tokens 
 FONT_STACK: Final[str] = "Inter, Segoe UI, sans-serif"
  
-CHART_HEIGHT: Final[int] = 380
+CHART_HEIGHT: Final[int] = 420
 MAP_HEIGHT: Final[int] = 420
  
 CARD_STYLE: Final[dict] = {
@@ -255,6 +255,19 @@ def state_choropleth(df: pd.DataFrame) -> None:
         },
         color_continuous_scale="Blues",
     )
+
+    fig = go.Figure(go.Choropleth(
+        locations=df["practice_state"],
+        z=df["residual"],
+        locationmode="USA-states",
+        colorscale=UNIFIED_COLORSCALE,
+        zmin=-res_max,
+        zmax=res_max,
+        zmid=0,
+        marker={"line": {"color": "white", "width": 1.5}},
+        colorbar={"title": "Access Gap", "thickness": 14, "len": 0.6},
+        hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
+    ))
 
     fig = apply_standard_layout(
         fig,
@@ -675,13 +688,14 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
 
 # summary and ui components
 
-def generate_summary(df: pd.DataFrame) -> str:
-    """Produce a 3 to 4 sentence executive summary from the residuals."""
+def generate_summary(df: pd.DataFrame) -> list:
+    """Produce a styled executive summary with bolded key figures."""
     n_states = df["practice_state"].nunique()
     if n_states == 0:
-        return "No state-level data available for summary."
+        return [html.Span("No state-level data available for summary.")]
 
     avg_density = df["providers_per_100k"].mean()
+    med_density = df["providers_per_100k"].median()
 
     underserved = df[df["residual"] < 0]
     n_under = len(underserved)
@@ -693,17 +707,32 @@ def generate_summary(df: pd.DataFrame) -> str:
 
     best = df.nlargest(1, "residual").iloc[0]
 
-    return (
-        f"Across {n_states} states analyzed, the average provider density is "
-        f"{avg_density:.1f} per 100k residents. "
-        f"{n_under} states ({pct_under}%) fall below model-predicted supply levels, "
-        f"indicating potential access gaps. "
-        f"The three most underserved states — {worst_names} — average a residual of "
-        f"{worst_avg_gap:.2f}, meaning actual provider supply is substantially "
-        f"below expectations. "
-        f"{best['practice_state']} shows the strongest over-supply "
-        f"at +{best['residual']:.2f}."
-    )
+    b = lambda text: html.B(text, style={"color": COLORS["text"]})
+
+    return [
+        html.Span([
+            "Across ", b(f"{n_states} states"), " analyzed, the average provider density is ",
+            b(f"{avg_density:.1f}"), " per 100k residents (median: ",
+            b(f"{med_density:.1f}"), ").",
+        ]),
+        html.Br(), html.Br(),
+        html.Span([
+            b(f"{n_under} states ({pct_under}%)"),
+            " fall below model-predicted supply levels, indicating potential access gaps. ",
+            "The three most underserved — ",
+            b(worst_names),
+            " — average a residual of ",
+            b(f"{worst_avg_gap:.2f}"),
+            ", meaning actual provider supply is substantially below expectations.",
+        ]),
+        html.Br(), html.Br(),
+        html.Span([
+            b(best["practice_state"]),
+            " shows the strongest over-supply at ",
+            b(f"+{best['residual']:.2f}"),
+            ".",
+        ]),
+    ]
 
 
 def _kpi_card(
@@ -839,20 +868,26 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
 
             dbc.Row(
                 [
-                    dbc.Col([
-                        _chart_card("bar-chart", build_dashboard_bar(chart_df)),
-                        html.Div(
-                            dbc.Button(
-                                "Reset filter",
-                                id="reset-bar",
-                                size="sm",
-                                color="secondary",
-                                outline=True,
-                                className="mt-2",
+                    dbc.Col(
+                        dbc.Card([
+                            dcc.Graph(
+                                id="bar-chart",
+                                figure=build_dashboard_bar(chart_df),
+                                config={"displayModeBar": False},
                             ),
-                            style={"textAlign": "right"},
-                        ),
-                    ], md=5),
+                            html.Div(
+                                dbc.Button(
+                                    "Reset filter",
+                                    id="reset-bar",
+                                    size="sm",
+                                    color="secondary",
+                                    outline=True,
+                                ),
+                                style={"textAlign": "right", "padding": "6px 12px 10px 0"},
+                            ),
+                        ], style=CARD_STYLE),
+                        md=5,
+                    ),
                     dbc.Col(
                         _chart_card("scatter-chart", build_dashboard_scatter(chart_df)),
                         md=7,
@@ -886,12 +921,12 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                                 "fontSize": "0.8rem",
                             },
                         ),
-                        html.P(
+                        html.Div(
                             generate_summary(chart_df),
                             id="summary-text",
                             style={
                                 "fontSize": "0.95rem",
-                                "lineHeight": "1.6",
+                                "lineHeight": "1.7",
                                 "color": COLORS["text"],
                                 "marginBottom": "0",
                             },
