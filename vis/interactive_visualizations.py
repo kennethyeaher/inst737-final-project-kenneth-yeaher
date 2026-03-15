@@ -666,11 +666,9 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
     )
 
     fig.update_layout(
-        **{**BASE_LAYOUT, "height": MAP_HEIGHT},
+        **{**BASE_LAYOUT, "height": MAP_HEIGHT, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
         title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
-        margin={"l": 0, "r": 0, "t": 50, "b": 0},
-    )
-    return fig
+    )      
 
 # summary and ui components
 
