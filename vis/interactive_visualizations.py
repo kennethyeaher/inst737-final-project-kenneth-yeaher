@@ -643,21 +643,33 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
-    """Full width US choropleth with unified color scale and selection styling."""
+def build_dashboard_choropleth(df: pd.DataFrame, selected_state: str | None = None) -> go.Figure:
+    """Full width US choropleth with bold outline on selected state."""
     res_max = _shared_range(df)
+    chart_df = df.copy()
+
+    # build per state border styling
+    if selected_state:
+        line_widths = [4 if s == selected_state else 1 for s in chart_df["practice_state"]]
+        line_colors = ["#000000" if s == selected_state else "white" for s in chart_df["practice_state"]]
+        opacities = [1.0 if s == selected_state else 0.4 for s in chart_df["practice_state"]]
+    else:
+        line_widths = [1.5] * len(chart_df)
+        line_colors = ["white"] * len(chart_df)
+        opacities = [1.0] * len(chart_df)
 
     fig = go.Figure(go.Choropleth(
-        locations=df["practice_state"],
-        z=df["residual"],
+        locations=chart_df["practice_state"],
+        z=chart_df["residual"],
         locationmode="USA-states",
         colorscale=UNIFIED_COLORSCALE,
         zmin=-res_max,
         zmax=res_max,
         zmid=0,
-        marker={"line": {"color": "white", "width": 1.5}},
-        selected={"marker": {"opacity": 1.0}},
-        unselected={"marker": {"opacity": 0.3}},
+        marker={
+            "line": {"color": line_colors, "width": line_widths},
+            "opacity": opacities,
+        },
         colorbar={
             "title": "Access Gap",
             "thickness": 14,
@@ -674,10 +686,16 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         ),
     ))
 
+    title_text = "State-Level Access Gap Map"
+    if selected_state:
+        row = chart_df[chart_df["practice_state"] == selected_state]
+        if len(row) > 0:
+            gap = row.iloc[0]["residual"]
+            title_text = f"State-Level Access Gap Map — {selected_state} (gap: {gap:.2f})"
+
     fig.update_layout(
         **{**BASE_LAYOUT, "height": 520, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
-        title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
-        clickmode="event+select",
+        title={"text": title_text, "font": {"size": 15}},
         geo=dict(
             scope="usa",
             projection_type="albers usa",
@@ -691,7 +709,7 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         ),
 
     )
-    return fig     
+    return fig    
 
 # summary and ui components
 
@@ -989,6 +1007,8 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     
     # callback click map to highlight selected state
 
+    # callback click map to highlight selected state
+
     @app.callback(
         Output("choropleth", "figure"),
         Input("choropleth", "clickData"),
@@ -999,7 +1019,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             return build_dashboard_choropleth(chart_df)
 
         clicked_state = click_data["points"][0]["location"]
-        fig = build_dashboard_choropleth(chart_df)
+        return build_dashboard_choropleth(chart_df, selected_state=clicked_state)
 
         # find index of clicked state and set as selected
         state_list = chart_df["practice_state"].tolist()
