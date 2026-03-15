@@ -124,6 +124,16 @@ Output: data/load/cbsa_reference_dataset.csv
 Activate virtual environment: "source .venv/bin/activate"
 Run full workflow: "python main.py"
 
+## Interactive Dashboard
+
+The access dashboard runs as a local Dash web app.
+```bash
+pip install dash dash-bootstrap-components
+python vis/interactive_visualizations.py
+```
+
+Open http://127.0.0.1:8050 in your browser. Click any state on the map to filter the bar chart. Hit Reset filter to restore the default view.
+
 ## Modeling Direction (Next Steps)
 
 Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network based approaches to better understand healthcare access dynamics.
