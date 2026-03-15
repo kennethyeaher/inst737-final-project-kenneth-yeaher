@@ -1,9 +1,11 @@
 from __future__ import annotations
- 
+
 import os
-from typing import Final
- 
+from pathlib import Path
+from typing import Final, Optional
+
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, html, dcc, Input, Output, ctx
 import dash_bootstrap_components as dbc
@@ -647,8 +649,8 @@ def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
         z=df["residual"],
         locationmode="USA-states",
         colorscale=UNIFIED_COLORSCALE,
-        cmin=-res_max,
-        cmax=res_max,
+        zmin=-res_max,
+        zmax=res_max,
         zmid=0,
         colorbar={"title": "Access Gap", "thickness": 14, "len": 0.6},
         hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
@@ -933,3 +935,6 @@ def run_interactive_visualizations() -> None:
     # interactive dashboard launches server
 
     build_access_dashboard(df, debug=True)
+
+if __name__ == "__main__":
+    run_interactive_visualizations()
