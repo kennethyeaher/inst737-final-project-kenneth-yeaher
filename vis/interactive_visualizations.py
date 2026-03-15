@@ -159,7 +159,7 @@ def load_regression_results() -> pd.DataFrame:
     print(f"[VIS] Rows available for visualization: {df.shape[0]}")
     return df
 
-#visualization stage
+# visualization stage
 
 
 def residual_ranking_chart(df: pd.DataFrame) -> None:
@@ -448,6 +448,227 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     )
 
     save_html(fig, "annotated_predicted_vs_actual_density.html")
+
+# dashboard figure builders
+
+def _shared_range(df: pd.DataFrame) -> float:
+    """Symmetric color range so 0 sits at the palette center."""
+    return max(abs(df["residual"].min()), abs(df["residual"].max()))
+
+
+def build_dashboard_bar(
+    df: pd.DataFrame,
+    selected_states: list[str] | None = None,
+) -> go.Figure:
+    """
+    Horizontal bar showing top 10 most underserved states by default.
+    When selected_states is provided via map click, filters to those.
+    """
+    res_max = _shared_range(df)
+
+    if selected_states:
+        subset = (
+            df[df["practice_state"].isin(selected_states)]
+            .copy()
+            .sort_values("residual", ascending=True)
+        )
+        title_text = f"Access Gap — {', '.join(selected_states)}"
+    else:
+        subset = (
+            df.nsmallest(10, "residual")
+            .copy()
+            .sort_values("residual", ascending=True)
+        )
+        title_text = "Top 10 Most Underserved States"
+
+    x_min = subset["residual"].min() if len(subset) > 0 else -4
+
+    fig = go.Figure(
+        go.Bar(
+            x=subset["residual"],
+            y=subset["practice_state"],
+            orientation="h",
+            text=subset["residual"].round(2),
+            textposition="outside",
+            textfont={"size": 12, "color": COLORS["text"]},
+            marker={
+                "color": subset["residual"],
+                "colorscale": UNIFIED_COLORSCALE,
+                "cmin": -res_max,
+                "cmax": res_max,
+                "showscale": False,
+            },
+            hovertemplate="<b>%{y}</b><br>Residual: %{x:.2f}<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        **BASE_LAYOUT,
+        title={"text": title_text, "font": {"size": 15}},
+        xaxis={"title": "Residual (actual − predicted)", "range": [x_min * 1.30, 0.3]},
+        yaxis={"title": ""},
+    )
+    return fig
+
+
+def _build_outlier_annotations(
+    df: pd.DataFrame,
+    axis_min: float,
+    axis_max: float,
+    pad: float,
+) -> list[dict]:
+    """Annotation dicts for the top positive and bottom two negative outliers."""
+    annotations: list[dict] = []
+
+    # strongest over served state
+    top_pos = df.nlargest(1, "residual").iloc[0]
+    annotations.append({
+        "x": top_pos["predicted_provider_density"],
+        "y": top_pos["providers_per_100k"],
+        "text": (
+            f"<b>{top_pos['practice_state']}</b><br>"
+            f"+{top_pos['residual']:.1f} above expected"
+        ),
+        "showarrow": True,
+        "arrowhead": 2,
+        "arrowcolor": COLORS["pos_strong"],
+        "font": {"size": 11, "color": COLORS["pos_strong"]},
+        "bgcolor": "rgba(255,255,255,0.85)",
+        "bordercolor": COLORS["pos_strong"],
+        "borderwidth": 1,
+        "ax": 40,
+        "ay": -40,
+    })
+
+    # two most underserved states
+    for _, row in df.nsmallest(2, "residual").iterrows():
+        annotations.append({
+            "x": row["predicted_provider_density"],
+            "y": row["providers_per_100k"],
+            "text": (
+                f"<b>{row['practice_state']}</b><br>"
+                f"{row['residual']:.1f} below expected"
+            ),
+            "showarrow": True,
+            "arrowhead": 2,
+            "arrowcolor": COLORS["neg_strong"],
+            "font": {"size": 11, "color": COLORS["neg_strong"]},
+            "bgcolor": "rgba(255,255,255,0.85)",
+            "bordercolor": COLORS["neg_strong"],
+            "borderwidth": 1,
+            "ax": -50,
+            "ay": -35,
+        })
+
+    # fit line label
+    mid = (axis_min + axis_max) / 2
+    annotations.append({
+        "x": mid + pad * 2,
+        "y": mid + pad * 2,
+        "text": "Ideal: actual = predicted",
+        "showarrow": False,
+        "font": {"size": 11, "color": COLORS["accent"], "family": FONT_STACK},
+        "bgcolor": "rgba(255,255,255,0.8)",
+    })
+
+    return annotations
+
+
+def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
+    """
+    Predicted vs actual scatter with unified coloring,
+    ideal fit line label, and annotated outliers.
+    """
+    res_max = _shared_range(df)
+
+    axis_min = min(
+        df["predicted_provider_density"].min(),
+        df["providers_per_100k"].min(),
+    )
+    axis_max = max(
+        df["predicted_provider_density"].max(),
+        df["providers_per_100k"].max(),
+    )
+    pad = (axis_max - axis_min) * 0.08
+    axis_range = [axis_min - pad, axis_max + pad]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=axis_range,
+        y=axis_range,
+        mode="lines",
+        line={"dash": "dash", "width": 2, "color": COLORS["accent"]},
+        hoverinfo="skip",
+        showlegend=False,
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=df["predicted_provider_density"],
+        y=df["providers_per_100k"],
+        mode="markers",
+        text=df["practice_state"],
+        marker={
+            "size": 11,
+            "color": df["residual"],
+            "colorscale": UNIFIED_COLORSCALE,
+            "cmin": -res_max,
+            "cmax": res_max,
+            "showscale": True,
+            "colorbar": {"title": "Residual", "thickness": 12, "len": 0.75},
+            "line": {"width": 0.6, "color": "white"},
+        },
+        hovertemplate=(
+            "<b>%{text}</b><br>"
+            "Predicted: %{x:.2f}<br>"
+            "Actual: %{y:.2f}<extra></extra>"
+        ),
+        showlegend=False,
+    ))
+
+    annotations = _build_outlier_annotations(df, axis_min, axis_max, pad)
+
+    fig.update_layout(
+        **BASE_LAYOUT,
+        title={"text": "Predicted vs Actual Provider Density", "font": {"size": 15}},
+        xaxis={"title": "Predicted Providers per 100k", "range": axis_range},
+        yaxis={"title": "Actual Providers per 100k", "range": axis_range},
+        annotations=annotations,
+    )
+    return fig
+
+
+def build_dashboard_choropleth(df: pd.DataFrame) -> go.Figure:
+    """Full width US choropleth with unified color scale."""
+    res_max = _shared_range(df)
+
+    fig = go.Figure(go.Choropleth(
+        locations=df["practice_state"],
+        z=df["residual"],
+        locationmode="USA-states",
+        colorscale=UNIFIED_COLORSCALE,
+        cmin=-res_max,
+        cmax=res_max,
+        zmid=0,
+        colorbar={"title": "Access Gap", "thickness": 14, "len": 0.6},
+        hovertemplate="<b>%{location}</b><br>Residual: %{z:.2f}<extra></extra>",
+    ))
+
+    fig.update_geos(
+        scope="usa",
+        projection_type="albers usa",
+        showland=True,
+        landcolor="rgb(245,245,245)",
+        showlakes=True,
+        lakecolor="rgb(232,240,250)",
+    )
+
+    fig.update_layout(
+        **{**BASE_LAYOUT, "height": MAP_HEIGHT},
+        title={"text": "State-Level Access Gap Map", "font": {"size": 15}},
+        margin={"l": 0, "r": 0, "t": 50, "b": 0},
+    )
+    return fig
 
 
 def build_access_dashboard(df: pd.DataFrame) -> None:
