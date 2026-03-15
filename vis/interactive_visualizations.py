@@ -369,54 +369,94 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
 
 def build_access_dashboard(df: pd.DataFrame) -> None:
     """
-    Build an integrated decision support dashboard showing:
+    Build an executive style access dashboard that summarizes:
+    1. Core KPIs
+    2. Most underserved states
+    3. Model fit (predicted vs actual density)
+    4. Geographic access gaps across states
 
-    1. Top underserved states based on regression residuals
-    2. Model fit through predicted vs actual provider density
-    3. Geographic provider density distribution across states
-
-    This dashboard is meant to summarize the model outputs in a way that is
-    easier for interpert, improving user experince. 
+    Residuals are used as the main access gap signal:
+    more negative residuals indicate lower actual provider density than expected.
     """
-    print("[VIS] Building access decision dashboard...")
+    print("[VIS] Building executive access dashboard...")
 
-    # prepare data 
+    chart_df = df.copy()
+
+    # kpi values
+
+    states_analyzed = int(chart_df["practice_state"].nunique())
+    avg_density = round(chart_df["providers_per_100k"].mean(), 2)
+    most_underserved_state = chart_df.nsmallest(1, "residual")["practice_state"].iloc[0]
+
+    # ranking slice 
+
     underserved = (
-        df.nsmallest(10, "residual")
+        chart_df.nsmallest(10, "residual")
         .copy()
         .sort_values("residual", ascending=True)
     )
     underserved["residual_label"] = underserved["residual"].round(2)
 
+    # scatter refrence line range 
+
     axis_min = min(
-        df["predicted_provider_density"].min(),
-        df["providers_per_100k"].min(),
+        chart_df["predicted_provider_density"].min(),
+        chart_df["providers_per_100k"].min(),
     )
     axis_max = max(
-        df["predicted_provider_density"].max(),
-        df["providers_per_100k"].max(),
+        chart_df["predicted_provider_density"].max(),
+        chart_df["providers_per_100k"].max(),
     )
 
-    # create dashboard layout 
+    # build layout 
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=2,
+        row_heights=[0.18, 0.42, 0.60],
         specs=[
+            [{"type": "indicator"}, {"type": "indicator"}],
             [{"type": "bar"}, {"type": "scatter"}],
             [{"type": "choropleth", "colspan": 2}, None],
         ],
         subplot_titles=(
+            "States Analyzed",
+            "Average Provider Density",
             "Top 10 Most Underserved States",
             "Predicted vs Actual Provider Density",
-            "Provider Density by State",
+            "State-Level Access Gap Map",
         ),
-        vertical_spacing=0.14,
+        vertical_spacing=0.10,
         horizontal_spacing=0.08,
     )
 
-    # panel one, underserverd ranking
-    
+    # kpi one 
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=states_analyzed,
+            title={"text": "States Analyzed"},
+        ),
+        row=1,
+        col=1,
+    )
+
+    # kpi two 
+   
+    fig.add_trace(
+        go.Indicator(
+            mode="number+delta",
+            value=avg_density,
+            delta={"reference": 0, "relative": False},
+            title={"text": f"Avg Providers per 100k<br><sup>Most underserved: {most_underserved_state}</sup>"},
+        ),
+        row=1,
+        col=2,
+    )
+
+    # panel one, underserved ranking
+
     fig.add_trace(
         go.Bar(
             x=underserved["residual"],
@@ -436,7 +476,7 @@ def build_access_dashboard(df: pd.DataFrame) -> None:
             ),
             name="Residual",
         ),
-        row=1,
+        row=2,
         col=1,
     )
 
@@ -444,16 +484,23 @@ def build_access_dashboard(df: pd.DataFrame) -> None:
 
     fig.add_trace(
         go.Scatter(
-            x=df["predicted_provider_density"],
-            y=df["providers_per_100k"],
+            x=chart_df["predicted_provider_density"],
+            y=chart_df["providers_per_100k"],
             mode="markers",
-            text=df["practice_state"],
+            text=chart_df["practice_state"],
             marker=dict(
-                size=10,
-                color=df["residual"],
+                size=11,
+                color=chart_df["residual"],
                 colorscale="RdBu",
                 showscale=True,
-                colorbar=dict(title="Residual"),
+                colorbar=dict(
+                    title="Residual",
+                    len=0.38,
+                    thickness=12,
+                    x=1.02,
+                    y=0.66,
+                ),
+                line=dict(width=0.5, color="white"),
             ),
             hovertemplate=(
                 "<b>%{text}</b><br>"
@@ -463,48 +510,55 @@ def build_access_dashboard(df: pd.DataFrame) -> None:
                 "<extra></extra>"
             ),
             name="States",
+            showlegend=False,
         ),
-        row=1,
+        row=2,
         col=2,
     )
 
-    # ideal line fit
-
+    # ideal fit line
+    
     fig.add_trace(
         go.Scatter(
             x=[axis_min, axis_max],
             y=[axis_min, axis_max],
             mode="lines",
-            line=dict(dash="dash", width=2),
+            line=dict(dash="dash", width=2, color="#2ca25f"),
             hoverinfo="skip",
             showlegend=False,
-            name="Ideal Fit",
         ),
-        row=1,
+        row=2,
         col=2,
     )
 
-    # panel three, geograhic density map
-    
+    # panel three, geograpic accesss gap map 
+
     fig.add_trace(
         go.Choropleth(
-            locations=df["practice_state"],
-            z=df["providers_per_100k"],
+            locations=chart_df["practice_state"],
+            z=chart_df["residual"],
             locationmode="USA-states",
-            colorscale="Blues",
-            colorbar=dict(title="Providers per 100k"),
+            colorscale="RdBu",
+            zmid=0,
+            colorbar=dict(
+                title="Access Gap",
+                len=0.60,
+                thickness=14,
+                x=1.02,
+                y=0.20,
+            ),
             hovertemplate=(
                 "<b>%{location}</b><br>"
-                "Provider Density: %{z:.2f}<br>"
+                "Residual: %{z:.2f}<br>"
                 "<extra></extra>"
             ),
-            name="Density",
+            name="Access Gap",
         ),
-        row=2,
+        row=3,
         col=1,
     )
 
-    # final layout postioning, organizing, and polishing
+    # layout mgmt and polish 
 
     fig.update_layout(
         title=(
@@ -512,19 +566,29 @@ def build_access_dashboard(df: pd.DataFrame) -> None:
             "<br><sup>Residuals highlight where provider supply is below or above model expectations</sup>"
         ),
         template="plotly_white",
-        height=900,
-        width=1250,
+        height=930,
+        width=1400,
         title_x=0.5,
-        margin=dict(l=40, r=40, t=90, b=40),
+        margin=dict(l=35, r=40, t=95, b=30),
+        font=dict(size=14),
     )
 
-    fig.update_xaxes(title_text="Residual", row=1, col=1)
-    fig.update_yaxes(title_text="State", row=1, col=1)
+    fig.update_xaxes(title_text="Residual", row=2, col=1)
+    fig.update_yaxes(title_text="", row=2, col=1)
 
-    fig.update_xaxes(title_text="Predicted Providers per 100k", row=1, col=2)
-    fig.update_yaxes(title_text="Actual Providers per 100k", row=1, col=2)
+    fig.update_xaxes(title_text="Predicted Providers per 100k", row=2, col=2)
+    fig.update_yaxes(title_text="Actual Providers per 100k", row=2, col=2)
 
-    save_html(fig, "access_decision_dashboard.html")
+    fig.update_geos(
+        scope="usa",
+        projection_type="albers usa",
+        showland=True,
+        landcolor="rgb(245,245,245)",
+        row=3,
+        col=1,
+    )
+
+    save_html(fig, "access_decision_dashboard.html") 
 
 # workflow manager
 
