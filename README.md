@@ -64,8 +64,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-NOTE: The NPPES raw data file is not included in the repository due to size. Download the latest weekly NPI data file from https://download.cms.gov/nppes/NPI_Files.html and place the extracted CSV in data/extracted/nppes_weekly_raw/.
-
+> NOTE: The NPPES raw data file is not included in the repository due to size. Download the latest weekly NPI data file from https://download.cms.gov/nppes/NPI_Files.html and place the extracted CSV in data/extracted/nppes_weekly_raw/.
 
 --
 
