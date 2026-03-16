@@ -1,226 +1,218 @@
-# INST737 Final Project — Healthcare Provider Access Modeling
+# INST737 Final Project  
+# Ovara: Reproductive Health Provider Access Modeling
 
 ## Project Overview
 
-This project builds an end to end data science pipeline to analyze healthcare provider distribution and identify potentially underserved geographic markets across the United States.
+Ovara started from a simple observation: fertility and reproductive healthcare access in the United States is not evenly distributed, somthing I observed while working as Healthcare Data Anlyst for a Managment Conclusting company that ran multiple Minimally Invasive Gynecologic Surgery focus Ambulatory Surgery Centers scattered though the top metro cities on the east coast.   However, most of the data that could prove this sits in fragmented federal registries that are difficult to work with. This project builds a data science pipeline to turn that raw registry data into measurable access intelligence.
 
-Using national provider registry data (NPPES) and Census metropolitan population estimates, the workflow constructs geographic provider density features that can support:
+The pipeline ingests the CMS National Provider Identifier (NPPES) registry, a dataset of over 8 million healthcare providers, and filters it to reproductive health specialties including OB/GYNs, Reproductive Endocrinologists, Certified Nurse Midwives, and Women's Health Nurse Practitioners. It then merges these providers with Census metropolitan population estimates to construct geographic density features, estimate expected provider supply through regression modeling, and classify states by access risk based on where actual supply deviates from predictions.
 
-- Access risk modeling
-- Market opportunity analysis
-- Healthcare infrastructure planning
-- Metro level clustering and segmentation
-
-The pipeline follows a modular data engineering + analytics architecture similar to real industry data science workflows.
+The core analytical question is straightforward: given a state's population and workforce characteristics, how many reproductive health providers should we expect, and where does reality fall short? States with large negative residuals between predicted and actual provider density are flagged as potentially underserved. This converts a descriptive mapping exercise into a predictive access gap detection framework.
 
 ---
 
-## Data Sources
+## Data and Sources 
+### Primary Datasets
 
-### Primary Dataset
-- NPPES National Provider Identifier Registry  
-  https://download.cms.gov/nppes/NPI_Files.html  
+The NPPES registry provides provider identity, taxonomy classification, practice location, and enrollment timeline for every registered healthcare provider in the country. Census CBSA delineation files and metropolitan population estimates supply the demand side denominator for density calculations. Both are publicly available federal sources updated regularly.
 
-### Geographic Reference Data
-- Census ZIP-County Crosswalk  
+- CMS NPPES: https://download.cms.gov/nppes/NPI_Files.html
+
+#### Geographic Reference Data
+- Census ZIP County Crosswalk  
 - Census CBSA Delineation Files  
 - Census Metropolitan Population Estimates  
 
-https://www.census.gov/programs-surveys/metro-micro.html  
+- Census Metro/Micro: https://www.census.gov/programs-surveys/metro-micro.html
 
-### Supporting Research Sources
+#### Supporting Research Sources
 - https://healthdata.gov  
 - https://data.hrsa.gov  
 - https://www.kff.org  
 
----
+#### Techniques
 
-## Project Structure
-- analysis/ = modeling dataset construction + analytics modules
-- etl/ = extract + transform pipeline scripts
-- vis/ = EDA visualizations
-- data/
-	-	extracted/ = raw standardized datasets
-	-	transformed/ = cleaned modeling ready datasets
-	- load/ = feature engineered datasets
-	-	visualizations/ = generated charts
+The pipeline applies supervised regression (scikit-learn LinearRegression) to estimate expected provider density, quartile based residual classification to assign access risk tiers, K-Means clustering with silhouette scoring to segment states by supply characteristics, and standardized EDA visualization (matplotlib) to communicate specialty distribution, geographic concentration, and enrollment trends.
 
-- main.py = full pipeline entry point
-- requirements.txt = dependencies
+#### Reproductive Health Taxonomy Scope
 
-## Reference Tables
+Rather than analyzing all healthcare providers generically, Ovara filters the NPPES dataset during the transform stage to 13 NUCC taxonomy codes that represent the reproductive and women's health workforce. This decision was deliberate, it keeps the analysis focused on the provider types that directly serve fertility and reproductive care.
+- Obstetrics & Gynecology (207V*) General OB/GYN, Gynecology, Obstetrics, Maternal-Fetal Medicine, Reproductive Endocrinology, Female Pelvic Medicine, Gynecologic Oncology, Critical Care Medicine, REI
+- Midwifery
+- Certified Nurse Midwife (367A00000X), Midwife (176B00000X)
+- Nurse Practitioner
+- Women's Health NP (363LW0102X)
 
-The project uses reference tables to improve interpretability and reduce hard coded geographic logic in the pipeline.
+--
 
-Current reference assets include:
+## Setup Instructions
 
-- `cbsa_reference_dataset.csv`  
-  Census derived metropolitan reference table containing CBSA codes, metro titles, county FIPS relationships, and metro population estimates.
+1. Clone the repository:
+```bash
+git clone https://github.com/kennethyeaher/inst737-final-project-kenneth-yeaher.git
+cd inst737-final-project-kenneth-yeaher
+```
 
-- `data_dictionary_nppes_provider_clean.csv`  
-  Data dictionary for the cleaned provider level analytical dataset.
+2. Create and activate a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
-- `data_dictionary_provider_geo_features.csv`  
-  Data dictionary for the ZIP level engineered provider feature dataset.
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-- `data_dictionary_cbsa_reference_dataset.csv`  
-  Data dictionary for the Census based CBSA reference dataset.
+NOTE: The NPPES raw data file is not included in the repository due to size. Download the latest weekly NPI data file from https://download.cms.gov/nppes/NPI_Files.html and place the extracted CSV in data/extracted/nppes_weekly_raw/.
 
-These files support reproducibility, downstream joins, and clearer interpretation of modeling outputs.
+
+--
+
+## Running the Project
+
+1. Run the full pipeline end to end:
+```bash
+python main.py
+```
+This executes all stages in order: extract, transform, EDA, feature engineering, metro reference construction, access model assembly, regression, access risk classification, clustering, and interactive visualization.
+
+2. To launch the interactive dashboard separately:
+```bash
+python vis/interactive_visualizations.py
+```
+Open http://127.0.0.1:8050 in your browser. Click any state on the map to filter the bar chart. Hit Reset to restore the default view.
+
+--
+
+## Code Package Structure
+
+| Directory / File | Description |
+|---|---|
+| **analysis/** | **modeling and analytics modules** |
+| `access_risk_model.py` | residual based risk classification |
+| `build_access_model_dataset.py` | state level supply + population merge |
+| `build_metro_dataset.py` | Census CBSA reference construction |
+| `build_model_dataset.py` | ZIP level feature engineering |
+| `clustering_model.py` | K-Means metro segmentation |
+| `eda_provider.py` | exploratory visualizations |
+| `regression_model.py` | provider density regression |
+| **etl/** | **extract and transform pipeline** |
+| `extract.py` | NPPES raw file ingestion |
+| `transform.py` | cleaning, filtering, standardization |
+| **vis/** | **visualization and dashboard scripts** |
+| `interactive_visualizations.py` | Dash web application |
+| `static_visualizations.py` | matplotlib chart generation |
+| **utils/** | **shared configuration and helpers** |
+| `config.py` | pipeline constants and file paths |
+| `helpers.py` | reusable utility functions |
+| **data/** | **pipeline data artifacts** |
+| `extracted/` | raw standardized datasets |
+| `transformed/` | cleaned modeling ready datasets |
+| `load/` | feature engineered datasets |
+| `model_outputs/` | regression, risk, and clustering results |
+| `reference-tables/` | data dictionaries and geographic reference files |
+| `visualizations/` | generated charts |
+| `main.py` | full pipeline entry point |
+| `requirements.txt` | dependencies |
+
+-- 
 
 ## Pipeline Stages
 
-### 1. Extract Stage
+1. Extract
+Loads the weekly NPPES provider file and selects only the columns needed for geographic and specialty analysis. The full file contains over 8 million rows and 300+ columns, the extraction narrows this to 17 core fields covering provider identity, taxonomy, practice location, and enrollment dates.
+> Output: data/extracted/nppes_provider_raw.csv
 
-- Loads weekly NPPES provider file
-- Filters relevant provider identity + taxonomy + geography fields
-- Saves standardized raw dataset
+2. Transform
+Filters to active providers, applies the reproductive health taxonomy filter defined in REPRODUCTIVE_HEALTH_TAXONOMY, standardizes column names to snake_case, cleans ZIP and state geography, removes duplicate NPIs, and parses date fields. This is the stage where the dataset shifts from general purpose to reproductive health focused.
+> Output: data/transformed/nppes_provider_clean.csv
 
-Output: data/extracted/nppes_provider_raw.csv
+3. Exploratory Data Analysis
+Generates three visualizations from the filtered dataset: a ranked horizontal bar chart of reproductive health provider counts by state, a specialty breakdown showing how providers distribute across OB/GYN subspecialties versus midwifery and NP roles, and an annual enumeration trend chart that identifies workforce growth patterns while handling partial year data quality issues.
+> Output: data/visualizations/
 
-### 2. Transform Stage
+4. Geographic Feature Engineering
+Aggregates the cleaned provider dataset to the ZIP level, producing four supply indicators: provider count, taxonomy diversity (number of unique specialties), provider maturity (average enumeration year as a proxy for workforce age), and recent provider growth (providers enumerated in the last three years).
+> Output: data/load/provider_geo_features.csv
 
-- Filters inactive providers
-- Standardizes column names
-- Cleans ZIP + state geography
-- Parses provider enumeration timeline fields
-- Removes duplicate NPIs
+5. Metro Reference Dataset
+Builds a Census aligned metropolitan reference dataset by merging CBSA delineation files with population estimates. The output maps each county to its metropolitan statistical area and carries the 2024 population estimate used as the demand denominator in density calculations.
+> Output: data/load/cbsa_reference_dataset.csv
 
-Output: data/transformed/nppes_provider_clean.csv
+6. Access Model Dataset
+Merges state level supply features with metro population totals and computes provider density as providers per 100,000 residents. This is the modeling ready dataset that feeds both the regression and clustering stages.
+> Output: data/load/access_model_dataset.csv
 
-### 3. Exploratory Data Analysis (EDA)
+7. Regression Model
+Fits a linear regression estimating expected reproductive health provider density from four features: metro population, taxonomy diversity, recent provider growth, and average provider enumeration year. The residual for each state, the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+> Output: data/model_outputs/regression_results.csv
 
-Generates visual insights including:
+8. Access Risk Classification
+Converts regression residuals into actionable risk labels. Each state receives a continuous risk score (0–100, where 100 is most underserved), a categorical tier assignment based on residual quartile position (high risk, moderate risk, adequate, well served), a supply gap magnitude, and a severity ranking. Threshold metadata is saved separately for reproducibility.
+> Outputs: data/model_outputs/access_risk_classified.csv, access_risk_summary.csv, access_risk_metadata.json
 
-- Provider counts by state
-- Provider taxonomy distribution
-- Provider enumeration growth trends
+9. Metro Clustering
+Segments states into supply profile groups using K-Means clustering. Features are standardized with StandardScaler before clustering, and the optimal cluster count is selected by silhouette scoring across k=2 through k=6. Cluster labels are assigned by average provider density to keep them interpretable.
+> Output: data/model_outputs/clustering_results.csv
 
-Outputs saved in: data/visualizations/
+10. Interactive Dashboard
+A Dash web application that visualizes reproductive health provider density by state through a choropleth map and filterable bar charts. Clicking a state on the map filters the detail view.
 
-### 4. Geographic Feature Engineering
+--
 
-Aggregates provider supply indicators at ZIP level:
+## Next Steps and Future Considerations
 
-- Provider counts
-- Taxonomy diversity
-- Provider maturity indicators
-- Recent provider growth signals
+### Demand Side Feature Engineering
+The current regression model primarily captures **supply side provider availability and population size**.  
+Future iterations can improve explanatory power by incorporating **demand proxy variables**, such as estimated fertility age population such as women aged 25–44.
 
-Output: data/load/provider_geo_features.csv
+Including these demographic features would allow the model to:
+- [] Better distinguish **true provider access gaps** from differences driven by population composition
+- [] Improve model calibration across metro areas with varying reproductive age population structures
+- [] Strengthen policy relevance for workforce planning and resource allocation
 
-### 5. Metro Reference Dataset Construction
+### CDC ART Data Integration
+The **CDC National Assisted Reproductive Technology (ART) Surveillance System** publishes clinic level treatment activity and outcome data for approximately 500 fertility clinics nationwide. Integrating ART data with NPPES provider records at the geographic level would introduce:
+- [] Treatment volume as a proxy for **care utilization intensity**
+- [] Outcome based metrics as a proxy for **effective access**
+- [] A second dimension of access measurement beyond simple provider density
 
-Builds Census aligned metropolitan reference dataset:
+This integration would enable a more comprehensive framework combining:
+> Provider supply + population demand + treatment performance.
 
-- County to CBSA mapping
-- Metro population estimates
-- Supports later provider density modeling
+### Network Based Access Modeling
+Future research may extend the analysis using **graph based modeling approaches**. By constructing provider clinic metro referral networks, using Neo4j Graph Data Science, access can be evaluated through:
+- [] Connectivity and referral centrality
+- [] Network fragmentation and regional isolation
+- [] Cluster detection of underserved geographic communities
 
-Output: data/load/cbsa_reference_dataset.csv
-
-## Running the Pipeline
-
-Activate virtual environment: "source .venv/bin/activate"
-Run full workflow: "python main.py"
-
-## Interactive Dashboard
-
-The access dashboard runs as a local Dash web app.
-```bash
-pip install dash dash-bootstrap-components
-python vis/interactive_visualizations.py
-```
-
-Open http://127.0.0.1:8050 in your browser. Click any state on the map to filter the bar chart. Hit Reset filter to restore the default view.
-
-## Modeling Direction (Next Steps)
-
-Planned modeling components extend beyond traditional tabular analytics and incorporate spatial, temporal, and network based approaches to better understand healthcare access dynamics.
-
-### Provider Density & Access Risk Modeling
-- Construction of metro level provider supply indicators
-- Population normalized density scoring (providers per 100k residents)
-- Identification of statistically underserved metropolitan markets
-- Classification models to predict access risk zones
-
-### Market Segmentation & Clustering
-- Unsupervised clustering of metropolitan areas based on:
-  - provider supply
-  - taxonomy diversity
-  - provider growth trends
-  - population scale
-- Detection of similar healthcare infrastructure patterns across regions
-
-### Network & Graph Modeling (Neo4j Integration)
-
-Future extensions of this project will incorporate graph data modeling using Neo4j to represent relationships between:
-
-- Providers
-- ZIP codes
-- Counties
-- Metropolitan statistical areas (CBSAs)
-
-Graph based analysis will support:
-
-- Provider accessibility path analysis
-- Network centrality scoring for healthcare hubs
-- Detection of structurally underserved geographic clusters
-- Community detection algorithms to identify healthcare service ecosystems
-- Graph embeddings for advanced access risk modeling
-
-This network perspective enables modeling healthcare access not just as geographic density, but as a connected infrastructure system.
-
-### Decision Intelligence Outputs
-- Ranked metro opportunity scoring
-- Provider expansion targeting signals
-- Visualization driven market intelligence dashboards
-
-## Visualization, HCI & Decision Support Design
-
-Beyond technical modeling, this project emphasizes human centered analytics design to ensure outputs are interpretable and actionable for real stakeholders such as healthcare planners, policy analysts, and provider network strategists.
-
-Visualization improvements focus on:
-
-### Geographic Decision Interfaces
-- Metro-level provider density mapping
-- Underserved market highlighting through color encoded risk scoring
-- Spatial clustering overlays for market segmentation analysis
-
-### Multi-Level Analytical Views
-- National, Metro, ZIP drill down capability
-- Aggregated dashboards that allow users to transition from macro trends to localized insights
-- Comparative metro benchmarking visuals such as provider supply vs population demand
-
-### Cognitive Load Reduction
-- Consistent chart labeling and standardized feature naming
-- Use of ranking visuals (Top N markets) to prioritize attention
-- Density metrics normalized per 100k population to improve interpretability
-
-### Temporal Storytelling
-- Provider growth trend visualizations to identify infrastructure expansion patterns
-- Recent enumeration signals used to detect emerging markets vs stagnant regions
-
-### Future HCI Enhancements
-Planned enhancements include:
-
-- Interactive dashboards (Plotly / Power BI / Tableau)
-- Map-based exploration interfaces
-- User persona driven analytic views (policy analyst vs healthcare operator)
-- Risk alert visualization components for underserved metro detection
-
-These design considerations align the project with modern analytics UX principles where insight delivery, not just model performance, determines real world impact.
+This approach shifts the access paradigm from **density based measurement to connectivity based measurement**, which may better reflect real world care pathways.
 
 
+### Geographic Visualization Enhancements
+The current visualization layer provides state level exploratory and model based insights.  
+Future dashboard iterations will introduce **multi scale geographic visualization**, including:
 
+- [] Metro level choropleth maps
+- [] Access risk tier overlays
+- [] Drill down navigation from national to state to metro to ZIP level views
+- [] Interactive decision support panels for workforce planning
 
+These enhancements will improve interpretability for stakeholders and support more targeted intervention strategies.
 
+---
 
 ## Author
 
 Kenneth Yeaher  
-Master of Information Management  
+Master of Information Management 2027 
 University of Maryland, College Park  
+[Linkedin](https://www.linkedin.com/in/kennethyeaher/)
 
 Focus Areas:
-Healthcare Analytics | Data Science | Market Intelligence | Geographic Modeling
+Healthcare Analytics, Data Science, Data Visualization, Geographic Modeling
+
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![Plotly](https://img.shields.io/badge/Visualization-Plotly-orange)
+![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
