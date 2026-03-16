@@ -58,21 +58,70 @@ def load_clean_data() -> pd.DataFrame:
 # Visualization 
 
 def provider_counts_by_state(df: pd.DataFrame):
-    """Bar chart of top states by active provider count."""
+    """Horizontal bar chart of top 20 states by active provider count."""
     print("[EDA] Building provider counts by state chart...")
  
-    counts = (
-        df["practice_state"]
-        .value_counts()
-        .head(20)
+    total = df.shape[0]
+ 
+    counts = df["practice_state"].value_counts().head(20)
+    states = counts.index.tolist()
+    values = counts.values.tolist()
+    percentages = [v / total * 100 for v in values]
+ 
+    # reverse for top-down horizontal layout
+    states = states[::-1]
+    values = values[::-1]
+    percentages = percentages[::-1]
+ 
+    # top 5 get accent color, rest muted
+    accent = "#2563EB"
+    muted = "#CBD5E1"
+    n = len(values)
+    colors = [muted if i < (n - 5) else accent for i in range(n)]
+ 
+    fig, ax = plt.subplots(figsize=(12, 8))
+ 
+    bars = ax.barh(range(n), values, color=colors, height=0.7, edgecolor="none")
+ 
+    ax.set_yticks(range(n))
+    ax.set_yticklabels(states, fontsize=11, fontfamily="monospace")
+ 
+    # count + percentage labels
+    for bar, val, pct in zip(bars, values, percentages):
+        ax.text(
+            bar.get_width() + 25,
+            bar.get_y() + bar.get_height() / 2,
+            f"{val:,}  ({pct:.1f}%)",
+            va="center",
+            fontsize=10,
+            color="#334155",
+        )
+ 
+    top5_pct = sum(percentages[-5:])
+ 
+    ax.set_title(
+        "Top 20 States by Active Provider Count",
+        fontsize=16, fontweight="bold", loc="left", pad=25,
     )
  
-    plt.figure(figsize=(12, 6))
-    counts.plot(kind="bar")
+    ax.text(
+        0, 1.02,
+        f"{total:,} active providers  •  Top 5 states account for {top5_pct:.0f}% of all providers",
+        transform=ax.transAxes,
+        fontsize=10.5, color="#64748B",
+    )
  
-    plt.title("Top States by Active Provider Count")
-    plt.ylabel("Providers")
+    # clean up axes
+    ax.set_xlabel("")
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_color("#E2E8F0")
+    ax.spines["left"].set_color("#E2E8F0")
+    ax.tick_params(axis="x", colors="#94A3B8")
+    ax.set_xlim(0, values[-1] * 1.22)
  
+    plt.tight_layout()
     save_plot("provider_counts_by_state.png")
  
  
