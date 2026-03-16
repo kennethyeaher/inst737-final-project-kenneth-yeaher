@@ -2,10 +2,34 @@ import pandas as pd
 from pathlib import Path
 
 
-# ===== File Paths =====
+# file path 
+
 RAW_FILE = Path("data/extracted/nppes_provider_raw.csv")
 CLEAN_FILE = Path("data/transformed/nppes_provider_clean.csv")
 
+# reproductive and women's health taxonomy codes
+# source: NUCC Health Care Provider Taxonomy Code Set
+
+REPRODUCTIVE_HEALTH_TAXONOMY = {
+    # obstetrics and gynecology
+    "207V00000X": "Obstetrics & Gynecology",
+    "207VC0200X": "OB/GYN — Critical Care Medicine",
+    "207VE0102X": "OB/GYN — Reproductive Endocrinology",
+    "207VF0040X": "OB/GYN — Female Pelvic Medicine",
+    "207VG0400X": "OB/GYN — Gynecology",
+    "207VH0002X": "OB/GYN — Hospice and Palliative Medicine",
+    "207VM0101X": "OB/GYN — Maternal-Fetal Medicine",
+    "207VX0000X": "OB/GYN — Obstetrics",
+    "207VX0201X": "OB/GYN — Gynecologic Oncology",
+    "207VR0500X": "OB/GYN — Reproductive Endocrinology & Infertility",
+ 
+    # midwifery
+    "176B00000X": "Midwife",
+    "367A00000X": "Certified Nurse Midwife",
+ 
+    # nurse practitioner — women's health
+    "363LW0102X": "Nurse Practitioner — Women's Health",
+}
 
 def load_raw_data() -> pd.DataFrame:
     """Load the standardized raw provider dataset from the extract stage."""
@@ -13,7 +37,7 @@ def load_raw_data() -> pd.DataFrame:
     df = pd.read_csv(RAW_FILE, dtype=str)
     print(f"[TRANSFORM] Raw shape: {df.shape}")
     return df
-
+ 
 
 def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -39,7 +63,7 @@ def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
         "NPI Deactivation Date": "npi_deactivation_date",
         "NPI Reactivation Date": "npi_reactivation_date"
     })
-
+ 
     print("[TRANSFORM] Standardized column names.")
     return df
 
@@ -53,6 +77,29 @@ def filter_active_providers(df: pd.DataFrame) -> pd.DataFrame:
     print(f"[TRANSFORM] After active filter: {df.shape}")
     return df
 
+def filter_reproductive_health_providers(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Keep only providers in reproductive and women's health specialties.
+    Codes defined in REPRODUCTIVE_HEALTH_TAXONOMY constant.
+    """
+    valid_codes = set(REPRODUCTIVE_HEALTH_TAXONOMY.keys())
+    before = df.shape[0]
+ 
+    df = df[df["taxonomy_code_1"].isin(valid_codes)].copy()
+ 
+    after = df.shape[0]
+    matched_codes = df["taxonomy_code_1"].nunique()
+ 
+    print(f"[TRANSFORM] Reproductive health filter: {before:,} → {after:,} providers")
+    print(f"[TRANSFORM] Matched {matched_codes} of {len(valid_codes)} taxonomy codes")
+ 
+    if after == 0:
+        raise ValueError(
+            "No providers matched reproductive health taxonomy codes. "
+            "Check that taxonomy_code_1 column exists and contains valid NUCC codes."
+        )
+ 
+    return df
 
 def drop_duplicate_npis(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -74,12 +121,12 @@ def clean_geographic_fields(df: pd.DataFrame) -> pd.DataFrame:
     """
     df["practice_state"] = df["practice_state"].str.strip().str.upper()
     df["practice_city"] = df["practice_city"].str.strip()
-
+ 
     # keep first 5 digits only
     df["zip5"] = df["practice_zip"].str.extract(r"(\d{5})")
-
+ 
     df = df.dropna(subset=["practice_state", "zip5"]).copy()
-
+ 
     print(f"[TRANSFORM] After geography cleaning: {df.shape}")
     return df
 
@@ -94,10 +141,10 @@ def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
         "npi_deactivation_date",
         "npi_reactivation_date"
     ]
-
+ 
     for col in date_cols:
         df[col] = pd.to_datetime(df[col], errors="coerce")
-
+ 
     print("[TRANSFORM] Parsed date columns.")
     return df
 
@@ -112,19 +159,20 @@ def save_clean_data(df: pd.DataFrame) -> None:
 def transform_nppes() -> pd.DataFrame:
     """
     Full transform workflow:
-    load → rename → filter → deduplicate → clean geography → parse dates → save
+    load → rename → filter active → filter specialty → deduplicate → clean geography → parse dates → save
     """
     df = load_raw_data()
     df = standardize_column_names(df)
     df = filter_active_providers(df)
+    df = filter_reproductive_health_providers(df)
     df = drop_duplicate_npis(df)
     df = clean_geographic_fields(df)
     df = parse_dates(df)
-
+ 
     print(f"[TRANSFORM] Final shape: {df.shape}")
-
+ 
     save_clean_data(df)
-
+ 
     return df
 
 
