@@ -7,25 +7,24 @@ from pathlib import Path
 INPUT_FILE = Path("data/transformed/nppes_provider_clean.csv")
 OUTPUT_DIR = Path("data/visualizations")
 
-# taxonomy code to readable specialty name
-
+# reproductive health taxonomy code labels
+ 
 TAXONOMY_LABELS = {
-    "106S00000X": "Speech-Language Pathologist",
-    "363LF0000X": "Nurse Practitioner — Family",
-    "101YM0800X": "Counselor — Mental Health",
-    "1041C0700X": "Social Worker — Clinical",
-    "390200000X": "Student in Health Care Training",
-    "363A00000X": "Physician Assistant",
-    "163W00000X": "Registered Nurse",
-    "225100000X": "Physical Therapist",
-    "207R00000X": "Internal Medicine",
-    "235Z00000X": "Speech-Language Pathologist (Alt)",
-    "101YP2500X": "Counselor — Professional",
-    "363LP0808X": "Nurse Practitioner — Psych/MH",
-    "207Q00000X": "Family Medicine",
-    "363L00000X": "Nurse Practitioner — General",
-    "103K00000X": "Behavioral Analyst",
+    "207V00000X": "Obstetrics & Gynecology",
+    "207VC0200X": "OB/GYN — Critical Care Medicine",
+    "207VE0102X": "OB/GYN — Reproductive Endocrinology",
+    "207VF0040X": "OB/GYN — Female Pelvic Medicine",
+    "207VG0400X": "OB/GYN — Gynecology",
+    "207VH0002X": "OB/GYN — Hospice and Palliative Medicine",
+    "207VM0101X": "OB/GYN — Maternal-Fetal Medicine",
+    "207VX0000X": "OB/GYN — Obstetrics",
+    "207VX0201X": "OB/GYN — Gynecologic Oncology",
+    "207VR0500X": "OB/GYN — REI",
+    "176B00000X": "Midwife",
+    "367A00000X": "Certified Nurse Midwife",
+    "363LW0102X": "Nurse Practitioner — Women's Health",
 }
+ 
 
 # Utility 
 
