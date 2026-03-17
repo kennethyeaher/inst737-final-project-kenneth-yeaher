@@ -17,20 +17,11 @@ INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_DIR = Path("data/visualizations")
 
 __all__ = ["build_access_dashboard"]
- 
-# constriants 
- 
-REQUIRED_COLUMNS: Final[set[str]] = {
-    "practice_state",
-    "providers_per_100k",
-    "predicted_provider_density",
-    "residual",
-}
- 
-#  unified color system, defined once, referenced everywhere 
+
+#  unified color system 
 
 COLORS: Final[dict[str, str]] = {
-    # diverging palette (red = underserved, blue = over-served)
+    # diverging palette (red = underserved, blue = overserved)
     "neg_strong":  "#b2182b",
     "neg_mid":     "#ef8a62",
     "neutral":     "#f7f7f7",
@@ -77,25 +68,6 @@ BASE_LAYOUT: Final[dict] = {
     "font": {"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
 }
  
-# validation
- 
-def _validate_dataframe(df: pd.DataFrame) -> None:
-    """Raise early with a clear message if the DataFrame is malformed."""
-    if df.empty:
-        raise ValueError("DataFrame is empty — cannot build dashboard.")
- 
-    missing = REQUIRED_COLUMNS - set(df.columns)
-    if missing:
-        raise ValueError(
-            f"DataFrame is missing required columns: {', '.join(sorted(missing))}. "
-            f"Expected: {', '.join(sorted(REQUIRED_COLUMNS))}"
-        )
- 
- 
-def _shared_range(df: pd.DataFrame) -> float:
-    """Symmetric color range so 0 sits at the palette center."""
-    return max(abs(df["residual"].min()), abs(df["residual"].max()))
-
 
 # required columns 
 
@@ -117,7 +89,8 @@ def validate_columns(df: pd.DataFrame, required: set[str]) -> None:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"regression_results.csv is missing required columns: {sorted(missing)}")
-    
+
+
 def apply_standard_layout(fig, title: str, x_title: Optional[str] = None, y_title: Optional[str] = None):
     """Apply a consistent Plotly layout style across charts."""
     fig.update_layout(
@@ -130,6 +103,7 @@ def apply_standard_layout(fig, title: str, x_title: Optional[str] = None, y_titl
     )
     return fig
 
+
 def save_html(fig, filename: str) -> None:
     """Save interactive Plotly chart as HTML."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -140,15 +114,15 @@ def save_html(fig, filename: str) -> None:
 
 def load_regression_results() -> pd.DataFrame:
     """
-    Load saved regression outputs for interactive visualization.
+    Load regression outputs for reproductive health access visualization.
     Keep only rows with valid geographic and modeled values.
     """
     print("\n[VIS] ===== BUILDING INTERACTIVE VISUALIZATIONS =====")
     print("[VIS] Loading regression results...")
-
+ 
     df = pd.read_csv(INPUT_FILE)
     validate_columns(df, REQUIRED_COLUMNS)
-
+ 
     df = df.dropna(
         subset=[
             "practice_state",
@@ -157,20 +131,19 @@ def load_regression_results() -> pd.DataFrame:
             "residual",
         ]
     ).copy()
-
+ 
     print(f"[VIS] Rows available for visualization: {df.shape[0]}")
     return df
 
 # visualization stage
 
-
 def residual_ranking_chart(df: pd.DataFrame) -> None:
     """
-    Bar chart ranking states by residual.
-    More negative residual implies lower than expected provider density.
+    Bar chart ranking states by reproductive health access residual.
+    Negative residuals indicate fewer providers than the model predicts.
     """
     chart_df = df.sort_values("residual").copy()
-
+ 
     fig = px.bar(
         chart_df,
         x="practice_state",
@@ -184,20 +157,21 @@ def residual_ranking_chart(df: pd.DataFrame) -> None:
             "practice_state": False,
         },
     )
-
+ 
     fig = apply_standard_layout(
         fig,
-        title="Provider Access Residual Ranking by State",
+        title="Reproductive Health Access Residual Ranking by State",
         x_title="State",
         y_title="Residual (Actual - Predicted Density)",
     )
-
+ 
     save_html(fig, "residual_ranking_chart.html")
+
 
 def predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     """
-    Scatterplot comparing actual vs predicted provider density.
-    Helps show how closely the baseline regression tracks observed density.
+    Scatterplot comparing actual vs predicted reproductive health provider density.
+    Points below the ideal fit line indicate potential access gaps.
     """
     fig = px.scatter(
         df,
@@ -212,10 +186,10 @@ def predicted_vs_actual_chart(df: pd.DataFrame) -> None:
             "recent_provider_growth": ":.0f",
         },
     )
-
+ 
     min_val = min(df["predicted_provider_density"].min(), df["providers_per_100k"].min())
     max_val = max(df["predicted_provider_density"].max(), df["providers_per_100k"].max())
-
+ 
     fig.add_trace(
         go.Scatter(
             x=[min_val, max_val],
@@ -226,20 +200,21 @@ def predicted_vs_actual_chart(df: pd.DataFrame) -> None:
             showlegend=True,
         )
     )
-
+ 
     fig = apply_standard_layout(
         fig,
         title="Predicted vs Actual Provider Density",
         x_title="Predicted Providers per 100k",
         y_title="Actual Providers per 100k",
     )
-
+ 
     save_html(fig, "predicted_vs_actual_density.html")
+
 
 def state_choropleth(df: pd.DataFrame) -> None:
     """
-    U.S. state choropleth using provider density.
-    This gives a more intuitive geographic access view than a standard bar chart.
+    U.S. state choropleth showing reproductive health provider density.
+    Provides geographic context that bar charts alone cannot communicate.
     """
     fig = px.choropleth(
         df,
@@ -258,26 +233,25 @@ def state_choropleth(df: pd.DataFrame) -> None:
     
     fig = apply_standard_layout(
         fig,
-        title="Provider Density by State",
+        title="Reproductive Health Provider Density by State",
     )
-
+ 
     save_html(fig, "state_provider_density_map.html")
+
 
 def top_underserved_chart(df: pd.DataFrame) -> None:
     """
-    Create a ranked bar chart of the most underserved states.
-
-    More negative residual values indicate that actual provider density
-    is lower than the model predicted, which signals potential access gaps.
+    Ranked bar chart of states with largest reproductive health access gaps.
+    Negative residuals indicate actual density falls below model predictions.
     """
     chart_df = (
         df.nsmallest(10, "residual")
         .copy()
         .sort_values("residual", ascending=True)
     )
-
+ 
     chart_df["access_gap_label"] = chart_df["residual"].round(2)
-
+ 
     fig = px.bar(
         chart_df,
         x="practice_state",
@@ -294,39 +268,38 @@ def top_underserved_chart(df: pd.DataFrame) -> None:
             "access_gap_label": False,
         },
     )
-
+ 
     fig = apply_standard_layout(
         fig,
-        title="Top 10 Most Underserved States by Provider Access Residual",
+        title="Top 10 Most Underserved States — Reproductive Health Access Gap",
         x_title="State",
         y_title="Residual (Actual - Predicted Density)",
     )
-
+ 
     fig.update_traces(textposition="outside")
-
+ 
     fig.update_layout(
         coloraxis_showscale=False,
         uniformtext_minsize=8,
         uniformtext_mode="hide",
     )
-
+ 
     save_html(fig, "top_underserved_states.html")
+
 
 def top_overserved_chart(df: pd.DataFrame) -> None:
     """
-    Create a ranked bar chart of the most over-served states.
-
-    More positive residual values indicate that actual provider density
-    is higher than the model predicted, which suggests stronger than expected supply.
+    Ranked bar chart of states with highest reproductive health provider surplus.
+    Positive residuals indicate actual density exceeds model predictions.
     """
     chart_df = (
         df.nlargest(10, "residual")
         .copy()
         .sort_values("residual", ascending=False)
     )
-
+ 
     chart_df["access_surplus_label"] = chart_df["residual"].round(2)
-
+ 
     fig = px.bar(
         chart_df,
         x="practice_state",
@@ -343,49 +316,46 @@ def top_overserved_chart(df: pd.DataFrame) -> None:
             "access_surplus_label": False,
         },
     )
-
+ 
     fig = apply_standard_layout(
         fig,
-        title="Top 10 Most Over Served States by Provider Access Residual",
+        title="Top 10 Most Oversupplied States — Reproductive Health Provider Surplus",
         x_title="State",
         y_title="Residual (Actual - Predicted Density)",
     )
-
+ 
     fig.update_traces(textposition="outside")
-
+ 
     fig.update_layout(
         coloraxis_showscale=False,
         uniformtext_minsize=8,
         uniformtext_mode="hide",
     )
-
+ 
     save_html(fig, "top_overserved_states.html")
 
 
 def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
     """
-    Create a predicted vs actual provider density scatterplot and label
-    the most important underserved and overserved outliers.
-
-    Points below the ideal fit line indicate lower actual provider density
-    than predicted. Points above the line indicate stronger than expected supply.
+    Predicted vs actual reproductive health provider density with labeled outliers.
+    Points below the ideal fit line indicate access gaps.
     """
     outlier_count = 5
     chart_df = df.copy()
-
+ 
     # identify strongest negative and positive residual outliers
     underserved = chart_df.nsmallest(outlier_count, "residual").copy()
     underserved["label_text"] = underserved["practice_state"] + " (underserved)"
-
+ 
     overserved = chart_df.nlargest(outlier_count, "residual").copy()
     overserved["label_text"] = overserved["practice_state"] + " (overserved)"
-
+ 
     labeled_outliers = (
         pd.concat([underserved, overserved], ignore_index=True)
         .drop_duplicates(subset="practice_state")
         .copy()
     )
-
+ 
     # main scatterplot
     fig = px.scatter(
         chart_df,
@@ -402,7 +372,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
             "residual": ":.2f",
         },
     )
-
+ 
     # add ideal fit reference line where actual = predicted
     
     axis_min = min(
@@ -413,7 +383,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
         chart_df["predicted_provider_density"].max(),
         chart_df["providers_per_100k"].max(),
     )
-
+ 
     fig.add_shape(
         type="line",
         x0=axis_min,
@@ -422,7 +392,7 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
         y1=axis_max,
         line=dict(dash="dash", width=2),
     )
-
+ 
     # label only the most meaningful outliers
     
     fig.add_scatter(
@@ -433,31 +403,31 @@ def annotated_predicted_vs_actual_chart(df: pd.DataFrame) -> None:
         textposition="top center",
         showlegend=False,
     )
-
+ 
     fig = apply_standard_layout(
         fig,
         title=(
-            "Predicted vs Actual Provider Density"
+            "Predicted vs Actual Reproductive Health Provider Density"
             "<br><sup>Points below the dashed line have lower provider density than expected</sup>"
         ),
         x_title="Predicted Providers per 100k",
         y_title="Actual Providers per 100k",
     )
-
+ 
     fig.update_layout(
         coloraxis_colorbar_title="Residual",
         margin=dict(l=40, r=40, t=90, b=40),
     )
-
+ 
     save_html(fig, "annotated_predicted_vs_actual_density.html")
-
+ 
 # dashboard figure builders
-
+ 
 def _shared_range(df: pd.DataFrame) -> float:
     """Symmetric color range so 0 sits at the palette center."""
     return max(abs(df["residual"].min()), abs(df["residual"].max()))
-
-
+ 
+ 
 def build_dashboard_bar(
     df: pd.DataFrame,
     selected_states: list[str] | None = None,
@@ -467,7 +437,7 @@ def build_dashboard_bar(
     When selected_states is provided via map click, filters to those.
     """
     res_max = _shared_range(df)
-
+ 
     if selected_states:
         subset = (
             df[df["practice_state"].isin(selected_states)]
@@ -482,9 +452,9 @@ def build_dashboard_bar(
             .sort_values("residual", ascending=True)
         )
         title_text = "Top 10 Most Underserved States"
-
+ 
     x_min = subset["residual"].min() if len(subset) > 0 else -4
-
+ 
     fig = go.Figure(
         go.Bar(
             x=subset["residual"],
@@ -505,7 +475,7 @@ def build_dashboard_bar(
             hovertemplate="<b>%{y}</b><br>Residual: %{x:.2f}<extra></extra>",
         )
     )
-
+ 
     fig.update_layout(
         **BASE_LAYOUT,
         title={"text": title_text, "font": {"size": 15}},
@@ -513,8 +483,8 @@ def build_dashboard_bar(
         yaxis={"title": ""},
     )
     return fig
-
-
+ 
+ 
 def _build_outlier_annotations(
     df: pd.DataFrame,
     axis_min: float,
@@ -523,7 +493,7 @@ def _build_outlier_annotations(
 ) -> list[dict]:
     """Annotation dicts for the top positive and bottom two negative outliers."""
     annotations: list[dict] = []
-
+ 
     # strongest over served state
     top_pos = df.nlargest(1, "residual").iloc[0]
     annotations.append({
@@ -543,10 +513,10 @@ def _build_outlier_annotations(
         "ax": 50,
         "ay": 40,
     })
-
+ 
     # two most underserved states with staggered offsets
     offsets = [{"ax": -60, "ay": -30}, {"ax": -60, "ay": 35}]
-
+ 
     for i, (_, row) in enumerate(df.nsmallest(2, "residual").iterrows()):
         annotations.append({
             "x": row["predicted_provider_density"],
@@ -564,7 +534,7 @@ def _build_outlier_annotations(
             "borderwidth": 1,
             **offsets[i],
         })
-
+ 
     # fit line label
     mid = (axis_min + axis_max) / 2
     annotations.append({
@@ -575,17 +545,17 @@ def _build_outlier_annotations(
         "font": {"size": 11, "color": COLORS["accent"], "family": FONT_STACK},
         "bgcolor": "rgba(255,255,255,0.8)",
     })
-
+ 
     return annotations
-
-
+ 
+ 
 def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
     """
     Predicted vs actual scatter with unified coloring,
     ideal fit line label, and annotated outliers.
     """
     res_max = _shared_range(df)
-
+ 
     axis_min = min(
         df["predicted_provider_density"].min(),
         df["providers_per_100k"].min(),
@@ -596,9 +566,9 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
     )
     pad = (axis_max - axis_min) * 0.08
     axis_range = [axis_min - pad, axis_max + pad]
-
+ 
     fig = go.Figure()
-
+ 
     fig.add_trace(go.Scatter(
         x=axis_range,
         y=axis_range,
@@ -607,7 +577,7 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
         hoverinfo="skip",
         showlegend=False,
     ))
-
+ 
     fig.add_trace(go.Scatter(
         x=df["predicted_provider_density"],
         y=df["providers_per_100k"],
@@ -630,24 +600,24 @@ def build_dashboard_scatter(df: pd.DataFrame) -> go.Figure:
         ),
         showlegend=False,
     ))
-
+ 
     annotations = _build_outlier_annotations(df, axis_min, axis_max, pad)
-
+ 
     fig.update_layout(
         **BASE_LAYOUT,
-        title={"text": "Predicted vs Actual Provider Density", "font": {"size": 15}},
+        title={"text": "Predicted vs Actual Reproductive Health Provider Density", "font": {"size": 15}},
         xaxis={"title": "Predicted Providers per 100k", "range": axis_range},
         yaxis={"title": "Actual Providers per 100k", "range": axis_range},
         annotations=annotations,
     )
     return fig
-
-
+ 
+ 
 def build_dashboard_choropleth(df: pd.DataFrame, selected_state: str | None = None) -> go.Figure:
     """Full width US choropleth with bold outline on selected state."""
     res_max = _shared_range(df)
     chart_df = df.copy()
-
+ 
     # build per state border styling
     if selected_state:
         line_widths = [4 if s == selected_state else 1 for s in chart_df["practice_state"]]
@@ -657,7 +627,7 @@ def build_dashboard_choropleth(df: pd.DataFrame, selected_state: str | None = No
         line_widths = [1.5] * len(chart_df)
         line_colors = ["white"] * len(chart_df)
         opacities = [1.0] * len(chart_df)
-
+ 
     fig = go.Figure(go.Choropleth(
         locations=chart_df["practice_state"],
         z=chart_df["residual"],
@@ -685,14 +655,14 @@ def build_dashboard_choropleth(df: pd.DataFrame, selected_state: str | None = No
             "<extra></extra>"
         ),
     ))
-
-    title_text = "State-Level Access Gap Map"
+ 
+    title_text = "Reproductive Health Access Gap Map"
     if selected_state:
         row = chart_df[chart_df["practice_state"] == selected_state]
         if len(row) > 0:
             gap = row.iloc[0]["residual"]
-            title_text = f"State-Level Access Gap Map — {selected_state} (gap: {gap:.2f})"
-
+            title_text = f"Reproductive Health Access Gap — {selected_state} (gap: {gap:.2f})"
+ 
     fig.update_layout(
         **{**BASE_LAYOUT, "height": 520, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
         title={"text": title_text, "font": {"size": 15}},
@@ -705,45 +675,45 @@ def build_dashboard_choropleth(df: pd.DataFrame, selected_state: str | None = No
             lakecolor="#e8f0fa",
             showframe=False,
             bgcolor="rgba(0,0,0,0)",
-
+ 
         ),
-
+ 
     )
     return fig    
-
+ 
 # summary and ui components
-
+ 
 def generate_summary(df: pd.DataFrame) -> list:
     """Produce a styled executive summary with bolded key figures."""
     n_states = df["practice_state"].nunique()
     if n_states == 0:
         return [html.Span("No state-level data available for summary.")]
-
+ 
     avg_density = df["providers_per_100k"].mean()
     med_density = df["providers_per_100k"].median()
-
+ 
     underserved = df[df["residual"] < 0]
     n_under = len(underserved)
     pct_under = round(n_under / n_states * 100)
-
+ 
     worst_3 = df.nsmallest(3, "residual")
     worst_names = ", ".join(worst_3["practice_state"].tolist())
     worst_avg_gap = worst_3["residual"].mean()
-
+ 
     best = df.nlargest(1, "residual").iloc[0]
-
+ 
     b = lambda text: html.B(text, style={"color": COLORS["text"]})
-
+ 
     return [
         html.Span([
-            "Across ", b(f"{n_states} states"), " analyzed, the average provider density is ",
+            "Across ", b(f"{n_states} states"), " analyzed, the average reproductive health provider density is ",
             b(f"{avg_density:.1f}"), " per 100k residents (median: ",
             b(f"{med_density:.1f}"), ").",
         ]),
         html.Br(), html.Br(),
         html.Span([
             b(f"{n_under} states ({pct_under}%)"),
-            " fall below model-predicted supply levels, indicating potential access gaps. ",
+            " fall below model-predicted supply levels, indicating potential reproductive health access gaps. ",
             "The three most underserved — ",
             b(worst_names),
             " — average a residual of ",
@@ -758,8 +728,8 @@ def generate_summary(df: pd.DataFrame) -> list:
             ".",
         ]),
     ]
-
-
+ 
+ 
 def _kpi_card(
     title: str,
     value: str,
@@ -786,14 +756,14 @@ def _kpi_card(
             style={"fontSize": "2.2rem", "fontWeight": "700", "color": color},
         ),
     ]
-
+ 
     if subtitle:
         children.append(html.P(
             subtitle,
             className="mb-0 mt-1",
             style={"fontSize": "0.8rem", "color": COLORS["text_muted"]},
         ))
-
+ 
     return dbc.Card(
         dbc.CardBody(children),
         style={
@@ -802,24 +772,24 @@ def _kpi_card(
             "borderTop": f"4px solid {accent}",
         },
     )
-
-
+ 
+ 
 # chart interaction config
-
+ 
 CHART_CONFIG: Final[dict] = {
     "displayModeBar": False,
     "scrollZoom": False,
     "doubleClick": False,
     "staticPlot": False,
 }
-
+ 
 MAP_CONFIG: Final[dict] = {
     "displayModeBar": False,
     "scrollZoom": False,
     "doubleClick": False,
 }
-
-
+ 
+ 
 def _chart_card(graph_id: str, figure: go.Figure, is_map: bool = False) -> dbc.Card:
     """Wrap a Plotly figure in a styled card with locked interactions."""
     return dbc.Card(
@@ -830,61 +800,61 @@ def _chart_card(graph_id: str, figure: go.Figure, is_map: bool = False) -> dbc.C
         ),
         style=CARD_STYLE,
     )
-
+ 
 # interactive dash dashboard
-
+ 
 def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     """
-    Interactive Dash dashboard replacing the old static Plotly version.
+    Interactive Dash dashboard for reproductive health provider access analysis.
     Launches a local server at http://127.0.0.1:8050
     """
     validate_columns(df, {"practice_state", "providers_per_100k",
                           "predicted_provider_density", "residual"})
-
+ 
     print("[VIS] Launching interactive Dash dashboard...")
     chart_df = df.copy()
-
+ 
     # pre compute kpis
-
+ 
     n_states = int(chart_df["practice_state"].nunique())
     avg_dens = chart_df["providers_per_100k"].mean()
     med_dens = chart_df["providers_per_100k"].median()
     worst_row = chart_df.nsmallest(1, "residual").iloc[0]
-
+ 
     # initialize dash
-
+ 
     app = Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
-        title="Ovara — Access Dashboard",
+        title="Ovara — Reproductive Health Access Dashboard",
     )
-
+ 
     app.layout = dbc.Container(
         [
             # header
-
+ 
             dbc.Row(dbc.Col(html.Div(
                 [
                     html.H3(
-                        "U.S. Specialist Access Dashboard",
+                        "Reproductive Health Provider Access Dashboard",
                         className="mb-0",
                         style={"fontWeight": "700"},
                     ),
                     html.P(
-                        "Residuals highlight where provider supply falls below "
-                        "or exceeds model expectations. Click a state on the "
-                        "map to filter the bar chart.",
+                        "Residuals highlight where reproductive health provider supply "
+                        "falls below or exceeds model expectations. Click a state on "
+                        "the map to filter the bar chart.",
                         className="mb-0",
                         style={"color": COLORS["text_muted"], "fontSize": "0.9rem"},
                     ),
                 ],
                 style={"textAlign": "center", "padding": "18px 0 10px 0"},
             ), width=12)),
-
+ 
             html.Hr(style={"margin": "0 0 16px 0", "borderColor": COLORS["card_border"]}),
-
+ 
             # kpi row
-
+ 
             dbc.Row(
                 [
                     dbc.Col(_kpi_card(
@@ -908,9 +878,9 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                 ],
                 className="g-3 mb-3",
             ),
-
+ 
             # charts bar and scatter
-
+ 
             dbc.Row(
                 [
                     dbc.Col(
@@ -940,9 +910,9 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                 ],
                 className="g-3 mb-3",
             ),
-
+ 
             # map
-
+ 
             dbc.Row(
                 dbc.Col(
                     _chart_card("choropleth", build_dashboard_choropleth(chart_df), is_map=True),
@@ -950,9 +920,9 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                 ),
                 className="mb-3",
             ),
-
+ 
             # executive summary
-
+ 
             dbc.Row(
                 dbc.Col(dbc.Card(
                     dbc.CardBody([
@@ -990,9 +960,9 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             "paddingBottom": "40px",
         },
     )
-
+ 
     # callback click map to filter bar and reset button restores
-
+ 
     @app.callback(
         Output("bar-chart", "figure"),
         Input("choropleth", "clickData"),
@@ -1001,14 +971,12 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     def update_bar(click_data, _n_clicks):
         if ctx.triggered_id == "reset-bar" or click_data is None:
             return build_dashboard_bar(chart_df)
-
+ 
         clicked_state = click_data["points"][0]["location"]
         return build_dashboard_bar(chart_df, selected_states=[clicked_state])
     
-    # callback click map to highlight selected state
-
-    # callback click map to highlight selected state
-
+    # callback: click map to highlight selected state
+ 
     @app.callback(
         Output("choropleth", "figure"),
         Input("choropleth", "clickData"),
@@ -1017,45 +985,36 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     def highlight_state(click_data, _n_clicks):
         if ctx.triggered_id == "reset-bar" or click_data is None:
             return build_dashboard_choropleth(chart_df)
-
+ 
         clicked_state = click_data["points"][0]["location"]
         return build_dashboard_choropleth(chart_df, selected_state=clicked_state)
-
-        # find index of clicked state and set as selected
-        state_list = chart_df["practice_state"].tolist()
-        if clicked_state in state_list:
-            idx = state_list.index(clicked_state)
-            fig.update_traces(selectedpoints=[idx])
-
-        return fig
-
+ 
     # launch
-
+ 
     port = int(os.environ.get("DASH_PORT", 8050))
     print(f"[VIS] Dashboard running at http://127.0.0.1:{port}")
     app.run(debug=debug, port=port)
-
+ 
 # workflow manager
-
+ 
 def run_interactive_visualizations() -> None:
-    """Run the full interactive visualization workflow."""
+    """Run the full reproductive health visualization workflow."""
     df = load_regression_results()
-
+ 
     # static html chart exports
-
+ 
     top_underserved_chart(df)
     top_overserved_chart(df)
     residual_ranking_chart(df)
     predicted_vs_actual_chart(df)
     state_choropleth(df)
     annotated_predicted_vs_actual_chart(df)
-
+ 
     print("[VIS] ===== STATIC VISUALIZATIONS COMPLETE =====")
-
+ 
     # interactive dashboard launches server
-
+ 
     build_access_dashboard(df, debug=True)
-
+ 
 if __name__ == "__main__":
     run_interactive_visualizations()
-    
