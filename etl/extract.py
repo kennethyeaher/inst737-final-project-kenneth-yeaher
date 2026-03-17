@@ -3,14 +3,18 @@ from pathlib import Path
 
 
 # folder where raw NPPES weekly files live
+
 DATA_DIR = Path("data/extracted/nppes_weekly_raw")
 
 # standardized raw output that downstream pipeline stages will use
+
 OUTPUT_FILE = Path("data/extracted/nppes_provider_raw.csv")
 
+# core columns needed for reproductive health access modeling
+# the full NPPES file has about 330 columns,  we keep only identity,
+# taxonomy, geography, and enrollment fields
 
-# only keeping core columns needed for access / geography / provider type analysis
-# we intentionally avoid loading all ~330 columns to reduce memory + complexity
+
 KEEP_COLUMNS = [
     "NPI",
     "Entity Type Code",
@@ -28,14 +32,12 @@ KEEP_COLUMNS = [
     "Provider Enumeration Date",
     "Last Update Date",
     "NPI Deactivation Date",
-    "NPI Reactivation Date"
+    "NPI Reactivation Date",
 ]
 
 
 def find_provider_file() -> Path:
-    """
-    Locate the actual provider data CSV (not the header file).
-    """
+    """Locate the NPPES provider data CSV, ignoring header definition files."""
     files = list(DATA_DIR.glob("npidata*.csv"))
 
     # remove header definition files
@@ -43,7 +45,7 @@ def find_provider_file() -> Path:
 
     if not files:
         raise FileNotFoundError(
-            "No valid provider data file found. Check raw NPPES folder."
+            "No valid provider data file found. Check data/extracted/nppes_weekly_raw/."
         )
 
     return files[0]
@@ -51,15 +53,11 @@ def find_provider_file() -> Path:
 
 def extract_nppes() -> pd.DataFrame:
     """
-    Extraction stage of pipeline.
-
-    Steps:
-    1. Locate provider data file
-    2. Load full dataset
-    3. Select only relevant analytical columns
-    4. Save standardized raw extract for transform stage
+    Extract raw NPPES provider data for downstream reproductive health filtering.
+    Loads the full national file, selects analytical columns, and saves
+    a standardized extract. Specialty filtering happens in the transform stage.
     """
-
+    
     provider_file = find_provider_file()
 
     print(f"[EXTRACT] Loading provider file: {provider_file}")
@@ -67,26 +65,24 @@ def extract_nppes() -> pd.DataFrame:
     # load as string to avoid dtype issues (very common with CMS datasets)
     df = pd.read_csv(provider_file, dtype=str, low_memory=False)
 
-    print(f"[EXTRACT] Original dataset shape: {df.shape}")
+    print(f"[EXTRACT] Full NPPES shape: {df.shape}")
 
-    # keep only columns that exist (protects pipeline if schema changes)
+    # keep only columns that exist (protects against schema changes)
     cols_existing = [c for c in KEEP_COLUMNS if c in df.columns]
-
+    
     df = df[cols_existing].copy()
-
-    print(f"[EXTRACT] Filtered dataset shape: {df.shape}")
-
-    # ensure output directory exists
+ 
+    print(f"[EXTRACT] After column selection: {df.shape}")
+ 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    # save standardized raw dataset
+    
     df.to_csv(OUTPUT_FILE, index=False)
-
-    print(f"[EXTRACT] Saved standardized raw file → {OUTPUT_FILE}")
-
+ 
+    print(f"[EXTRACT] Saved → {OUTPUT_FILE}")
+ 
     return df
 
 
-# allows script to run standalone OR be imported into main pipeline runner
+
 if __name__ == "__main__":
     extract_nppes()
