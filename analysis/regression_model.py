@@ -3,8 +3,12 @@ from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 
+# file path 
+
 INPUT_FILE = Path("data/load/access_model_dataset.csv")
 OUTPUT_FILE = Path("data/model_outputs/regression_results.csv")
+
+# feature set for provider density estimation
 
 FEATURE_COLUMNS = [
     "metro_population",
@@ -15,11 +19,9 @@ FEATURE_COLUMNS = [
 
 TARGET_COLUMN = "providers_per_100k"
 
+
 def load_model_data() -> pd.DataFrame:
-    """
-    Load the access modeling dataset and keep only rows
-    that are usable for the first pass regression model.
-    """
+    """Load access model dataset and drop rows with missing or invalid values."""
     print("\n[REGRESSION] ===== RUNNING REGRESSION MODEL =====")
 
     df = pd.read_csv(INPUT_FILE)
@@ -42,10 +44,11 @@ def load_model_data() -> pd.DataFrame:
     print(f"[REGRESSION] Modeling rows: {df.shape[0]}")
     return df
 
+
 def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
     """
-    Fit a simple linear regression model to estimate provider density.
-    This is meant to be an early modeling baseline for Part 3.
+    Estimate expected reproductive health provider density per state.
+    Residuals capture the gap between predicted and actual supply.
     """
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
@@ -60,27 +63,27 @@ def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
     r2 = r2_score(y, df["predicted_provider_density"])
 
     print(f"[REGRESSION] MAE: {mae:.4f}")
-    print(f"[REGRESSION] R2: {r2:.4f}")
+    print(f"[REGRESSION] R²: {r2:.4f}")
 
     return model, df
 
 
 def save_results(df: pd.DataFrame) -> None:
-    #Save regression outputs for later evaluation and visualization
+    """Save regression outputs for downstream risk classification."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
     print(f"[REGRESSION] Saved → {OUTPUT_FILE}")
     print("[REGRESSION] ===== MODEL COMPLETE =====")
 
+
 def run_regression_model() -> pd.DataFrame:
-    """
-    Full regression workflow:
-    load to validate to fit to score then save
-    """
+    """Full regression workflow: load, validate, fit, score, save."""
     df = load_model_data()
     _, results = fit_regression(df)
     save_results(results)
     return results
 
+
 if __name__ == "__main__":
     run_regression_model()
+    
