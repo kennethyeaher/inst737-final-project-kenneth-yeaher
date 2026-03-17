@@ -8,7 +8,7 @@ CBSA_REF_FILE = Path("data/load/cbsa_reference_dataset.csv")
 OUTPUT_FILE = Path("data/load/access_model_dataset.csv")
 
 
-# state mappings
+# state abbreviation to full name mapping 
 
 STATE_ABBR_TO_NAME = {
     "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
@@ -28,7 +28,7 @@ STATE_ABBR_TO_NAME = {
 
 NAME_TO_STATE_ABBR = {v: k for k, v in STATE_ABBR_TO_NAME.items()}
 
-# required columns
+# required columns for validation 
 
 SUPPLY_REQUIRED_COLUMNS = {
     "practice_state",
@@ -55,7 +55,7 @@ def validate_columns(df: pd.DataFrame, required: set[str], df_name: str) -> None
 # pipeline stages
 
 def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load provider geographic features and Census CBSA reference data."""
+    """Load reproductive health provider features and Census CBSA reference data."""
     print("\n[ACCESS-MODEL] ===== BUILDING ACCESS MODEL DATASET =====")
 
     providers = pd.read_csv(PROVIDER_FILE)
@@ -71,10 +71,7 @@ def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def build_supply_features(providers: pd.DataFrame) -> pd.DataFrame:
-    """
-    Build state- evel supply features as a temporary proxy
-    until the full ZIP to CBSA merge is complete.
-    """
+    """Aggregate ZIP level reproductive health provider features to the state level."""
     providers = providers[providers["practice_state"].isin(STATE_ABBR_TO_NAME)].copy()
 
     supply = (
@@ -89,15 +86,12 @@ def build_supply_features(providers: pd.DataFrame) -> pd.DataFrame:
 
     supply["state_name"] = supply["practice_state"].map(STATE_ABBR_TO_NAME)
 
-    print(f"[ACCESS-MODEL] Aggregated supply rows: {supply.shape[0]}")
+    print(f"[ACCESS-MODEL] States with providers: {supply.shape[0]}")
     return supply
 
 
 def build_population_proxy(cbsa_ref: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggregate metro population totals to the state level using state abbreviations.
-    This is a temporary denominator until the full metro merge is complete.
-    """
+    """Aggregate metro population totals to the state level for density calculations."""
     pop = cbsa_ref.copy()
 
     pop["population_2024"] = pd.to_numeric(pop["population_2024"], errors="coerce")
@@ -114,7 +108,7 @@ def build_population_proxy(cbsa_ref: pd.DataFrame) -> pd.DataFrame:
 
 
 def merge_access_features(supply: pd.DataFrame, pop: pd.DataFrame) -> pd.DataFrame:
-    """Merge supply features with population proxy and compute provider density."""
+    """Merge supply features with population and compute reproductive health provider density."""
     df = supply.merge(pop, on="practice_state", how="left", validate="one_to_one")
 
     df["metro_population"] = pd.to_numeric(df["metro_population"], errors="coerce")
@@ -142,7 +136,7 @@ def merge_access_features(supply: pd.DataFrame, pop: pd.DataFrame) -> pd.DataFra
 
 
 def save_output(df: pd.DataFrame) -> None:
-    """Save the access modeling dataset."""
+    """Save the access modeling dataset for regression and clustering."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
 
@@ -151,7 +145,7 @@ def save_output(df: pd.DataFrame) -> None:
 
 
 def build_access_model_dataset() -> pd.DataFrame:
-    """Run the full access model dataset workflow."""
+    """Build the reproductive health access model dataset end to end."""
     providers, cbsa_ref = load_inputs()
     supply = build_supply_features(providers)
     pop = build_population_proxy(cbsa_ref)
