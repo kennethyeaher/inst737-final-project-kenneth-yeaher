@@ -159,27 +159,41 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 ## Pipeline Stages
 
 ```mermaid
-flowchart LR
-    A[Extract] --> B[Transform]
-    B --> C[EDA]
-    C --> D[Feature Engineer]
-    D --> E[Metro Reference]
-    E --> F[Access Model]
-    F --> G[Regression]
-    G --> H[Evaluation]
-    H --> I[Access Risk]
-    I --> J[Clustering]
-    J --> K[Dashboard]
+flowchart TD
+    subgraph ETL ["Data Engineering"]
+        A([Extract]) --> B([Transform])
+    end
 
-    classDef etl fill:#e0f2fe,stroke:#0284c7
-    classDef eda fill:#fef3c7,stroke:#d97706
-    classDef model fill:#ede9fe,stroke:#7c3aed
-    classDef risk fill:#fee2e2,stroke:#dc2626
-    classDef dash fill:#d1fae5,stroke:#059669
+    subgraph ANALYSIS ["Analysis"]
+        C([EDA]) --> D([Feature Engineer])
+        D --> E([Metro Reference])
+        E --> F([Access Model])
+    end
 
-    class A,B,D,E etl
+    subgraph MODELING ["Modeling"]
+        G([Regression]) --> H([Evaluation])
+        H --> I([Access Risk])
+        I --> J([Clustering])
+    end
+
+    subgraph OUTPUT ["Output"]
+        K([Dashboard])
+    end
+
+    B --> C
+    F --> G
+    J --> K
+
+    classDef etl fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    classDef eda fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef model fill:#ede9fe,stroke:#7c3aed,color:#3b0764
+    classDef risk fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef dash fill:#d1fae5,stroke:#059669,color:#064e3b
+
+    class A,B etl
     class C eda
-    class F,G,H,J model
+    class D,E,F etl
+    class G,H,J model
     class I risk
     class K dash
 ```
