@@ -5,6 +5,7 @@ from analysis.build_model_dataset import build_provider_geo_features
 from analysis.build_metro_dataset import build_metro_dataset
 from analysis.build_access_model_dataset import build_access_model_dataset
 from analysis.regression_model import run_regression_model
+from analysis.evaluate import run_evaluation
 from analysis.access_risk_model import run_access_risk_model
 from vis.interactive_visualizations import run_interactive_visualizations
 
@@ -43,6 +44,10 @@ def main():
     print("\n[PIPELINE] ===== REGRESSION MODEL STAGE START =====")
     run_regression_model()
     print("[PIPELINE] ===== REGRESSION MODEL STAGE COMPLETE =====")
+
+    print("[PIPELINE] ===== EVALUATION STAGE START =====")
+    run_evaluation()
+    print("[PIPELINE] ===== EVALUATION STAGE COMPLETE =====\n")
 
     print("\n[PIPELINE] ===== ACCESS RISK STAGE START =====")
     run_access_risk_model()
