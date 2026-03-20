@@ -211,3 +211,5 @@ data/external/
 echo "data/visualizations/*.html" >> .gitignore
 
 data/visualizations/
+data/extracted/nppes_weekly_raw/npidata_pfile_*.csv
+data/extracted/nppes_weekly_raw/npidata_reproductive_health.csv
