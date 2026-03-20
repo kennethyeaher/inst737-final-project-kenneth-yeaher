@@ -12,7 +12,8 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
-**INST737: Data Science Techniques - Final Project** 
+**University of Marylad, College of Infromation - INST737: Data Science Techniques - Final Project**
+
 
 [View Dashboard](#running-the-project) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Future Work](#next-steps-and-future-considerations)
  
@@ -123,51 +124,64 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 
 ## Code Package Structure
 
-| Directory / File | Description |
-|---|---|
-| **`analysis/`** | **Modeling and analytics modules** |
-| `access_risk_model.py` | Residual based risk classification |
-| `build_access_model_dataset.py` | State level supply + population merge |
-| `build_metro_dataset.py` | Census CBSA reference construction |
-| `build_model_dataset.py` | ZIP level feature engineering |
-| `clustering_model.py` | K-Means metro segmentation |
-| `eda_provider.py` | Exploratory visualizations |
-| `evaluate.py` | Model evaluation and diagnostics |
-| `regression_model.py` | Provider density regression |
-| **`etl/`** | **Extract and transform pipeline** |
-| `extract.py` | NPPES raw file ingestion |
-| `transform.py` | Cleaning, filtering, standardization |
-| **`vis/`** | **Visualization and dashboard** |
-| `interactive_visualizations.py` | Dash web application |
-| **`utils/`** | **Shared configuration and helpers** |
-| `config.py` | Pipeline constants and file paths |
-| `helpers.py` | Reusable utility functions |
-| **`data/`** | **Pipeline data artifacts** |
-| `extracted/` | Raw standardized datasets |
-| `transformed/` | Cleaned modeling ready datasets |
-| `load/` | Feature engineered datasets |
-| `model_outputs/` | Regression, risk, and clustering results |
-| `reference-tables/` | Data dictionaries and geographic reference files |
-| `visualizations/` | Generated charts |
-| `main.py` | Full pipeline entry point |
-| `preprocess_nppes.py` | One time NPPES preprocessing script |
-| `requirements.txt` | Dependencies |
-
+| Type | Path | Description |
+|---|---|---|
+| **Folder** | **`analysis/`** | **Modeling and analytics modules** |
+| File | `access_risk_model.py` | Residual based risk classification |
+| File | `build_access_model_dataset.py` | State level supply + population merge |
+| File | `build_metro_dataset.py` | Census CBSA reference construction |
+| File | `build_model_dataset.py` | ZIP level feature engineering |
+| File | `clustering_model.py` | K-Means metro segmentation |
+| File | `eda_provider.py` | Exploratory visualizations |
+| File | `evaluate.py` | Model evaluation and diagnostics |
+| File | `regression_model.py` | Provider density regression |
+| **Folder** | **`etl/`** | **Extract and transform pipeline** |
+| File | `extract.py` | NPPES raw file ingestion |
+| File | `transform.py` | Cleaning, filtering, standardization |
+| **Folder** | **`vis/`** | **Visualization and dashboard** |
+| File | `interactive_visualizations.py` | Dash web application |
+| **Folder** | **`utils/`** | **Shared configuration and helpers** |
+| File | `config.py` | Pipeline constants and file paths |
+| File | `helpers.py` | Reusable utility functions |
+| **Folder** | **`data/`** | **Pipeline data artifacts** |
+| Subfolder | `extracted/` | Raw standardized datasets |
+| Subfolder | `transformed/` | Cleaned modeling ready datasets |
+| Subfolder | `load/` | Feature engineered datasets |
+| Subfolder | `model_outputs/` | Regression, risk, and clustering results |
+| Subfolder | `reference-tables/` | Data dictionaries and geographic reference files |
+| Subfolder | `visualizations/` | Generated charts |
+| File | `main.py` | Full pipeline entry point |
+| File | `preprocess_nppes.py` | One time NPPES preprocessing script |
+| File | `requirements.txt` | Dependencies |
 
 -- 
 
 ## Pipeline Stages
 
-```
-┌──────────┐   ┌───────────┐   ┌─────┐   ┌──────────┐   ┌───────────┐
-│ Extract  │──▶│ Transform │──▶│ EDA │──▶│ Feature  │──▶│   Metro   │
-└──────────┘   └───────────┘   └─────┘   │ Engineer │   │ Reference │
-                                         └──────────┘   └───────────┘
-                                                              │
-     ┌────────────┐   ┌──────────┐   ┌──────────┐     ┌───────▼───────┐
-     │ Dashboard  │◀──│ Cluster  │◀──│  Access  │◀────│  Regression   │
-     └────────────┘   └──────────┘   │   Risk   │     │  + Evaluation │
-                                     └──────────┘     └───────────────┘
+```mermaid
+flowchart LR
+    A[Extract] --> B[Transform]
+    B --> C[EDA]
+    C --> D[Feature Engineer]
+    D --> E[Metro Reference]
+    E --> F[Access Model]
+    F --> G[Regression]
+    G --> H[Evaluation]
+    H --> I[Access Risk]
+    I --> J[Clustering]
+    J --> K[Dashboard]
+
+    style A fill:#e0f2fe,stroke:#0284c7
+    style B fill:#e0f2fe,stroke:#0284c7
+    style C fill:#fef3c7,stroke:#d97706
+    style D fill:#e0f2fe,stroke:#0284c7
+    style E fill:#e0f2fe,stroke:#0284c7
+    style F fill:#ede9fe,stroke:#7c3aed
+    style G fill:#ede9fe,stroke:#7c3aed
+    style H fill:#ede9fe,stroke:#7c3aed
+    style I fill:#fee2e2,stroke:#dc2626
+    style J fill:#ede9fe,stroke:#7c3aed
+    style K fill:#d1fae5,stroke:#059669
 ```
 
 --
@@ -293,9 +307,8 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 
 ---
  
----
  
-<div align="center">
+<div>
 
 ## Author
 
@@ -304,7 +317,7 @@ Master of Information Management, Class of 2027
 University of Maryland, College Park  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Kenneth_Yeaher-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kennethyeaher/)
 
-Focus Areas:
+
 `Healthcare Analytics` · `Data Science` · `Data Visualization` · `Geographic Modeling`
 
 </div>
