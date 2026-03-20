@@ -36,7 +36,7 @@ States with large negative residuals between predicted and actual provider densi
 ## Data and Sources 
 
 <details>
-<summary><strong>📊 Primary Datasets</strong></summary>
+<summary><strong>Primary Datasets</strong></summary>
  
 <br>
 
@@ -54,7 +54,7 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 </details>
  
 <details>
-<summary><strong>🔬 Techniques</strong></summary>
+<summary><strong>Techniques</strong></summary>
  
 <br>
 
@@ -71,7 +71,7 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 </details>
  
 <details>
-<summary><strong>🏷️ Reproductive Health Taxonomy Scope</strong></summary>
+<summary><strong>Reproductive Health Taxonomy Scope</strong></summary>
  
 <br>
 
@@ -171,17 +171,17 @@ flowchart LR
     I --> J[Clustering]
     J --> K[Dashboard]
 
-    style A fill:#e0f2fe,stroke:#0284c7
-    style B fill:#e0f2fe,stroke:#0284c7
-    style C fill:#fef3c7,stroke:#d97706
-    style D fill:#e0f2fe,stroke:#0284c7
-    style E fill:#e0f2fe,stroke:#0284c7
-    style F fill:#ede9fe,stroke:#7c3aed
-    style G fill:#ede9fe,stroke:#7c3aed
-    style H fill:#ede9fe,stroke:#7c3aed
-    style I fill:#fee2e2,stroke:#dc2626
-    style J fill:#ede9fe,stroke:#7c3aed
-    style K fill:#d1fae5,stroke:#059669
+    classDef etl fill:#e0f2fe,stroke:#0284c7
+    classDef eda fill:#fef3c7,stroke:#d97706
+    classDef model fill:#ede9fe,stroke:#7c3aed
+    classDef risk fill:#fee2e2,stroke:#dc2626
+    classDef dash fill:#d1fae5,stroke:#059669
+
+    class A,B,D,E etl
+    class C eda
+    class F,G,H,J model
+    class I risk
+    class K dash
 ```
 
 --
