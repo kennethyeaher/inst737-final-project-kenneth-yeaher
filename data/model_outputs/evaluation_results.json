@@ -1,0 +1,26 @@
+{
+  "n_states": 51,
+  "n_features": 4,
+  "train_r2": 0.1447,
+  "train_mae": 8.3543,
+  "train_rmse": 13.1159,
+  "cv5_r2_mean": -0.2075,
+  "cv5_r2_std": 0.2901,
+  "cv5_mae_mean": 8.928,
+  "cv5_mae_std": 2.4617,
+  "baseline_mae": 8.9207,
+  "standardized_coefficients": {
+    "metro_population": -3.8844,
+    "taxonomy_diversity": 0.0098,
+    "recent_provider_growth": -1.982,
+    "avg_provider_enum_year": -0.8804
+  },
+  "intercept": 2253.1577,
+  "residual_std": 13.2464,
+  "residual_skewness": 3.0669,
+  "residual_kurtosis": 12.7704,
+  "outlier_states": [
+    "Vermont",
+    "Wyoming"
+  ]
+}
