@@ -11,18 +11,22 @@ OUTPUT_DIR = Path("data/visualizations")
  
 TAXONOMY_LABELS = {
     "207V00000X": "Obstetrics & Gynecology",
-    "207VC0200X": "OB/GYN — Critical Care Medicine",
-    "207VE0102X": "OB/GYN — Reproductive Endocrinology",
-    "207VF0040X": "OB/GYN — Female Pelvic Medicine",
-    "207VG0400X": "OB/GYN — Gynecology",
-    "207VH0002X": "OB/GYN — Hospice and Palliative Medicine",
-    "207VM0101X": "OB/GYN — Maternal-Fetal Medicine",
-    "207VX0000X": "OB/GYN — Obstetrics",
-    "207VX0201X": "OB/GYN — Gynecologic Oncology",
-    "207VR0500X": "OB/GYN — REI",
+    "207VC0200X": "Critical Care Medicine",
+    "207VE0102X": "Reproductive Endocrinology",
+    "207VF0040X": "Female Pelvic Medicine and Reconstructive Surgery",
+    "207VG0400X": "Gynecology",
+    "207VH0002X": "OB/GYN, Hospice and Palliative Medicine",
+    "207VM0101X": "Maternal-Fetal Medicine",
+    "207VX0000X": "Obstetrics",
+    "207VX0201X": "Gynecologic Oncology",
+    "207VR0500X": "Reproductive Endocrinology & Infertility",
+ 
+    # midwifery
     "176B00000X": "Midwife",
     "367A00000X": "Certified Nurse Midwife",
-    "363LW0102X": "Nurse Practitioner — Women's Health",
+ 
+    # nurse practitioner — women's health
+    "363LW0102X": "Nurse Practitioner, Women's Health",
 }
  
 
@@ -125,38 +129,55 @@ def provider_counts_by_state(df: pd.DataFrame):
  
  
 def taxonomy_distribution(df: pd.DataFrame):
-    """Horizontal bar chart of top provider specialties by taxonomy code."""
+    """Horizontal bar chart of reproductive health specialties grouped by category."""
     print("[EDA] Building taxonomy distribution chart...")
  
     total = df.shape[0]
  
-    counts = df["taxonomy_code_1"].value_counts().head(15)
-    labels = [TAXONOMY_LABELS.get(code, code) for code in counts.index]
-    values = counts.values
-    percentages = values / total * 100
+    # category color mapping
+    category_colors = {
+        "obgyn": "#2563EB",
+        "midwifery": "#7C3AED",
+        "np": "#0891B2",
+    }
  
-    # reverse so largest bar is at top
+    code_to_category = {
+        "207V00000X": "obgyn", "207VC0200X": "obgyn", "207VE0102X": "obgyn",
+        "207VF0040X": "obgyn", "207VG0400X": "obgyn", "207VH0002X": "obgyn",
+        "207VM0101X": "obgyn", "207VX0000X": "obgyn", "207VX0201X": "obgyn",
+        "207VR0500X": "obgyn",
+        "176B00000X": "midwifery", "367A00000X": "midwifery",
+        "363LW0102X": "np",
+    }
+ 
+    counts = df["taxonomy_code_1"].value_counts()
+    codes = counts.index.tolist()
+    labels = [TAXONOMY_LABELS.get(c, c) for c in codes]
+    values = counts.values.tolist()
+    percentages = [v / total * 100 for v in values]
+    categories = [code_to_category.get(c, "obgyn") for c in codes]
+ 
+    # reverse for top-down layout
     labels = labels[::-1]
     values = values[::-1]
     percentages = percentages[::-1]
+    categories = categories[::-1]
  
-    # top 5 get accent color, rest muted
-    accent = "#2563EB"
-    muted = "#CBD5E1"
+    colors = [category_colors[cat] for cat in categories]
     n = len(values)
-    colors = [muted if i < (n - 5) else accent for i in range(n)]
  
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(12, 7))
  
-    bars = ax.barh(range(n), values, color=colors, height=0.7, edgecolor="none")
+    bars = ax.barh(range(n), values, color=colors, height=0.7, edgecolor="none", alpha=0.85)
  
     ax.set_yticks(range(n))
     ax.set_yticklabels(labels, fontsize=11)
  
     # count + percentage labels
+    max_val = max(values)
     for bar, val, pct in zip(bars, values, percentages):
         ax.text(
-            bar.get_width() + 30,
+            bar.get_width() + max(max_val * 0.015, 0.5),
             bar.get_y() + bar.get_height() / 2,
             f"{val:,}  ({pct:.1f}%)",
             va="center",
@@ -164,20 +185,26 @@ def taxonomy_distribution(df: pd.DataFrame):
             color="#334155",
         )
  
-    fig.text(
-        0.02, 0.96,
-        f"Based on {total:,} active providers  •  Top 5 highlighted",
-        fontsize=11,
-        color="#64748B",
+    ax.set_title(
+        "Reproductive Health Provider Specialties",
+        fontsize=16, fontweight="bold", loc="left", pad=25,
     )
  
-    fig.text(
-        0.02, 0.99,
-        "Top 15 Provider Specialties by Taxonomy Code",
-        fontsize=16,
-        fontweight="bold",
-        va="top",
+    ax.text(
+        0, 1.02,
+        f"{total:,} active providers across {n} specialties",
+        transform=ax.transAxes,
+        fontsize=10.5, color="#64748B",
     )
+ 
+    # category legend
+    from matplotlib.patches import Patch
+    legend_items = [
+        Patch(facecolor=category_colors["obgyn"], alpha=0.85, label="OB/GYN"),
+        Patch(facecolor=category_colors["midwifery"], alpha=0.85, label="Midwifery"),
+        Patch(facecolor=category_colors["np"], alpha=0.85, label="Nurse Practitioner"),
+    ]
+    ax.legend(handles=legend_items, loc="lower right", fontsize=10, frameon=False)
  
     # clean up axes
     ax.set_xlabel("")
@@ -187,9 +214,9 @@ def taxonomy_distribution(df: pd.DataFrame):
     ax.spines["bottom"].set_color("#E2E8F0")
     ax.spines["left"].set_color("#E2E8F0")
     ax.tick_params(axis="x", colors="#94A3B8")
-    ax.set_xlim(0, values[-1] * 1.25)
+    ax.set_xlim(0, max_val * 1.30)
  
-    plt.subplots_adjust(top=0.92)
+    plt.tight_layout()
     save_plot("taxonomy_distribution.png")
  
  
