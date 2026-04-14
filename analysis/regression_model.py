@@ -15,6 +15,7 @@ FEATURE_COLUMNS = [
     "taxonomy_diversity",
     "recent_provider_growth",
     "avg_provider_enum_year",
+    "female_25_44_pop",
 ]
 
 TARGET_COLUMN = "providers_per_100k"
