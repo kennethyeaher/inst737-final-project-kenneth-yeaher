@@ -1,0 +1,11 @@
+attribute_name,description,data_type,example_value,unit
+practice_state,Two letter state abbreviation used as the geographic key.,string,MD,
+state_name,Full state name mapped from practice_state.,string,Maryland,
+provider_count,Total active reproductive health providers in the state.,integer,1842,providers
+taxonomy_diversity,Average number of unique taxonomy codes across ZIP areas in the state.,float,2.35,taxonomy groups
+avg_provider_enum_year,Mean provider enumeration year across ZIP areas used as a workforce maturity proxy.,float,2014.7,year
+recent_provider_growth,Total providers enumerated within the recent three year lookback window.,integer,312,providers
+metro_population,Aggregated metropolitan population from Census CBSA estimates.,float,6185278,residents
+providers_per_100k,Provider count per 100k metro population.,float,29.78,providers per 100k
+female_25_44_pop,Total female population aged 25 to 44 from Census ACS used as a fertility-age demand proxy.,float,612340,residents
+providers_per_100k_demand,Provider count per 100k women aged 25 to 44.,float,142.56,providers per 100k

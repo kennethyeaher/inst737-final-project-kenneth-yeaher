@@ -5,7 +5,7 @@ from pathlib import Path
 
 PROVIDER_FILE = Path("data/load/provider_geo_features.csv")
 CBSA_REF_FILE = Path("data/load/cbsa_reference_dataset.csv")
-DEMAND_FILE = Path("data/reference-tables/acs_female_25_44_by_state.csv")
+DEMAND_FILE = Path("data/reference_tables/acs_female_25_44_by_state.csv")
 OUTPUT_FILE = Path("data/load/access_model_dataset.csv")
 
 

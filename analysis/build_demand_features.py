@@ -4,7 +4,7 @@ from pathlib import Path
 
 # file path
  
-OUTPUT_FILE = Path("data/reference-tables/acs_female_25_44_by_state.csv")
+OUTPUT_FILE = Path("data/reference_tables/acs_female_25_44_by_state.csv")
 
 # census acs api endpoint
 

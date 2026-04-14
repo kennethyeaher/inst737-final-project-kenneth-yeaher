@@ -3,6 +3,7 @@ from etl.transform import transform_nppes
 from analysis.eda_provider import run_eda
 from analysis.build_model_dataset import build_provider_geo_features
 from analysis.build_metro_dataset import build_metro_dataset
+from analysis.build_demand_features import build_demand_features
 from analysis.build_access_model_dataset import build_access_model_dataset
 from analysis.regression_model import run_regression_model
 from analysis.evaluate import run_evaluation
@@ -36,6 +37,10 @@ def main():
     print("\n[PIPELINE] ===== METRO REFERENCE STAGE START =====")
     build_metro_dataset()
     print("[PIPELINE] ===== METRO REFERENCE STAGE COMPLETE =====")
+
+    print("\n[PIPELINE] ===== DEMAND FEATURES STAGE START =====")
+    build_demand_features()
+    print("[PIPELINE] ===== DEMAND FEATURES STAGE COMPLETE =====")
 
     print("\n[PIPELINE] ===== ACCESS MODEL STAGE START =====")
     build_access_model_dataset()
