@@ -97,6 +97,15 @@ def _validate(df: pd.DataFrame) -> None:
 def _shared_range(df: pd.DataFrame) -> float:
     """Symmetric color range so 0 sits at the palette center."""
     return max(abs(df["residual"].min()), abs(df["residual"].max()))
+
+def _classify_risk_tiers(df: pd.DataFrame) -> pd.DataFrame:
+    """Classify states into risk tiers based on residual quartiles."""
+    df = df.copy()
+    df["risk_tier"] = pd.qcut(
+        df["residual"], q=4, labels=RISK_TIER_LABELS,
+    )
+    df["risk_tier_num"] = df["risk_tier"].cat.codes
+    return df
  
  
 def _save_html(fig: go.Figure, filename: str) -> None:
@@ -108,7 +117,7 @@ def _save_html(fig: go.Figure, filename: str) -> None:
 # load stage
 
 def load_regression_results() -> pd.DataFrame:
-    """Load regression outputs for reproductive health access visualization."""
+    """Load regression outputs and classify risk tiers."""
     print("\n[VIS] ===== BUILDING INTERACTIVE VISUALIZATIONS =====")
  
     df = pd.read_csv(INPUT_FILE)
@@ -117,6 +126,8 @@ def load_regression_results() -> pd.DataFrame:
     df = df.dropna(
         subset=["practice_state", "providers_per_100k", "predicted_provider_density", "residual"]
     ).copy()
+ 
+    df = _classify_risk_tiers(df)
  
     print(f"[VIS] Rows available: {df.shape[0]}")
     return df
@@ -330,9 +341,9 @@ def _generate_summary(df: pd.DataFrame) -> list:
         html.Br(), html.Br(),
         html.Span([
             b(f"{n_under} states ({pct_under}%)"),
-            " fall below model-predicted supply levels, indicating potential reproductive health access gaps. ",
-            "The three most underserved — ", b(worst_names),
-            " — average a residual of ", b(f"{worst_avg_gap:.2f}"),
+            " fall below model predicted supply levels, indicating potential reproductive health access gaps. ",
+            "The three most underserved, ", b(worst_names),
+            ", average a residual of ", b(f"{worst_avg_gap:.2f}"),
             ", meaning actual provider supply is substantially lower than what their population "
             "and workforce characteristics predict.",
         ]),
@@ -340,13 +351,13 @@ def _generate_summary(df: pd.DataFrame) -> list:
         html.Span([
             "On the other end, ", b(f"{n_over} states"), " exceed predicted supply. ",
             b(best_names),
-            " show the strongest over-supply, suggesting these states may serve as regional hubs "
+            " show the strongest over supply, suggesting these states may serve as regional hubs "
             "that attract providers beyond their immediate population base.",
         ]),
     ]
  
  
- def _kpi_card(
+def _kpi_card(
     title: str, value: str, subtitle: str = "",
     color: str = COLORS["text"], accent: str = COLORS["card_border"],
 ) -> dbc.Card:
