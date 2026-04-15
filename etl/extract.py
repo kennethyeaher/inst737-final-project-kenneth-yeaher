@@ -1,6 +1,8 @@
 import pandas as pd
 from pathlib import Path
+from utils.logging_config import setup_logger
 
+logger = setup_logger("ovara.extract")
 
 # folder where raw NPPES weekly files live
 
@@ -10,10 +12,8 @@ DATA_DIR = Path("data/extracted/nppes_weekly_raw")
 
 OUTPUT_FILE = Path("data/extracted/nppes_provider_raw.csv")
 
-# core columns needed for reproductive health access modeling
-# the full NPPES file has about 330 columns,  we keep only identity,
-# taxonomy, geography, and enrollment fields
-
+# only keeping core columns needed for access / geography / provider type analysis
+# we intentionally avoid loading all 330 columns to reduce memory and complexity
 
 KEEP_COLUMNS = [
     "NPI",
@@ -37,7 +37,7 @@ KEEP_COLUMNS = [
 
 
 def find_provider_file() -> Path:
-    """Locate the NPPES provider data CSV, ignoring header definition files."""
+    """locate the actual provider data csv (not the header file)."""
     files = list(DATA_DIR.glob("npidata*.csv"))
 
     # remove header definition files
@@ -45,7 +45,7 @@ def find_provider_file() -> Path:
 
     if not files:
         raise FileNotFoundError(
-            "No valid provider data file found. Check data/extracted/nppes_weekly_raw/."
+            "no valid provider data file found. check raw NPPES folder."
         )
 
     return files[0]
@@ -53,35 +53,44 @@ def find_provider_file() -> Path:
 
 def extract_nppes() -> pd.DataFrame:
     """
-    Extract raw NPPES provider data for downstream reproductive health filtering.
-    Loads the full national file, selects analytical columns, and saves
-    a standardized extract. Specialty filtering happens in the transform stage.
+    Extraction stage of pipeline.
+    Locates provider data file, selects relevant columns,
+    and saves a standardized raw extract for the transform stage.
     """
-    
-    provider_file = find_provider_file()
+    try:
+        provider_file = find_provider_file()
+        logger.info(f"loading provider file: {provider_file}")
 
-    print(f"[EXTRACT] Loading provider file: {provider_file}")
+        # load as string to avoid dtype issues (very common with CMS datasets)
+        df = pd.read_csv(provider_file, dtype=str, low_memory=False)
+        logger.info(f"original dataset shape: {df.shape}")
 
-    # load as string to avoid dtype issues (very common with CMS datasets)
-    df = pd.read_csv(provider_file, dtype=str, low_memory=False)
+        # keep only columns that exist (protects pipeline if schema changes)
+        cols_existing = [c for c in KEEP_COLUMNS if c in df.columns]
+        cols_missing = [c for c in KEEP_COLUMNS if c not in df.columns]
 
-    print(f"[EXTRACT] Full NPPES shape: {df.shape}")
+        if cols_missing:
+            logger.warning(f"columns not found in source: {cols_missing}")
 
-    # keep only columns that exist (protects against schema changes)
-    cols_existing = [c for c in KEEP_COLUMNS if c in df.columns]
-    
-    df = df[cols_existing].copy()
- 
-    print(f"[EXTRACT] After column selection: {df.shape}")
- 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    
-    df.to_csv(OUTPUT_FILE, index=False)
- 
-    print(f"[EXTRACT] Saved → {OUTPUT_FILE}")
- 
-    return df
+        df = df[cols_existing].copy()
+        logger.info(f"filtered dataset shape: {df.shape}")
 
+        # ensure output directory exists
+        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+        # save standardized raw dataset
+        df.to_csv(OUTPUT_FILE, index=False)
+        logger.info(f"saved standardized raw file -> {OUTPUT_FILE}")
+
+        return df
+
+    except FileNotFoundError as e:
+        logger.error(f"extraction failed: {e}")
+        raise
+
+    except Exception as e:
+        logger.error(f"unexpected error during extraction: {e}")
+        raise
 
 
 if __name__ == "__main__":
