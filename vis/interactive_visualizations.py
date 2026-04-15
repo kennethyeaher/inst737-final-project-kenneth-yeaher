@@ -670,7 +670,7 @@ def run_interactive_visualizations() -> None:
         logger.info("static exports complete")
 
         # launch interactive dashboard
-        build_access_dashboard(df, debug=True)
+        build_access_dashboard(df, debug=False)
 
     except FileNotFoundError:
         logger.error(f"input file not found: {INPUT_FILE}")
