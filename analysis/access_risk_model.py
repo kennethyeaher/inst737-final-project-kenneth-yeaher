@@ -1,17 +1,19 @@
 import pandas as pd
-import numpy as np
 import json
-from pathlib import Path 
+from pathlib import Path
+from utils.logging_config import setup_logger
 
-# file path 
+logger = setup_logger("ovara.access_risk_model")
+
+# file paths
 
 INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_FILE = Path("data/model_outputs/access_risk_classified.csv")
 SUMMARY_FILE = Path("data/model_outputs/access_risk_summary.csv")
 METADATA_FILE = Path("data/model_outputs/access_risk_metadata.json")
 
-# tiers definitions
-# states are binned by residual: most negative = most underserved 
+# tier definitions
+# states are binned by residual: most negative = most underserved
 
 TIER_BOUNDS = [
     ("high_risk", 0.25),
@@ -20,7 +22,7 @@ TIER_BOUNDS = [
     ("well_served", 1.0),
 ]
 
-# columns carried into final report 
+# columns carried into final report
 
 OUTPUT_COLUMNS = [
     "practice_state",
@@ -36,25 +38,30 @@ OUTPUT_COLUMNS = [
     "risk_rank",
     "taxonomy_diversity",
     "recent_provider_growth",
-] 
+]
 
 
 def load_regression_results() -> pd.DataFrame:
-    """Load regression output with residuals."""
-    print("\n[ACCESS-RISK] ===== RUNNING ACCESS RISK CLASSIFICATION =====")
- 
+    """load regression output with residuals."""
     df = pd.read_csv(INPUT_FILE)
- 
+
     required = {"state_name", "residual", "providers_per_100k", "predicted_provider_density"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
- 
+        raise ValueError(f"missing required columns: {sorted(missing)}")
+
     df = df.replace([float("inf"), float("-inf")], pd.NA)
+
+    before = df.shape[0]
     df = df.dropna(subset=["residual"]).copy()
- 
-    print(f"[ACCESS-RISK] States loaded: {df.shape[0]}")
+    dropped = before - df.shape[0]
+
+    if dropped > 0:
+        logger.warning(f"dropped {dropped} rows with missing residuals")
+
+    logger.info(f"states loaded: {df.shape[0]}")
     return df
+
 
 def compute_risk_score(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -68,51 +75,55 @@ def compute_risk_score(df: pd.DataFrame) -> pd.DataFrame:
         .mul(100)
         .round(1)
     )
- 
+
+    logger.info(f"risk score range: [{df['risk_score'].min()}, {df['risk_score'].max()}]")
     return df
 
+
 def assign_risk_tiers(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    """Bin states into risk tiers using quantile boundaries from TIER_BOUNDS."""
+    """bin states into risk tiers using quantile boundaries from TIER_BOUNDS."""
     labels = [t[0] for t in TIER_BOUNDS]
     quantiles = [t[1] for t in TIER_BOUNDS]
- 
+
     # compute threshold values from residual distribution
     thresholds = [df["residual"].min() - 1]
     for q in quantiles:
         thresholds.append(df["residual"].quantile(q))
- 
+
     df["risk_tier"] = pd.cut(
         df["residual"],
         bins=thresholds,
         labels=labels,
         include_lowest=True,
     )
- 
+
     # store thresholds for reproducibility
     threshold_map = {
         label: {"quantile": q, "residual_cutoff": round(df["residual"].quantile(q), 4)}
         for label, q in TIER_BOUNDS
     }
- 
-    print(f"[ACCESS-RISK] Tier thresholds:")
+
+    logger.info("tier thresholds:")
     for tier, info in threshold_map.items():
-        print(f"  {tier}: q={info['quantile']}  cutoff={info['residual_cutoff']}")
- 
+        logger.info(f"  {tier}: q={info['quantile']}  cutoff={info['residual_cutoff']}")
+
     return df, threshold_map
 
+
 def compute_supply_gap(df: pd.DataFrame) -> pd.DataFrame:
-    """Absolute magnitude of provider shortfall relative to prediction."""
+    """absolute magnitude of provider shortfall relative to prediction."""
     df["supply_gap"] = df["residual"].clip(upper=0).abs()
     return df
 
+
 def compute_risk_rank(df: pd.DataFrame) -> pd.DataFrame:
-    """Rank states by severity (1 = most underserved)."""
+    """rank states by severity (1 = most underserved)."""
     df["risk_rank"] = df["residual"].rank(ascending=True, method="min").astype(int)
-    
     return df
 
+
 def build_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregate risk tier statistics for reporting."""
+    """aggregate risk tier statistics for reporting."""
     summary = (
         df.groupby("risk_tier", observed=False, as_index=False)
         .agg(
@@ -123,24 +134,25 @@ def build_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
             avg_risk_score=("risk_score", "mean"),
         )
     )
- 
+
     summary = summary.sort_values("avg_residual").reset_index(drop=True)
- 
-    print(f"\n[ACCESS-RISK] Tier summary:\n{summary.to_string(index=False)}")
+
+    logger.info(f"tier summary:\n{summary.to_string(index=False)}")
     return summary
 
+
 def save_results(df: pd.DataFrame, summary: pd.DataFrame, thresholds: dict) -> None:
-    """Save classified dataset, summary table, and threshold metadata."""
+    """save classified dataset, summary table, and threshold metadata."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
- 
+
     # only include columns that exist in the dataframe
     valid_cols = [c for c in OUTPUT_COLUMNS if c in df.columns]
     df[valid_cols].to_csv(OUTPUT_FILE, index=False)
-    print(f"\n[ACCESS-RISK] Saved classified data → {OUTPUT_FILE}")
- 
+    logger.info(f"saved classified data -> {OUTPUT_FILE}")
+
     summary.to_csv(SUMMARY_FILE, index=False)
-    print(f"[ACCESS-RISK] Saved tier summary → {SUMMARY_FILE}")
- 
+    logger.info(f"saved tier summary -> {SUMMARY_FILE}")
+
     metadata = {
         "tier_thresholds": thresholds,
         "total_states": len(df),
@@ -148,20 +160,33 @@ def save_results(df: pd.DataFrame, summary: pd.DataFrame, thresholds: dict) -> N
     }
     with open(METADATA_FILE, "w") as f:
         json.dump(metadata, f, indent=2)
-    print(f"[ACCESS-RISK] Saved metadata → {METADATA_FILE}")
- 
-    print("[ACCESS-RISK] ===== CLASSIFICATION COMPLETE =====")
+    logger.info(f"saved metadata -> {METADATA_FILE}")
+
 
 def run_access_risk_model() -> pd.DataFrame:
-    """Full access risk classification workflow."""
-    df = load_regression_results()
-    df = compute_risk_score(df)
-    df, thresholds = assign_risk_tiers(df)
-    df = compute_supply_gap(df)
-    df = compute_risk_rank(df)
-    summary = build_risk_summary(df)
-    save_results(df, summary, thresholds)
-    return df
+    """full access risk classification workflow."""
+    try:
+        df = load_regression_results()
+        df = compute_risk_score(df)
+        df, thresholds = assign_risk_tiers(df)
+        df = compute_supply_gap(df)
+        df = compute_risk_rank(df)
+        summary = build_risk_summary(df)
+        save_results(df, summary, thresholds)
+        return df
+
+    except FileNotFoundError:
+        logger.error(f"input file not found: {INPUT_FILE}")
+        raise
+
+    except ValueError as e:
+        logger.error(f"data validation failed: {e}")
+        raise
+
+    except Exception as e:
+        logger.error(f"unexpected error during risk classification: {e}")
+        raise
+
 
 if __name__ == "__main__":
     run_access_risk_model()
