@@ -1,68 +1,133 @@
-from etl.extract import extract_nppes
-from etl.transform import transform_nppes
-from analysis.eda_provider import run_eda
-from analysis.build_model_dataset import build_provider_geo_features
-from analysis.build_metro_dataset import build_metro_dataset
-from analysis.build_demand_features import build_demand_features
-from analysis.build_access_model_dataset import build_access_model_dataset
-from analysis.regression_model import run_regression_model
-from analysis.evaluate import run_evaluation
-from analysis.access_risk_model import run_access_risk_model
-from vis.interactive_visualizations import run_interactive_visualizations
+from utils.logging_config import setup_logger
+
+logger = setup_logger("ovara.pipeline")
 
 
 def main():
     """
     Main pipeline runner for INST737 final project.
-    Each stage is modular so the workflow can grow over time.
+    Each stage is modular and wrapped in error handling
+    so failures are logged without killing the full run.
     """
-    print("[PIPELINE] Starting INST737 Final Project Workflow...\n")
+    logger.info("starting Ovara pipeline...\n")
 
-    print("[PIPELINE] ===== EXTRACT STAGE START =====")
-    extract_nppes()
-    print("[PIPELINE] ===== EXTRACT STAGE COMPLETE =====\n")
+    # extract 
 
-    print("[PIPELINE] ===== TRANSFORM STAGE START =====")
-    transform_nppes()
-    print("[PIPELINE] ===== TRANSFORM STAGE COMPLETE =====\n")
+    try:
+        logger.info("===== EXTRACT STAGE =====")
+        from etl.extract import extract_nppes
+        extract_nppes()
+        logger.info("extract stage complete\n")
+    except Exception as e:
+        logger.error(f"extract stage failed: {e}")
+        return
 
-    print("[PIPELINE] ===== EDA STAGE START =====")
-    run_eda()
-    print("[PIPELINE] ===== EDA STAGE COMPLETE =====\n")
+    # transform 
 
-    print("[PIPELINE] ===== MODEL DATASET STAGE START =====")
-    build_provider_geo_features()
-    print("[PIPELINE] ===== MODEL DATASET STAGE COMPLETE =====\n")
+    try:
+        logger.info("===== TRANSFORM STAGE =====")
+        from etl.transform import transform_nppes
+        transform_nppes()
+        logger.info("transform stage complete\n")
+    except Exception as e:
+        logger.error(f"transform stage failed: {e}")
+        return
 
-    print("\n[PIPELINE] ===== METRO REFERENCE STAGE START =====")
-    build_metro_dataset()
-    print("[PIPELINE] ===== METRO REFERENCE STAGE COMPLETE =====")
+    # eda
 
-    print("\n[PIPELINE] ===== DEMAND FEATURES STAGE START =====")
-    build_demand_features()
-    print("[PIPELINE] ===== DEMAND FEATURES STAGE COMPLETE =====")
+    try:
+        logger.info("===== EDA STAGE =====")
+        from analysis.eda_provider import run_eda
+        run_eda()
+        logger.info("eda stage complete\n")
+    except Exception as e:
+        logger.error(f"eda stage failed: {e}")
 
-    print("\n[PIPELINE] ===== ACCESS MODEL STAGE START =====")
-    build_access_model_dataset()
-    print("[PIPELINE] ===== ACCESS MODEL STAGE COMPLETE =====")
+    # model dataset
 
-    print("\n[PIPELINE] ===== REGRESSION MODEL STAGE START =====")
-    run_regression_model()
-    print("[PIPELINE] ===== REGRESSION MODEL STAGE COMPLETE =====")
+    try:
+        logger.info("===== MODEL DATASET STAGE =====")
+        from analysis.build_model_dataset import build_provider_geo_features
+        build_provider_geo_features()
+        logger.info("model dataset stage complete\n")
+    except Exception as e:
+        logger.error(f"model dataset stage failed: {e}")
+        return
 
-    print("[PIPELINE] ===== EVALUATION STAGE START =====")
-    run_evaluation()
-    print("[PIPELINE] ===== EVALUATION STAGE COMPLETE =====\n")
+    # metro reference 
 
-    print("\n[PIPELINE] ===== ACCESS RISK STAGE START =====")
-    run_access_risk_model()
-    print("[PIPELINE] ===== ACCESS RISK STAGE COMPLETE =====")
+    try:
+        logger.info("===== METRO REFERENCE STAGE =====")
+        from analysis.build_metro_dataset import build_metro_dataset
+        build_metro_dataset()
+        logger.info("metro reference stage complete\n")
+    except Exception as e:
+        logger.error(f"metro reference stage failed: {e}")
+        return
 
-    print("\n[PIPELINE] ===== INTERACTIVE VISUALIZATION STAGE START =====")
-    run_interactive_visualizations()
-    print("[PIPELINE] ===== INTERACTIVE VISUALIZATION STAGE COMPLETE =====")
+    # demand features
 
-    print("[PIPELINE] Workflow finished successfully.")
+    try:
+        logger.info("===== DEMAND FEATURES STAGE =====")
+        from analysis.build_demand_features import build_demand_features
+        build_demand_features()
+        logger.info("demand features stage complete\n")
+    except Exception as e:
+        logger.warning(f"demand features stage failed (non-critical): {e}")
+
+    # access model 
+
+    try:
+        logger.info("===== ACCESS MODEL STAGE =====")
+        from analysis.build_access_model_dataset import build_access_model_dataset
+        build_access_model_dataset()
+        logger.info("access model stage complete\n")
+    except Exception as e:
+        logger.error(f"access model stage failed: {e}")
+        return
+
+    # regression model 
+
+    try:
+        logger.info("===== REGRESSION MODEL STAGE =====")
+        from analysis.regression_model import run_regression_model
+        run_regression_model()
+        logger.info("regression model stage complete\n")
+    except Exception as e:
+        logger.error(f"regression model stage failed: {e}")
+        return
+
+    # evaluation 
+
+    try:
+        logger.info("===== EVALUATION STAGE =====")
+        from analysis.evaluate import run_evaluation
+        run_evaluation()
+        logger.info("evaluation stage complete\n")
+    except Exception as e:
+        logger.error(f"evaluation stage failed: {e}")
+
+    # access risk 
+
+    try:
+        logger.info("===== ACCESS RISK STAGE =====")
+        from analysis.access_risk_model import run_access_risk_model
+        run_access_risk_model()
+        logger.info("access risk stage complete\n")
+    except Exception as e:
+        logger.error(f"access risk stage failed: {e}")
+
+    # interactive visualizations 
+
+    try:
+        logger.info("===== INTERACTIVE VISUALIZATION STAGE =====")
+        from vis.interactive_visualizations import run_interactive_visualizations
+        run_interactive_visualizations()
+        logger.info("interactive visualization stage complete\n")
+    except Exception as e:
+        logger.error(f"interactive visualization stage failed: {e}")
+
+    logger.info("Ovara pipeline finished")
 
 
 if __name__ == "__main__":
