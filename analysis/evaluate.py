@@ -7,7 +7,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from utils.logging_config import setup_logger
-
+from analysis.regression_model import FEATURE_COLUMNS, TARGET_COLUMN
 
 logger = setup_logger("ovara.evaluate")
 
@@ -15,17 +15,6 @@ logger = setup_logger("ovara.evaluate")
 
 INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_DIR = Path("data/model_outputs")
-
-# must match regression_model.py
-
-FEATURE_COLUMNS = [
-    "metro_population",
-    "taxonomy_diversity",
-    "recent_provider_growth",
-    "avg_provider_enum_year",
-]
-
-TARGET_COLUMN = "providers_per_100k"
 
 
 def load_evaluation_data() -> pd.DataFrame:
