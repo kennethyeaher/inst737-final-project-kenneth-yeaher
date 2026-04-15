@@ -12,8 +12,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
-**University of Marylad, College of Infromation - INST737: Data Science Techniques - Final Project**
-
+**University of Maryland, College of Information - INST737: Data Science Techniques - Final Project**
 
 [View Dashboard](#running-the-project) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Future Work](#next-steps-and-future-considerations)
  
@@ -23,7 +22,7 @@
 
 ## Project Overview
 
-Ovara started from a simple observation: fertility and reproductive healthcare access in the United States is not evenly distributed. Somthing I observed while working as Healthcare Data Anlyst for a Managment Conclusting company that ran multiple Minimally Invasive Gynecologic Surgery focus Ambulatory Surgery Centers scattered though the top metro cities on the east coast.   However, most of the data that could prove this sits in fragmented federal registries that are difficult to work with. This project builds a data science pipeline to turn that raw registry data into measurable access intelligence.
+Ovara started from a simple observation: fertility and reproductive healthcare access in the United States is not evenly distributed. Something I observed while working as a Healthcare Data Analyst for a Management Consulting company that ran multiple Minimally Invasive Gynecologic Surgery focus Ambulatory Surgery Centers scattered though the top metro cities on the east coast. However, most of the data that could prove this sits in fragmented federal registries that are difficult to work with. This project builds a data science pipeline to turn that raw registry data into measurable access intelligence.
 
 The pipeline ingests the CMS National Provider Identifier (NPPES) registry, a dataset of over 8 million healthcare providers, and filters it to reproductive health specialties including OB/GYNs, Reproductive Endocrinologists, Certified Nurse Midwives, and Women's Health Nurse Practitioners. It then merges these providers with Census metropolitan population estimates to construct geographic density features, estimate expected provider supply through regression modeling, and classify states by access risk based on where actual supply deviates from predictions.
 
@@ -106,7 +105,7 @@ pip install -r requirements.txt
 
 > **NOTE:** The NPPES raw data file is not included due to size (~11 GB). Download the latest weekly NPI data file from [CMS NPPES](https://download.cms.gov/nppes/NPI_Files.html), place the extracted CSV in `data/extracted/nppes_weekly_raw/`, then run `python preprocess_nppes.py` to filter to reproductive health providers before running the pipeline.
 
---
+---
 
 ## Running the Project
 
@@ -120,7 +119,7 @@ python vis/interactive_visualizations.py
 
 Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any state on the map to filter the bar chart. Hit **Reset** to restore the default view.
 
---
+---
 
 ## Code Package Structure
 
@@ -143,6 +142,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | **Folder** | **`utils/`** | **Shared configuration and helpers** |
 | File | `config.py` | Pipeline constants and file paths |
 | File | `helpers.py` | Reusable utility functions |
+| File | `logging_config.py` | Centralized pipeline logging configuration |
 | **Folder** | **`data/`** | **Pipeline data artifacts** |
 | Subfolder | `extracted/` | Raw standardized datasets |
 | Subfolder | `transformed/` | Cleaned modeling ready datasets |
@@ -154,7 +154,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `preprocess_nppes.py` | One time NPPES preprocessing script |
 | File | `requirements.txt` | Dependencies |
 
--- 
+---
 
 ## Pipeline Stages
 
@@ -198,7 +198,7 @@ flowchart TD
     class K dash
 ```
 
---
+---
 
 <details>
 <summary><strong>1. Extract</strong> — <code>data/extracted/nppes_provider_raw.csv</code></summary>
@@ -288,8 +288,17 @@ Segments states into supply profile groups using K-Means clustering. Features ar
 A Dash web application that visualizes reproductive health provider density by state through a choropleth map, filterable bar charts, predicted vs actual scatter with outlier annotations, KPI cards, and an auto-generated executive summary. Clicking a state on the map filters the detail view.
 </details>
 
+---
 
---
+## Logging and Error Handling
+
+The pipeline uses Python's `logging` module with a centralized configuration in `utils/logging_config.py`. All output is written to both the console and `logs/ovara_pipeline.log`, replacing earlier `print()` statements with structured, level-aware logging.
+
+Each pipeline stage in `main.py` is wrapped in its own `try/except` block. Critical stages (extract, transform, model dataset, metro reference, access model, regression) halt the pipeline on failure because downstream stages depend on their output. Non-critical stages (EDA, demand features, evaluation, access risk, visualization) log errors and allow the pipeline to continue.
+
+Individual modules use targeted exception handling for common failure modes: `FileNotFoundError` for missing upstream outputs, `ValueError` for column validation failures, and `KeyError` for schema mismatches. Data quality signals such as dropped rows and missing merge keys are logged at `WARNING` level for easy filtering.
+
+---
 
 ## Data Management
  
