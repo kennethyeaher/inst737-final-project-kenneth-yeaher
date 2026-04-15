@@ -2,8 +2,11 @@ import pandas as pd
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
+from utils.logging_config import setup_logger
 
-# file path 
+logger = setup_logger("ovara.regression_model")
+
+# file paths
 
 INPUT_FILE = Path("data/load/access_model_dataset.csv")
 OUTPUT_FILE = Path("data/model_outputs/regression_results.csv")
@@ -22,27 +25,31 @@ TARGET_COLUMN = "providers_per_100k"
 
 
 def load_model_data() -> pd.DataFrame:
-    """Load access model dataset and drop rows with missing or invalid values."""
-    print("\n[REGRESSION] ===== RUNNING REGRESSION MODEL =====")
-
+    """load access model dataset and drop rows with missing or invalid values."""
     df = pd.read_csv(INPUT_FILE)
 
     required_cols = FEATURE_COLUMNS + [TARGET_COLUMN]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
+        raise ValueError(f"missing required columns: {missing_cols}")
 
     df = df.replace([float("inf"), float("-inf")], pd.NA)
+
+    before = df.shape[0]
     df = df.dropna(subset=required_cols).copy()
+    dropped = before - df.shape[0]
+
+    if dropped > 0:
+        logger.warning(f"dropped {dropped} rows with missing or infinite values")
 
     if df.empty:
         raise ValueError(
-            "No modeling rows available after filtering. "
-            "Check access_model_dataset merge and required feature columns."
-    )
+            "no modeling rows available after filtering. "
+            "check access_model_dataset merge and required feature columns."
+        )
 
-    print(f"[REGRESSION] Modeling rows: {df.shape[0]}")
+    logger.info(f"modeling rows: {df.shape[0]}")
     return df
 
 
@@ -63,28 +70,40 @@ def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
     mae = mean_absolute_error(y, df["predicted_provider_density"])
     r2 = r2_score(y, df["predicted_provider_density"])
 
-    print(f"[REGRESSION] MAE: {mae:.4f}")
-    print(f"[REGRESSION] R²: {r2:.4f}")
+    logger.info(f"MAE: {mae:.4f}")
+    logger.info(f"R2: {r2:.4f}")
+    logger.info(f"residual range: [{df['residual'].min():.2f}, {df['residual'].max():.2f}]")
 
     return model, df
 
 
 def save_results(df: pd.DataFrame) -> None:
-    """Save regression outputs for downstream risk classification."""
+    """save regression outputs for downstream risk classification."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
-    print(f"[REGRESSION] Saved → {OUTPUT_FILE}")
-    print("[REGRESSION] ===== MODEL COMPLETE =====")
+    logger.info(f"saved -> {OUTPUT_FILE}")
 
 
 def run_regression_model() -> pd.DataFrame:
-    """Full regression workflow: load, validate, fit, score, save."""
-    df = load_model_data()
-    _, results = fit_regression(df)
-    save_results(results)
-    return results
+    """full regression workflow: load, validate, fit, score, save."""
+    try:
+        df = load_model_data()
+        _, results = fit_regression(df)
+        save_results(results)
+        return results
+
+    except FileNotFoundError:
+        logger.error(f"input file not found: {INPUT_FILE}")
+        raise
+
+    except ValueError as e:
+        logger.error(f"data validation failed: {e}")
+        raise
+
+    except Exception as e:
+        logger.error(f"unexpected error during regression: {e}")
+        raise
 
 
 if __name__ == "__main__":
     run_regression_model()
-    
