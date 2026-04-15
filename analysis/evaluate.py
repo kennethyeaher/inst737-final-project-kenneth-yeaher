@@ -6,74 +6,82 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
- 
+from utils.logging_config import setup_logger
+
+
+logger = setup_logger("ovara.evaluate")
+
 # file paths
- 
+
 INPUT_FILE = Path("data/model_outputs/regression_results.csv")
 OUTPUT_DIR = Path("data/model_outputs")
- 
+
 # must match regression_model.py
- 
+
 FEATURE_COLUMNS = [
     "metro_population",
     "taxonomy_diversity",
     "recent_provider_growth",
     "avg_provider_enum_year",
 ]
- 
+
 TARGET_COLUMN = "providers_per_100k"
 
 
 def load_evaluation_data() -> pd.DataFrame:
-    """Load regression results for model evaluation."""
-    print("\n[EVAL] ===== RUNNING MODEL EVALUATION =====")
- 
+    """load regression results for model evaluation."""
     df = pd.read_csv(INPUT_FILE)
- 
+
     required = set(FEATURE_COLUMNS + [TARGET_COLUMN, "residual", "predicted_provider_density"])
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
- 
+        raise ValueError(f"missing required columns: {sorted(missing)}")
+
     df = df.replace([float("inf"), float("-inf")], pd.NA)
+
+    before = df.shape[0]
     df = df.dropna(subset=FEATURE_COLUMNS + [TARGET_COLUMN]).copy()
- 
-    print(f"[EVAL] States loaded: {df.shape[0]}")
+    dropped = before - df.shape[0]
+
+    if dropped > 0:
+        logger.warning(f"dropped {dropped} rows with missing values")
+
+    logger.info(f"states loaded: {df.shape[0]}")
     return df
 
 
 def evaluate_model(df: pd.DataFrame) -> dict:
-    """Cross validation, feature importance, and residual diagnostics in one pass."""
+    """cross validation, feature importance, and residual diagnostics."""
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
     residuals = df["residual"]
- 
+
     model = LinearRegression()
- 
+
     # 5-fold cross validation
     cv_r2 = cross_val_score(model, X, y, cv=5, scoring="r2")
     cv_mae = -cross_val_score(model, X, y, cv=5, scoring="neg_mean_absolute_error")
- 
+
     # train-set metrics
     model.fit(X, y)
     train_pred = model.predict(X)
     train_r2 = r2_score(y, train_pred)
     train_mae = mean_absolute_error(y, train_pred)
     train_rmse = np.sqrt(mean_squared_error(y, train_pred))
- 
+
     # naive baseline: always predict the mean
     baseline_mae = mean_absolute_error(y, np.full(len(y), y.mean()))
- 
+
     # standardized coefficients (scale-independent importance)
     scaler = StandardScaler()
     model_scaled = LinearRegression()
     model_scaled.fit(scaler.fit_transform(X), y)
     std_coefs = dict(zip(FEATURE_COLUMNS, [round(c, 4) for c in model_scaled.coef_]))
- 
+
     # residual diagnostics
     threshold = residuals.std() * 2
     outlier_states = df.loc[residuals.abs() > threshold, "state_name"].tolist()
- 
+
     results = {
         "n_states": len(df),
         "n_features": len(FEATURE_COLUMNS),
@@ -92,44 +100,60 @@ def evaluate_model(df: pd.DataFrame) -> dict:
         "residual_kurtosis": round(residuals.kurtosis(), 4),
         "outlier_states": outlier_states,
     }
- 
-    print(f"[EVAL] Train R²: {train_r2:.4f}  MAE: {train_mae:.4f}")
-    print(f"[EVAL] 5-fold R²: {cv_r2.mean():.4f} ± {cv_r2.std():.4f}")
-    print(f"[EVAL] Baseline MAE (predict mean): {baseline_mae:.4f}")
-    print(f"[EVAL] Residual skewness: {residuals.skew():.2f}  outliers (>2σ): {outlier_states}")
- 
-    print(f"[EVAL] Feature importance (standardized):")
+
+    logger.info(f"train R2: {train_r2:.4f}  MAE: {train_mae:.4f}")
+    logger.info(f"5-fold R2: {cv_r2.mean():.4f} +/- {cv_r2.std():.4f}")
+    logger.info(f"baseline MAE (predict mean): {baseline_mae:.4f}")
+    logger.info(f"residual skewness: {residuals.skew():.2f}  outliers (>2s): {outlier_states}")
+
+    logger.info("feature importance (standardized):")
     for feat, coef in sorted(std_coefs.items(), key=lambda x: abs(x[1]), reverse=True):
-        print(f"  {feat}: {coef:+.4f}")
- 
+        logger.info(f"  {feat}: {coef:+.4f}")
+
     return results
 
 
 def save_results(results: dict, df: pd.DataFrame) -> None:
-    """Save evaluation JSON and per-state detail CSV."""
+    """save evaluation json and per-state detail csv."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
- 
+
     # per-state detail
     detail = df[["practice_state", "state_name", "providers_per_100k",
                   "predicted_provider_density", "residual"]].copy()
     detail["abs_error"] = detail["residual"].abs()
     detail = detail.sort_values("residual").reset_index(drop=True)
- 
-    with open(OUTPUT_DIR / "evaluation_results.json", "w") as f:
+
+    json_path = OUTPUT_DIR / "evaluation_results.json"
+    csv_path = OUTPUT_DIR / "evaluation_detail.csv"
+
+    with open(json_path, "w") as f:
         json.dump(results, f, indent=2)
- 
-    detail.to_csv(OUTPUT_DIR / "evaluation_detail.csv", index=False)
- 
-    print(f"\n[EVAL] Saved → evaluation_results.json, evaluation_detail.csv")
-    print("[EVAL] ===== EVALUATION COMPLETE =====")
+
+    detail.to_csv(csv_path, index=False)
+
+    logger.info(f"saved -> {json_path}")
+    logger.info(f"saved -> {csv_path}")
 
 
 def run_evaluation() -> dict:
-    """Full model evaluation workflow."""
-    df = load_evaluation_data()
-    results = evaluate_model(df)
-    save_results(results, df)
-    return results
+    """full model evaluation workflow."""
+    try:
+        df = load_evaluation_data()
+        results = evaluate_model(df)
+        save_results(results, df)
+        return results
+
+    except FileNotFoundError:
+        logger.error(f"input file not found: {INPUT_FILE}")
+        raise
+
+    except ValueError as e:
+        logger.error(f"data validation failed: {e}")
+        raise
+
+    except Exception as e:
+        logger.error(f"unexpected error during evaluation: {e}")
+        raise
 
 
 if __name__ == "__main__":
