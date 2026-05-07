@@ -1,6 +1,9 @@
 import pandas as pd
 import requests
 from pathlib import Path
+from utils.logging_config import setup_logger
+
+logger = setup_logger("ovara.build_demand_features")
 
 # file path
  
@@ -49,7 +52,7 @@ def fetch_from_census() -> pd.DataFrame:
 
 
 def transform(df: pd.DataFrame) -> pd.DataFrame:
-    """Reshape Census API response into state-level demand features."""
+    """Reshape Census API response into state level demand features."""
     df = df.rename(columns=FEMALE_AGE_VARS)
  
     age_cols = list(FEMALE_AGE_VARS.values())
@@ -65,26 +68,33 @@ def transform(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_demand_features(refresh: bool = False) -> pd.DataFrame:
     """
-    Build fertility-age demand features by state.
+    Build fertility age demand features by state.
     Uses cached file if available unless refresh is True.
     """
-    print("\n[DEMAND] ===== BUILDING DEMAND SIDE FEATURES =====")
- 
-    if OUTPUT_FILE.exists() and not refresh:
-        print(f"[DEMAND] Loading cached → {OUTPUT_FILE}")
-        return pd.read_csv(OUTPUT_FILE)
- 
-    print("[DEMAND] Fetching from Census ACS API...")
-    raw = fetch_from_census()
-    demand = transform(raw)
- 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    demand.to_csv(OUTPUT_FILE, index=False)
- 
-    print(f"[DEMAND] Saved → {OUTPUT_FILE} ({demand.shape[0]} states)")
-    print("[DEMAND] ===== DEMAND FEATURES READY =====")
- 
-    return demand
+    try:
+        logger.info("building demand side features...")
+
+        if OUTPUT_FILE.exists() and not refresh:
+            logger.info(f"loading cached -> {OUTPUT_FILE}")
+            return pd.read_csv(OUTPUT_FILE)
+
+        logger.info("fetching from Census ACS API...")
+        raw = fetch_from_census()
+        demand = transform(raw)
+
+        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        demand.to_csv(OUTPUT_FILE, index=False)
+
+        logger.info(f"saved -> {OUTPUT_FILE} ({demand.shape[0]} states)")
+        return demand
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Census ACS API request failed: {e}")
+        raise
+
+    except Exception as e:
+        logger.error(f"unexpected error building demand features: {e}")
+        raise
 
 
 if __name__ == "__main__":
