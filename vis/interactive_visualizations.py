@@ -656,8 +656,19 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
 
 # workflow manager
 
-def run_interactive_visualizations() -> None:
-    """run the full reproductive health visualization workflow."""
+def run_interactive_visualizations(launch_dashboard: bool | None = None) -> None:
+    """
+    Run the full reproductive health visualization workflow.
+
+    Static HTML exports always run. The Dash server is opt-in via the
+    `launch_dashboard` argument or the OVARA_LAUNCH_DASHBOARD env var,
+    so `python main.py` finishes cleanly instead of blocking on the
+    server. Direct invocation (`python vis/interactive_visualizations.py`)
+    launches the dashboard by default.
+    """
+    if launch_dashboard is None:
+        launch_dashboard = os.environ.get("OVARA_LAUNCH_DASHBOARD", "").lower() in ("1", "true", "yes")
+
     try:
         df = load_regression_results()
 
@@ -669,8 +680,13 @@ def run_interactive_visualizations() -> None:
 
         logger.info("static exports complete")
 
-        # launch interactive dashboard
-        build_access_dashboard(df, debug=True)
+        if launch_dashboard:
+            build_access_dashboard(df, debug=False)
+        else:
+            logger.info(
+                "skipping dashboard launch "
+                "(set OVARA_LAUNCH_DASHBOARD=1 or run `python vis/interactive_visualizations.py` to start it)"
+            )
 
     except FileNotFoundError:
         logger.error(f"input file not found: {INPUT_FILE}")
@@ -686,4 +702,4 @@ def run_interactive_visualizations() -> None:
 
 
 if __name__ == "__main__":
-    run_interactive_visualizations()
+    run_interactive_visualizations(launch_dashboard=True)
