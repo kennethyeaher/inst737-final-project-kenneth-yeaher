@@ -1,7 +1,0 @@
-attribute_name,description,data_type,example_value,unit
-practice_state,State associated with the ZIP level provider aggregation.,string,MD,
-zip5,5 digit ZIP code used as the geographic aggregation level.,string,20850,
-provider_count,Count of active provider records in the ZIP state combination.,integer,42,providers
-unique_taxonomies,"Average provider enumeration year, used as a maturity proxy for the provider base.",integer,6,taxonomy groups
-avg_provider_enum_year,,float,2017.8,year
-recent_provider_growth,Count of providers in the ZIP state combination enumerated within the recent lookback window.,integer,9,providers
