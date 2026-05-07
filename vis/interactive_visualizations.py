@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Final
+
+# allow direct invocation (`python vis/interactive_visualizations.py`)
+# by adding the project root to sys.path so `utils` resolves
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import pandas as pd
 import plotly.graph_objects as go
