@@ -126,6 +126,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | **Folder** | **`analysis/`** | **Modeling and analytics modules** |
 | File | `access_risk_model.py` | Residual based risk classification |
 | File | `build_access_model_dataset.py` | State level supply + population merge |
+| File | `build_demand_features.py` | Fertility-age demand features from Census ACS |
 | File | `build_metro_dataset.py` | Census CBSA reference construction |
 | File | `build_model_dataset.py` | ZIP level feature engineering |
 | File | `eda_provider.py` | Exploratory visualizations |
@@ -137,15 +138,13 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | **Folder** | **`vis/`** | **Visualization and dashboard** |
 | File | `interactive_visualizations.py` | Dash web application |
 | **Folder** | **`utils/`** | **Shared configuration and helpers** |
-| File | `config.py` | Pipeline constants and file paths |
-| File | `helpers.py` | Reusable utility functions |
 | File | `logging_config.py` | Centralized pipeline logging configuration |
 | **Folder** | **`data/`** | **Pipeline data artifacts** |
 | Subfolder | `extracted/` | Raw standardized datasets |
 | Subfolder | `transformed/` | Cleaned modeling ready datasets |
 | Subfolder | `load/` | Feature engineered datasets |
 | Subfolder | `model_outputs/` | Regression, risk classification, and evaluation results |
-| Subfolder | `reference-tables/` | Data dictionaries and geographic reference files |
+| Subfolder | `reference_tables/` | Data dictionaries and geographic reference files |
 | Subfolder | `visualizations/` | Generated charts |
 | File | `main.py` | Full pipeline entry point |
 | File | `preprocess_nppes.py` | One time NPPES preprocessing script |
@@ -164,7 +163,8 @@ flowchart TD
     subgraph ANALYSIS ["Analysis"]
         C([EDA]) --> D([Feature Engineer])
         D --> E([Metro Reference])
-        E --> F([Access Model])
+        E --> L([Demand Features])
+        L --> F([Access Model])
     end
 
     subgraph MODELING ["Modeling"]
@@ -188,7 +188,7 @@ flowchart TD
 
     class A,B etl
     class C eda
-    class D,E,F etl
+    class D,E,L,F etl
     class G,H model
     class I risk
     class K dash
@@ -237,23 +237,31 @@ Builds a Census aligned metropolitan reference dataset by merging CBSA delineati
 </details>
  
 <details>
-<summary><strong>6. Access Model Dataset</strong> — <code>data/load/access_model_dataset.csv</code></summary>
+<summary><strong>6. Demand Features</strong> — <code>data/reference_tables/acs_female_25_44_by_state.csv</code></summary>
  
 <br>
  
-Merges state level supply features with metro population totals and computes provider density as providers per 100,000 residents. This is the modeling ready dataset that feeds both the regression and clustering stages.
+Fetches fertility-age female population (women 25–44) by state from the Census ACS B01001 table via the Census API. The output is cached locally so the pipeline can run offline after the first fetch. These demand-side counts are joined in the Access Model stage to compute a demand-adjusted provider density.
 </details>
  
 <details>
-<summary><strong>7. Regression Model</strong> — <code>data/model_outputs/regression_results.csv</code></summary>
+<summary><strong>7. Access Model Dataset</strong> — <code>data/load/access_model_dataset.csv</code></summary>
  
 <br>
  
-Fits a linear regression estimating expected reproductive health provider density from four features: metro population, taxonomy diversity, recent provider- rowth, and average provider enumeration year. The residual for each state, the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+Merges state level supply features with metro population totals and fertility-age demand counts, then computes provider density as providers per 100,000 residents. This is the modeling ready dataset that feeds the regression model.
 </details>
  
 <details>
-<summary><strong>8. Model Evaluation</strong> — <code>data/model_outputs/evaluation_results.json</code></summary>
+<summary><strong>8. Regression Model</strong> — <code>data/model_outputs/regression_results.csv</code></summary>
+ 
+<br>
+ 
+Fits a linear regression estimating expected reproductive health provider density from five features: metro population, taxonomy diversity, recent provider growth, average provider enumeration year, and fertility-age female population. The residual for each state, the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+</details>
+ 
+<details>
+<summary><strong>9. Model Evaluation</strong> — <code>data/model_outputs/evaluation_results.json</code></summary>
  
 <br>
  
@@ -261,7 +269,7 @@ Runs 5 fold cross validation, computes standardized feature coefficients for sca
 </details>
  
 <details>
-<summary><strong>9. Access Risk Classification</strong> — <code>data/model_outputs/access_risk_classified.csv</code></summary>
+<summary><strong>10. Access Risk Classification</strong> — <code>data/model_outputs/access_risk_classified.csv</code></summary>
  
 <br>
  
@@ -269,7 +277,7 @@ Converts regression residuals into actionable risk labels. Each state receives a
 </details>
  
 <details>
-<summary><strong>10. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
+<summary><strong>11. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
  
 <br>
  
@@ -299,19 +307,25 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_nppes_provider_clean.csv` | Cleaned provider level dataset | 18 |
 | `data_dictionary_provider_geo_features.csv` | ZIP level engineered features | 6 |
 | `data_dictionary_cbsa_reference_dataset.csv` | Census metro reference | 8 |
+| `data_dictionary_access_model_dataset.csv` | State level access modeling dataset | 10 |
+| `data_dictionary_acs_female_25_44_by_state.csv` | Fertility-age demand features by state | 6 |
+| `data_dictionary_regression_results.csv` | Regression model outputs with residuals | 10 |
+| `data_dictionary_access_risk_classified.csv` | Access risk tier classification by state | 13 |
+| `data_dictionary_access_risk_summary.csv` | Risk tier aggregate statistics | 6 |
+| `data_dictionary_evaluation_detail.csv` | Per-state model evaluation detail | 6 |
  
 ### Reference Tables
  
 | File | Purpose |
 |---|---|
 | `cbsa_reference_dataset.csv` | Maps CBSA codes to county FIPS, state names, and 2024 population estimates |
+| `acs_female_25_44_by_state.csv` | Female population aged 25–44 by state from Census ACS used as fertility-age demand proxy |
 | `REPRODUCTIVE_HEALTH_TAXONOMY` | In code reference table in `etl/transform.py` defining 13 NUCC codes |
  
 ## Next Steps and Future Considerations
 
 | Enhancement | Description | Impact |
 |---|---|---|
-| **Demand Side Features** | Add fertility age population (women 25–44) as a demand proxy | Distinguish true access gaps from population composition effects |
 | **CDC ART Integration** | Join CDC fertility clinic treatment data (~500 clinics) | Add treatment volume and outcomes as a second access dimension |
 | **Network Modeling** | Neo4j graph analysis of provider clinic metro referral networks | Shift from density based to connectivity based access measurement |
 | **Geographic Drill Down** | Metro and ZIP level choropleth with risk tier overlays | Enable targeted intervention planning at sub state level |
