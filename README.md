@@ -61,6 +61,8 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 |---|---|---|
 | Linear Regression | scikit-learn | Estimate expected provider density |
 | Quartile Classification | pandas | Assign access risk tiers from residuals |
+| K-Means Clustering | scikit-learn | Segment states into supply archetypes |
+| Silhouette Scoring | scikit-learn | Select optimal cluster count |
 | Cross Validation | scikit-learn | Evaluate model generalization |
 | Interactive Dashboard | Dash + Plotly | Explore access gaps by state |
 | EDA Visualization | matplotlib | Specialty distribution and growth trends |
@@ -129,6 +131,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `build_demand_features.py` | Fertility-age demand features from Census ACS |
 | File | `build_metro_dataset.py` | Census CBSA reference construction |
 | File | `build_model_dataset.py` | ZIP level feature engineering |
+| File | `clustering_model.py` | K-Means state supply archetype segmentation |
 | File | `eda_provider.py` | Exploratory visualizations |
 | File | `evaluate.py` | Model evaluation and diagnostics |
 | File | `regression_model.py` | Provider density regression |
@@ -170,6 +173,7 @@ flowchart TD
     subgraph MODELING ["Modeling"]
         G([Regression]) --> H([Evaluation])
         H --> I([Access Risk])
+        I --> J([Clustering])
     end
 
     subgraph OUTPUT ["Output"]
@@ -178,7 +182,7 @@ flowchart TD
 
     B --> C
     F --> G
-    I --> K
+    J --> K
 
     classDef etl fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
     classDef eda fill:#fef3c7,stroke:#d97706,color:#78350f
@@ -189,7 +193,7 @@ flowchart TD
     class A,B etl
     class C eda
     class D,E,L,F etl
-    class G,H model
+    class G,H,J model
     class I risk
     class K dash
 ```
@@ -277,7 +281,15 @@ Converts regression residuals into actionable risk labels. Each state receives a
 </details>
  
 <details>
-<summary><strong>11. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
+<summary><strong>11. Clustering</strong> — <code>data/model_outputs/clustering_results.csv</code></summary>
+ 
+<br>
+ 
+Segments states into supply archetypes using K-Means on four rate-based features: provider density per 100k, taxonomy diversity, growth rate per 100k, and average provider enumeration year. Features are standardized with `StandardScaler` and the optimal cluster count is selected by silhouette score sweep across k=2 through k=6. Cluster ids are then relabeled by ascending mean density so cluster 1 is always the lowest-supply archetype, with human-readable labels (`low_supply`, `mid_supply`, `high_supply`, etc.). A 2D PCA scatter is exported for presentation use.
+</details>
+ 
+<details>
+<summary><strong>12. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
  
 <br>
  
@@ -313,6 +325,7 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_access_risk_classified.csv` | Access risk tier classification by state | 13 |
 | `data_dictionary_access_risk_summary.csv` | Risk tier aggregate statistics | 6 |
 | `data_dictionary_evaluation_detail.csv` | Per-state model evaluation detail | 6 |
+| `data_dictionary_clustering_results.csv` | State supply archetype clustering output | 8 |
  
 ### Reference Tables
  

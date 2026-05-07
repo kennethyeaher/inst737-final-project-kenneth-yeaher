@@ -1,0 +1,9 @@
+attribute_name,description,data_type,example_value,unit
+practice_state,Two letter state abbreviation.,string,MD,
+state_name,Full state name.,string,Maryland,
+cluster,"Cluster id assigned by K-Means; 1 is the lowest-supply archetype, k is the highest.",integer,3,
+cluster_label,"Human-readable archetype label derived from the cluster id.",string,high_supply,
+providers_per_100k,Actual provider count per 100k metro population used as a clustering feature.,float,29.78,providers per 100k
+taxonomy_diversity,Average number of unique taxonomy codes across ZIP areas in the state.,float,2.35,taxonomy groups
+recent_growth_per_100k,Recent provider growth normalized by metro population so clustering captures growth intensity rather than state size.,float,1.42,providers per 100k
+avg_provider_enum_year,Mean provider enumeration year used as a workforce maturity proxy.,float,2014.7,year

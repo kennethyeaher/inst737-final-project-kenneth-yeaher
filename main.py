@@ -107,7 +107,7 @@ def main():
     except Exception as e:
         logger.error(f"evaluation stage failed: {e}")
 
-    # access risk 
+    # access risk
 
     try:
         logger.info("===== ACCESS RISK STAGE =====")
@@ -117,7 +117,17 @@ def main():
     except Exception as e:
         logger.error(f"access risk stage failed: {e}")
 
-    # interactive visualizations 
+    # clustering
+
+    try:
+        logger.info("===== CLUSTERING STAGE =====")
+        from analysis.clustering_model import run_clustering_model
+        run_clustering_model()
+        logger.info("clustering stage complete\n")
+    except Exception as e:
+        logger.warning(f"clustering stage failed (non-critical): {e}")
+
+    # interactive visualizations
 
     try:
         logger.info("===== INTERACTIVE VISUALIZATION STAGE =====")
