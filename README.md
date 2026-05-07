@@ -61,8 +61,6 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 |---|---|---|
 | Linear Regression | scikit-learn | Estimate expected provider density |
 | Quartile Classification | pandas | Assign access risk tiers from residuals |
-| K-Means Clustering | scikit-learn | Segment states by supply characteristics |
-| Silhouette Scoring | scikit-learn | Optimize cluster count |
 | Cross Validation | scikit-learn | Evaluate model generalization |
 | Interactive Dashboard | Dash + Plotly | Explore access gaps by state |
 | EDA Visualization | matplotlib | Specialty distribution and growth trends |
@@ -130,7 +128,6 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `build_access_model_dataset.py` | State level supply + population merge |
 | File | `build_metro_dataset.py` | Census CBSA reference construction |
 | File | `build_model_dataset.py` | ZIP level feature engineering |
-| File | `clustering_model.py` | K-Means metro segmentation |
 | File | `eda_provider.py` | Exploratory visualizations |
 | File | `evaluate.py` | Model evaluation and diagnostics |
 | File | `regression_model.py` | Provider density regression |
@@ -147,7 +144,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | Subfolder | `extracted/` | Raw standardized datasets |
 | Subfolder | `transformed/` | Cleaned modeling ready datasets |
 | Subfolder | `load/` | Feature engineered datasets |
-| Subfolder | `model_outputs/` | Regression, risk, and clustering results |
+| Subfolder | `model_outputs/` | Regression, risk classification, and evaluation results |
 | Subfolder | `reference-tables/` | Data dictionaries and geographic reference files |
 | Subfolder | `visualizations/` | Generated charts |
 | File | `main.py` | Full pipeline entry point |
@@ -173,7 +170,6 @@ flowchart TD
     subgraph MODELING ["Modeling"]
         G([Regression]) --> H([Evaluation])
         H --> I([Access Risk])
-        I --> J([Clustering])
     end
 
     subgraph OUTPUT ["Output"]
@@ -182,7 +178,7 @@ flowchart TD
 
     B --> C
     F --> G
-    J --> K
+    I --> K
 
     classDef etl fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
     classDef eda fill:#fef3c7,stroke:#d97706,color:#78350f
@@ -193,7 +189,7 @@ flowchart TD
     class A,B etl
     class C eda
     class D,E,F etl
-    class G,H,J model
+    class G,H model
     class I risk
     class K dash
 ```
@@ -273,15 +269,7 @@ Converts regression residuals into actionable risk labels. Each state receives a
 </details>
  
 <details>
-<summary><strong>10. Metro Clustering</strong> — <code>data/model_outputs/clustering_results.csv</code></summary>
- 
-<br>
- 
-Segments states into supply profile groups using K-Means clustering. Features are standardized with StandardScaler before clustering, and the optimal cluster count is selected by silhouette scoring across k=2 through k=6. Cluster labels are assigned by average provider density to keep them interpretable.
-</details>
- 
-<details>
-<summary><strong>11. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
+<summary><strong>10. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
  
 <br>
  
