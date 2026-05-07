@@ -117,6 +117,16 @@ def main():
     except Exception as e:
         logger.error(f"access risk stage failed: {e}")
 
+    # hrsa validation
+
+    try:
+        logger.info("===== HRSA VALIDATION STAGE =====")
+        from analysis.hrsa_validation import run_hrsa_validation
+        run_hrsa_validation()
+        logger.info("hrsa validation stage complete\n")
+    except Exception as e:
+        logger.warning(f"hrsa validation stage failed (non-critical): {e}")
+
     # clustering
 
     try:

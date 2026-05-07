@@ -64,6 +64,7 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 | K-Means Clustering | scikit-learn | Segment states into supply archetypes |
 | Silhouette Scoring | scikit-learn | Select optimal cluster count |
 | Cross Validation | scikit-learn | Evaluate model generalization |
+| External Validation | requests + scipy | Benchmark risk tiers against HRSA HPSA designations |
 | Interactive Dashboard | Dash + Plotly | Explore access gaps by state |
 | EDA Visualization | matplotlib | Specialty distribution and growth trends |
 
@@ -131,6 +132,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `build_demand_features.py` | Fertility-age demand features from Census ACS |
 | File | `build_metro_dataset.py` | Census CBSA reference construction |
 | File | `build_model_dataset.py` | ZIP level feature engineering |
+| File | `hrsa_validation.py` | External validation against HRSA HPSA shortage designations |
 | File | `clustering_model.py` | K-Means state supply archetype segmentation |
 | File | `eda_provider.py` | Exploratory visualizations |
 | File | `evaluate.py` | Model evaluation and diagnostics |
@@ -173,7 +175,8 @@ flowchart TD
     subgraph MODELING ["Modeling"]
         G([Regression]) --> H([Evaluation])
         H --> I([Access Risk])
-        I --> J([Clustering])
+        I --> N([HRSA Validation])
+        N --> J([Clustering])
     end
 
     subgraph OUTPUT ["Output"]
@@ -188,6 +191,7 @@ flowchart TD
     classDef eda fill:#fef3c7,stroke:#d97706,color:#78350f
     classDef model fill:#ede9fe,stroke:#7c3aed,color:#3b0764
     classDef risk fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef valid fill:#f0fdf4,stroke:#16a34a,color:#14532d
     classDef dash fill:#d1fae5,stroke:#059669,color:#064e3b
 
     class A,B etl
@@ -195,6 +199,7 @@ flowchart TD
     class D,E,L,F etl
     class G,H,J model
     class I risk
+    class N valid
     class K dash
 ```
 
@@ -281,7 +286,15 @@ Converts regression residuals into actionable risk labels. Each state receives a
 </details>
  
 <details>
-<summary><strong>11. Clustering</strong> — <code>data/model_outputs/clustering_results.csv</code></summary>
+<summary><strong>11. HRSA External Validation</strong> — <code>data/model_outputs/hrsa_validation.csv</code></summary>
+ 
+<br>
+ 
+Benchmarks Ovara's access risk tiers against the HRSA Health Professional Shortage Area (HPSA) Primary Care designations fetched directly from the HRSA data warehouse. Active HPSA designations are aggregated to the state level to produce shortage burden metrics: count of designated areas, total population in shortage, average HPSA score, and estimated FTE shortage. These are joined with Ovara's risk output and evaluated for agreement: precision and recall comparing the `high_risk` tier against HRSA-flagged states, an F1 score, overall agreement rate, and a Spearman correlation between Ovara's continuous risk score and HRSA shortage population. The validation quantifies how well Ovara's purely statistical model aligns with the federal government's independently assigned shortage designations. HRSA data is cached locally after the first fetch.
+</details>
+ 
+<details>
+<summary><strong>12. Clustering</strong> — <code>data/model_outputs/clustering_results.csv</code></summary>
  
 <br>
  
@@ -289,7 +302,7 @@ Segments states into supply archetypes using K-Means on four rate-based features
 </details>
  
 <details>
-<summary><strong>12. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
+<summary><strong>13. Interactive Dashboard</strong> — <code>http://127.0.0.1:8050</code></summary>
  
 <br>
  
@@ -326,6 +339,7 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_access_risk_summary.csv` | Risk tier aggregate statistics | 6 |
 | `data_dictionary_evaluation_detail.csv` | Per-state model evaluation detail | 6 |
 | `data_dictionary_clustering_results.csv` | State supply archetype clustering output | 8 |
+| `data_dictionary_hrsa_validation.csv` | HRSA HPSA external validation output | 10 |
  
 ### Reference Tables
  
