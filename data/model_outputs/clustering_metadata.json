@@ -1,0 +1,18 @@
+{
+  "selected_k": 2,
+  "silhouette_scores": {
+    "2": 0.5564,
+    "3": 0.2846,
+    "4": 0.2917,
+    "5": 0.303,
+    "6": 0.2872
+  },
+  "features": [
+    "providers_per_100k",
+    "taxonomy_diversity",
+    "recent_growth_per_100k",
+    "avg_provider_enum_year"
+  ],
+  "random_state": 42,
+  "total_states": 51
+}

@@ -2,19 +2,19 @@
   "tier_thresholds": {
     "high_risk": {
       "quantile": 0.25,
-      "residual_cutoff": -7.6449
+      "residual_cutoff": -7.3673
     },
     "moderate_risk": {
       "quantile": 0.5,
-      "residual_cutoff": -3.4316
+      "residual_cutoff": -3.0714
     },
     "adequate": {
       "quantile": 0.75,
-      "residual_cutoff": 2.8364
+      "residual_cutoff": 2.4823
     },
     "well_served": {
       "quantile": 1.0,
-      "residual_cutoff": 67.0163
+      "residual_cutoff": 67.0878
     }
   },
   "total_states": 51,
