@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import logging as _logging
 import os
 import sys
+import warnings as _warnings
 from pathlib import Path
 from typing import Final
 
 # allow direct invocation (`python vis/interactive_visualizations.py`)
-# by adding the project root to sys.path so `utils` resolves
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+# suppress urllib3 LibreSSL warning (cosmetic — Census API still works)
+_warnings.filterwarnings("ignore", message=".*LibreSSL.*")
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -656,6 +660,10 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             return None
         return _state_detail_card(match.iloc[0])
 
+    # silence werkzeug per request access logs and Flask's dev server banner
+    _logging.getLogger("werkzeug").setLevel(_logging.ERROR)
+    os.environ["WERKZEUG_RUN_MAIN"] = "true"
+
     port = int(os.environ.get("DASH_PORT", 8050))
     logger.info(f"dashboard running at http://127.0.0.1:{port}")
     app.run(debug=debug, port=port)
@@ -667,7 +675,7 @@ def run_interactive_visualizations(launch_dashboard: bool | None = None) -> None
     """
     Run the full reproductive health visualization workflow.
 
-    Static HTML exports always run. The Dash server is opt-in via the
+    Static HTML exports always run. The Dash server is opt in via the
     `launch_dashboard` argument or the OVARA_LAUNCH_DASHBOARD env var,
     so `python main.py` finishes cleanly instead of blocking on the
     server. Direct invocation (`python vis/interactive_visualizations.py`)
