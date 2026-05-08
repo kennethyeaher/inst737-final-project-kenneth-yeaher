@@ -14,7 +14,7 @@
 
 **University of Maryland, College of Information - INST737: Data Science Techniques - Final Project**
 
-[View Dashboard](#running-the-project) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Future Work](#next-steps-and-future-considerations)
+[View Dashboard](#running-the-project) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Methodology](METHODOLOGY.md) · [Future Work](#next-steps-and-future-considerations)
  
 ---
  
