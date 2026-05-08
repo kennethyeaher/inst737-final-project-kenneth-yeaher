@@ -18,7 +18,7 @@ _warnings.filterwarnings("ignore", message=".*LibreSSL.*")
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, ctx, dcc, html
+from dash import Dash, Input, Output, Patch, ctx, dcc, html
 
 from utils.logging_config import setup_logger
 
@@ -94,6 +94,14 @@ CHART_CONFIG: Final[dict] = {
     "displayModeBar": False,
     "scrollZoom": False,
     "doubleClick": False,
+    "staticPlot": False,
+}
+
+# county map needs scroll zoom so users can inspect individual counties
+COUNTY_MAP_CONFIG: Final[dict] = {
+    "displayModeBar": False,
+    "scrollZoom": True,
+    "doubleClick": "reset",
     "staticPlot": False,
 }
 
@@ -853,7 +861,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
                         id="county-choropleth",
                         figure=build_county_choropleth(county_df, county_geojson)
                         if county_available else go.Figure(),
-                        config=CHART_CONFIG,
+                        config=COUNTY_MAP_CONFIG,
                     ),
                     type="circle",
                 ),
@@ -935,20 +943,33 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             Input("county-reset", "n_clicks"),
         )
         def update_county_map(state_filter, click_data, _n_clicks):
-            """update the county map when a county or state filter is selected."""
-            if ctx.triggered_id == "county-reset":
-                return build_county_choropleth(county_df, county_geojson, state_filter=state_filter)
+            """
+            Update the county map without rebuilding it every time.
 
-            if ctx.triggered_id == "county-state-filter" or click_data is None:
-                return build_county_choropleth(county_df, county_geojson, state_filter=state_filter)
+            State filter changes and resets rebuild the map because the county set
+            and map view can change. County clicks only patch the border arrays so
+            the map does not flicker while users explore counties.
+            """
+            triggered = ctx.triggered_id
 
-            fips = click_data["points"][0]["location"]
-            return build_county_choropleth(
-                county_df,
-                county_geojson,
-                selected_county=fips,
-                state_filter=state_filter,
-            )
+            if triggered == "county-choropleth" and click_data is not None:
+                fips = click_data["points"][0]["location"]
+                _df = county_df.copy()
+
+                if state_filter:
+                    _df = _df[_df["practice_state"] == state_filter]
+
+                line_widths = [3.0 if f == fips else 0.3 for f in _df["county_fips"]]
+                line_colors = ["#000" if f == fips else "#ccc" for f in _df["county_fips"]]
+
+                patched = Patch()
+                patched["data"][0]["marker"]["line"]["width"] = line_widths
+                patched["data"][0]["marker"]["line"]["color"] = line_colors
+
+                return patched
+
+            # full rebuild for state filter changes, reset clicks, and first load
+            return build_county_choropleth(county_df, county_geojson, state_filter=state_filter)
 
         @app.callback(
             Output("county-bar-chart", "figure"),
