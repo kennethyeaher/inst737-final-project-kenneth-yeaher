@@ -19,8 +19,7 @@ SUMMARY_FILE = Path("data/model_outputs/clustering_summary.csv")
 METADATA_FILE = Path("data/model_outputs/clustering_metadata.json")
 PCA_PLOT_FILE = Path("data/visualizations/clustering_pca.png")
 
-# clustering features — rate-based to keep clusters about supply archetype,
-# not state size
+# clustering features,  rate based to keep clusters about supply archetype, not state size
 
 CLUSTERING_FEATURES = [
     "providers_per_100k",
@@ -45,7 +44,7 @@ CLUSTER_LABEL_SETS: dict[int, list[str]] = {
 
 
 def load_clustering_data() -> pd.DataFrame:
-    """load access model dataset and derive a rate-based growth feature."""
+    """load access model dataset and derive a rate based growth feature."""
     df = pd.read_csv(INPUT_FILE)
 
     required = {
@@ -59,8 +58,7 @@ def load_clustering_data() -> pd.DataFrame:
 
     df = df.replace([float("inf"), float("-inf")], pd.NA)
 
-    # convert raw growth count into a population-normalized rate so the
-    # clustering captures growth intensity rather than state size
+    # convert raw growth count into a population normalized rate so the clustering captures growth intensity rather than state size
     df["recent_growth_per_100k"] = (
         df["recent_provider_growth"] / df["metro_population"] * 100000
     )
@@ -94,7 +92,7 @@ def select_optimal_k(X_scaled: np.ndarray) -> tuple[int, dict]:
 def fit_clusters(df: pd.DataFrame, X_scaled: np.ndarray, k: int) -> pd.DataFrame:
     """
     Fit final KMeans and relabel cluster ids by ascending mean
-    providers_per_100k so cluster 1 is always the lowest-supply archetype.
+    providers_per_100k so cluster 1 is always the lowest supply archetype.
     """
     model = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10)
     raw_labels = model.fit_predict(X_scaled)
@@ -117,7 +115,7 @@ def fit_clusters(df: pd.DataFrame, X_scaled: np.ndarray, k: int) -> pd.DataFrame
 
 
 def build_cluster_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """per-cluster aggregate statistics with member states."""
+    """per cluster aggregate statistics with member states."""
     summary = (
         df.groupby(["cluster", "cluster_label"], as_index=False)
         .agg(
@@ -179,7 +177,7 @@ def render_pca_plot(df: pd.DataFrame, X_scaled: np.ndarray) -> None:
 
 def save_results(df: pd.DataFrame, summary: pd.DataFrame,
                  k: int, scores: dict) -> None:
-    """save per-state assignments, cluster summary, and metadata json."""
+    """save per state assignments, cluster summary, and metadata json."""
     output_cols = [
         "practice_state", "state_name", "cluster", "cluster_label",
         "providers_per_100k", "taxonomy_diversity",
