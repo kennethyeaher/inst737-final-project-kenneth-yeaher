@@ -88,8 +88,8 @@ def prepare_cbsa_county(cbsa_county: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"metropolitan county rows: {metro_county.shape[0]:,}")
 
     metro_county["county_fips"] = (
-        metro_county["FIPS State Code"].astype(str).str.zfill(2)
-        + metro_county["FIPS County Code"].astype(str).str.zfill(3)
+        metro_county["FIPS State Code"].astype(int).astype(str).str.zfill(2)
+        + metro_county["FIPS County Code"].astype(int).astype(str).str.zfill(3)
     )
 
     metro_county = metro_county[
