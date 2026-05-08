@@ -12,7 +12,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-# suppress urllib3 LibreSSL warning (cosmetic — Census API still works)
+# suppress urllib3 LibreSSL warning (cosmetic Census API still works)
 _warnings.filterwarnings("ignore", message=".*LibreSSL.*")
 
 import pandas as pd
@@ -174,7 +174,7 @@ def build_bar(
     """horizontal bar of top 10 underserved states, filterable by map click."""
     if selected_states:
         subset = df[df["practice_state"].isin(selected_states)].sort_values("residual")
-        title_text = f"Access Gap — {', '.join(selected_states)}"
+        title_text = f"Access Gap {', '.join(selected_states)}"
     else:
         subset = df.nsmallest(10, "residual").sort_values("residual")
         title_text = "Top 10 Most Underserved States"
@@ -328,7 +328,7 @@ def build_choropleth(
         if selected_state:
             row = df[df["practice_state"] == selected_state]
             if len(row) > 0:
-                title_text = f"Access Risk — {selected_state} ({row.iloc[0]['risk_tier']})"
+                title_text = f"Access Risk {selected_state} ({row.iloc[0]['risk_tier']})"
     else:
         res_max = _shared_range(df)
         z = df["residual"]
@@ -344,7 +344,7 @@ def build_choropleth(
         if selected_state:
             row = df[df["practice_state"] == selected_state]
             if len(row) > 0:
-                title_text = f"Access Gap — {selected_state} (gap: {row.iloc[0]['residual']:.2f})"
+                title_text = f"Access Gap {selected_state} (gap: {row.iloc[0]['residual']:.2f})"
 
     fig = go.Figure(go.Choropleth(
         locations=states, z=z,
@@ -462,6 +462,12 @@ def _generate_summary(df: pd.DataFrame) -> list:
     worst_names = ", ".join(worst_3[name_col].tolist())
     worst_avg_gap = worst_3["residual"].mean()
 
+    worst_1 = df.nsmallest(1, "residual").iloc[0]
+    worst_1_name = worst_1.get(name_col, worst_1["practice_state"])
+    worst_1_gap = worst_1["residual"]
+    worst_1_pop = worst_1["metro_population"]
+    implied_deficit = int(abs(worst_1_gap) * worst_1_pop / 100_000)
+
     best_3 = df.nlargest(3, "residual")
     best_names = ", ".join(best_3[name_col].tolist())
 
@@ -476,30 +482,66 @@ def _generate_summary(df: pd.DataFrame) -> list:
 
     return [
         html.Span([
+            "What you're looking at on this dashboard is a gap analysis of reproductive health "
+            "provider access across the United States. The core question Ovara is designed to "
+            "answer isn't just how many OB/GYNs, midwives, and women's health nurse practitioners "
+            "are registered in each state, that's a number you could pull directly from a federal "
+            "registry. The harder question is: ", b("given everything we know about a state's size, "
+            "demographics, and workforce history, how many providers should we reasonably expect to "
+            "see there?"), " The gap between that expectation and reality is what the model calls a "
+            "residual. A negative residual means a state has fewer providers than its population "
+            "and workforce profile would predict. That gap is what gets flagged as an access concern.",
+        ]),
+        html.Br(), html.Br(),
+        html.Span([
             "Across ", b(f"{n_states} states"), " analyzed, Ovara identified ",
-            b(f"{total_providers:,}"), " active reproductive health providers with an average density of ",
-            b(f"{avg_density:.2f}"), " per 100,000 residents (median: ",
-            b(f"{med_density:.2f}"), "). ",
-            "The top 5 states by provider count account for ",
-            b(f"{top5_pct:.0f}%"), " of all providers, reflecting significant geographic concentration.",
+            b(f"{total_providers:,}"), " active reproductive health providers, a workforce spanning "
+            "OB/GYNs, reproductive endocrinologists, certified nurse midwives, maternal-fetal medicine "
+            "specialists, and women's health nurse practitioners. The national average density is ",
+            b(f"{avg_density:.2f}"), " providers per 100,000 residents, but the median sits at ",
+            b(f"{med_density:.2f}"), ", a meaningful gap that reflects how a handful of high density "
+            "states pull the average upward. In fact, the top 5 states by provider count account for ",
+            b(f"{top5_pct:.0f}%"), " of the entire national workforce, a level of geographic "
+            "concentration that underscores how unevenly this workforce is distributed across the country.",
         ]),
         html.Br(), html.Br(),
         html.Span([
             b(f"{n_under} states ({pct_under}%)"),
-            " fall below model-predicted supply levels, indicating potential reproductive health access gaps. ",
-            "Of these, ", b(f"{n_critical} states"), " are classified as Critical and ",
-            b(f"{n_at_risk} states"), " as At Risk based on residual quartile analysis. ",
-            "The three most underserved — ", b(worst_names),
-            " — average a residual of ", b(f"{worst_avg_gap:.2f}"),
-            ", meaning actual provider supply is substantially lower than what their population "
-            "and workforce characteristics predict.",
+            " fall below their model predicted supply levels. Of those, ",
+            b(f"{n_critical} are classified as Critical"), " and ",
+            b(f"{n_at_risk} as At Risk"), " the states where the shortfall is most severe "
+            "relative to what their population profile would suggest. The three most underserved "
+            "states are ", b(worst_names), ", averaging a gap of ", b(f"{worst_avg_gap:.2f}"),
+            " providers per 100,000 below expected. To put that in concrete terms: ",
+            b(worst_1_name), " alone has a residual of ", b(f"{worst_1_gap:.2f}"),
+            f" applied across its metro population of {worst_1_pop:,.0f}, that translates to "
+            "roughly ", b(f"{implied_deficit:,} fewer providers"), " than the model would predict "
+            "for a state with similar characteristics. These aren't just statistical artifacts. "
+            "They represent real gaps in access to fertility care, prenatal services, and "
+            "gynecological treatment that fall disproportionately on communities with the fewest "
+            "alternatives.",
         ]),
         html.Br(), html.Br(),
         html.Span([
-            "On the other end, ", b(f"{n_over} states"), " exceed predicted supply. ",
-            b(best_names),
-            " show the strongest over-supply, suggesting these states may serve as regional hubs "
-            "that attract providers beyond their immediate population base.",
+            "On the other end of the spectrum, ", b(f"{n_over} states"), " exceed their predicted "
+            "supply levels. ", b(best_names), " show the strongest over supply, states that appear "
+            "to attract providers well beyond what their local population base alone would explain. "
+            "This pattern is consistent with a hub effect: certain states, often those with major "
+            "academic medical centers or historically strong healthcare economies, draw providers "
+            "from surrounding regions. That dynamic benefits the states themselves but can "
+            "contribute to the vacuum in neighboring areas that end up in the Critical and At Risk "
+            "tiers.",
+        ]),
+        html.Br(), html.Br(),
+        html.Span([
+            "The intent of this analysis isn't to rank states as successes or failures. It's to "
+            "give policymakers, health systems, and advocates a clearer and more honest picture of "
+            "where the supply demand imbalance actually sits. Provider supply data has always "
+            "existed in federal registries like the NPPES, but it rarely gets turned into "
+            "actionable access intelligence at this level of geographic specificity. Ovara is an "
+            "attempt to bridge that gap, to take raw federal workforce data and convert it into "
+            "insights that can inform clinic placement decisions, workforce development funding, "
+            "and policy advocacy for the communities that need it most.",
         ]),
     ]
 
@@ -528,7 +570,7 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
     app = Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
-        title="Ovara — Reproductive Health Access Dashboard",
+        title="Ovara: A Reproductive Health Access Dashboard",
     )
 
     app.layout = dbc.Container([
@@ -660,9 +702,8 @@ def build_access_dashboard(df: pd.DataFrame, *, debug: bool = False) -> None:
             return None
         return _state_detail_card(match.iloc[0])
 
-    # silence werkzeug per request access logs and Flask's dev server banner
+    # silence werkzeug per request access logs
     _logging.getLogger("werkzeug").setLevel(_logging.ERROR)
-    os.environ["WERKZEUG_RUN_MAIN"] = "true"
 
     port = int(os.environ.get("DASH_PORT", 8050))
     logger.info(f"dashboard running at http://127.0.0.1:{port}")
