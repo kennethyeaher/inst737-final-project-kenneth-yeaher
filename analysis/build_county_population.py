@@ -2,6 +2,8 @@ from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 import requests
+from utils.cache import load_or_fetch
+from utils.fips import FIPS_TO_STATE
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.build_county_population")
@@ -11,20 +13,6 @@ OUTPUT_FILE = Path("data/reference_tables/county_population.csv")
 
 # ACS 5 year is used because it covers all counties, unlike ACS 1 year
 ACS_URL = "https://api.census.gov/data/2022/acs/acs5"
-
-FIPS_TO_STATE = {
-    "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA",
-    "08": "CO", "09": "CT", "10": "DE", "11": "DC", "12": "FL",
-    "13": "GA", "15": "HI", "16": "ID", "17": "IL", "18": "IN",
-    "19": "IA", "20": "KS", "21": "KY", "22": "LA", "23": "ME",
-    "24": "MD", "25": "MA", "26": "MI", "27": "MN", "28": "MS",
-    "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH",
-    "34": "NJ", "35": "NM", "36": "NY", "37": "NC", "38": "ND",
-    "39": "OH", "40": "OK", "41": "OR", "42": "PA", "44": "RI",
-    "45": "SC", "46": "SD", "47": "TN", "48": "TX", "49": "UT",
-    "50": "VT", "51": "VA", "53": "WA", "54": "WV", "55": "WI",
-    "56": "WY",
-}
 
 
 def fetch_county_population() -> pd.DataFrame:
@@ -70,20 +58,24 @@ def transform_county_population(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_county_population(refresh: bool = False) -> pd.DataFrame:
-    """build or load the county population reference table."""
+    """
+    Build or load the county population reference table.
+
+    Uses the cached csv unless refresh is True. FIPS columns are read back
+    as strings so leading zeros survive the round trip.
+
+    Returns
+    pd.DataFrame with county_fips, county_name, state_fips, practice_state,
+    and total_population columns.
+    """
     try:
-        if OUTPUT_FILE.exists() and not refresh:
-            logger.info(f"loading cached -> {OUTPUT_FILE}")
-            return pd.read_csv(OUTPUT_FILE, dtype={"county_fips": str, "state_fips": str})
-
-        raw = fetch_county_population()
-        pop = transform_county_population(raw)
-
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        pop.to_csv(OUTPUT_FILE, index=False)
-
-        logger.info(f"saved -> {OUTPUT_FILE}")
-        return pop
+        return load_or_fetch(
+            OUTPUT_FILE,
+            fetcher=lambda: transform_county_population(fetch_county_population()),
+            refresh=refresh,
+            logger=logger,
+            read_kwargs={"dtype": {"county_fips": str, "state_fips": str}},
+        )
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Census ACS API request failed: {e}")

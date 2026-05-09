@@ -2,6 +2,8 @@ from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 
+from utils.fips import FIPS_TO_STATE
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.build_county_dataset")
@@ -11,20 +13,6 @@ PROVIDER_FILE = Path("data/transformed/nppes_provider_clean.csv")
 CROSSWALK_FILE = Path("data/reference_tables/zip_county_lookup.csv")
 POPULATION_FILE = Path("data/reference_tables/county_population.csv")
 OUTPUT_FILE = Path("data/load/county_access_dataset.csv")
-
-FIPS_TO_STATE = {
-    "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA",
-    "08": "CO", "09": "CT", "10": "DE", "11": "DC", "12": "FL",
-    "13": "GA", "15": "HI", "16": "ID", "17": "IL", "18": "IN",
-    "19": "IA", "20": "KS", "21": "KY", "22": "LA", "23": "ME",
-    "24": "MD", "25": "MA", "26": "MI", "27": "MN", "28": "MS",
-    "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH",
-    "34": "NJ", "35": "NM", "36": "NY", "37": "NC", "38": "ND",
-    "39": "OH", "40": "OK", "41": "OR", "42": "PA", "44": "RI",
-    "45": "SC", "46": "SD", "47": "TN", "48": "TX", "49": "UT",
-    "50": "VT", "51": "VA", "53": "WA", "54": "WV", "55": "WI",
-    "56": "WY",
-}
 
 
 def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -141,10 +129,8 @@ def build_county_dataset() -> pd.DataFrame:
             "providers_per_100k",
         ]
 
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        dataset[output_cols].to_csv(OUTPUT_FILE, index=False)
-
-        logger.info(f"saved -> {OUTPUT_FILE} ({len(dataset):,} counties)")
+        save_csv(dataset[output_cols], OUTPUT_FILE, logger)
+        logger.info(f"county rows saved: {len(dataset):,}")
         return dataset
 
     except FileNotFoundError as e:

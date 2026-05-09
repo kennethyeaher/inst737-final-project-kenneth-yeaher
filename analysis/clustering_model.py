@@ -1,4 +1,3 @@
-import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,6 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
+from utils.io import save_csv, save_json
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.clustering_model")
@@ -177,15 +177,14 @@ def render_pca_plot(df: pd.DataFrame, X_scaled: np.ndarray) -> None:
 
 def save_results(df: pd.DataFrame, summary: pd.DataFrame,
                  k: int, scores: dict) -> None:
-    """save per state assignments, cluster summary, and metadata json."""
+    """Save per state cluster assignments, cluster summary, and metadata json."""
     output_cols = [
         "practice_state", "state_name", "cluster", "cluster_label",
         "providers_per_100k", "taxonomy_diversity",
         "recent_growth_per_100k", "avg_provider_enum_year",
     ]
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    df[output_cols].to_csv(OUTPUT_FILE, index=False)
-    summary.to_csv(SUMMARY_FILE, index=False)
+    save_csv(df[output_cols], OUTPUT_FILE, logger)
+    save_csv(summary, SUMMARY_FILE, logger)
 
     metadata = {
         "selected_k": int(k),
@@ -194,12 +193,7 @@ def save_results(df: pd.DataFrame, summary: pd.DataFrame,
         "random_state": RANDOM_STATE,
         "total_states": int(df.shape[0]),
     }
-    with open(METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    logger.info(f"saved clustering -> {OUTPUT_FILE}")
-    logger.info(f"saved summary -> {SUMMARY_FILE}")
-    logger.info(f"saved metadata -> {METADATA_FILE}")
+    save_json(metadata, METADATA_FILE, logger)
 
 
 def run_clustering_model() -> pd.DataFrame:

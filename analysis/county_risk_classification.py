@@ -1,7 +1,7 @@
 from __future__ import annotations
-import json
 from pathlib import Path
 import pandas as pd
+from utils.io import save_csv, save_json
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.county_risk_classification")
@@ -107,7 +107,7 @@ def build_county_summary(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_results(df: pd.DataFrame, summary: pd.DataFrame) -> None:
-    """save classified county data, tier summary, and metadata."""
+    """Save classified county data, tier summary, and metadata."""
     output_cols = [
         "county_fips",
         "county_name",
@@ -122,18 +122,15 @@ def save_results(df: pd.DataFrame, summary: pd.DataFrame) -> None:
         "risk_score",
         "risk_rank",
     ]
-
     valid_cols = [col for col in output_cols if col in df.columns]
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    save_csv(df[valid_cols], OUTPUT_FILE, logger)
+    save_csv(summary, SUMMARY_FILE, logger)
 
-    df[valid_cols].to_csv(OUTPUT_FILE, index=False)
-    summary.to_csv(SUMMARY_FILE, index=False)
-
+    # metadata gives the dashboard and README a quick summary of the county risk output
     zero_provider = int((df["provider_count"] == 0).sum())
     total_pop_desert = int(df[df["risk_tier"] == "access_desert"]["total_population"].sum())
 
-    # metadata gives the dashboard and README a quick summary of the county risk output
     metadata = {
         "tier_thresholds": {
             tier: threshold
@@ -147,13 +144,7 @@ def save_results(df: pd.DataFrame, summary: pd.DataFrame) -> None:
             df[df["risk_tier"] == "access_desert"]["practice_state"].unique().tolist()
         ),
     }
-
-    with open(METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    logger.info(f"saved classified -> {OUTPUT_FILE}")
-    logger.info(f"saved summary -> {SUMMARY_FILE}")
-    logger.info(f"saved metadata -> {METADATA_FILE}")
+    save_json(metadata, METADATA_FILE, logger)
 
 
 def run_county_risk_classification() -> pd.DataFrame:

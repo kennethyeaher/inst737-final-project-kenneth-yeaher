@@ -1,6 +1,6 @@
 import pandas as pd
-import json
 from pathlib import Path
+from utils.io import save_csv, save_json
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.access_risk_model")
@@ -142,25 +142,18 @@ def build_risk_summary(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_results(df: pd.DataFrame, summary: pd.DataFrame, thresholds: dict) -> None:
-    """save classified dataset, summary table, and threshold metadata."""
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
+    """Save classified dataset, summary table, and threshold metadata."""
     # only include columns that exist in the dataframe
     valid_cols = [c for c in OUTPUT_COLUMNS if c in df.columns]
-    df[valid_cols].to_csv(OUTPUT_FILE, index=False)
-    logger.info(f"saved classified data -> {OUTPUT_FILE}")
-
-    summary.to_csv(SUMMARY_FILE, index=False)
-    logger.info(f"saved tier summary -> {SUMMARY_FILE}")
+    save_csv(df[valid_cols], OUTPUT_FILE, logger)
+    save_csv(summary, SUMMARY_FILE, logger)
 
     metadata = {
         "tier_thresholds": thresholds,
         "total_states": len(df),
         "high_risk_states": df[df["risk_tier"] == "high_risk"]["state_name"].tolist(),
     }
-    with open(METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=2)
-    logger.info(f"saved metadata -> {METADATA_FILE}")
+    save_json(metadata, METADATA_FILE, logger)
 
 
 def run_access_risk_model() -> pd.DataFrame:

@@ -3,6 +3,8 @@ from io import StringIO
 from pathlib import Path
 import pandas as pd
 import requests
+from utils.cache import load_or_fetch
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.build_zip_county_crosswalk")
@@ -19,24 +21,23 @@ CACHE_FILE = Path("data/reference_tables/zcta_county_crosswalk.csv")
 OUTPUT_FILE = Path("data/reference_tables/zip_county_lookup.csv")
 
 
-def fetch_zcta_crosswalk(refresh: bool = False) -> pd.DataFrame:
-    """download the Census ZCTA to county crosswalk and cache it locally."""
-    if CACHE_FILE.exists() and not refresh:
-        logger.info(f"loading crosswalk cache -> {CACHE_FILE}")
-        return pd.read_csv(CACHE_FILE, dtype=str)
-
+def _download_crosswalk() -> pd.DataFrame:
+    """Pull the Census ZCTA to county crosswalk text file and parse it as a DataFrame."""
     logger.info("fetching ZCTA county crosswalk from Census...")
-
     resp = requests.get(ZCTA_COUNTY_URL, timeout=FETCH_TIMEOUT)
     resp.raise_for_status()
+    return pd.read_csv(StringIO(resp.text), sep="|", dtype=str)
 
-    raw = pd.read_csv(StringIO(resp.text), sep="|", dtype=str)
 
-    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    raw.to_csv(CACHE_FILE, index=False)
-
-    logger.info(f"cached crosswalk -> {CACHE_FILE} ({len(raw):,} rows)")
-    return raw
+def fetch_zcta_crosswalk(refresh: bool = False) -> pd.DataFrame:
+    """Return the cached Census crosswalk if present, otherwise download and cache it."""
+    return load_or_fetch(
+        CACHE_FILE,
+        fetcher=_download_crosswalk,
+        refresh=refresh,
+        logger=logger,
+        read_kwargs={"dtype": str},
+    )
 
 
 def build_largest_share_lookup(raw: pd.DataFrame) -> pd.DataFrame:
@@ -74,15 +75,11 @@ def build_largest_share_lookup(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_zip_county_crosswalk(refresh: bool = False) -> pd.DataFrame:
-    """run the full ZCTA to county lookup workflow and save the output."""
+    """Run the full ZCTA to county lookup workflow and save the output."""
     try:
         raw = fetch_zcta_crosswalk(refresh=refresh)
         lookup = build_largest_share_lookup(raw)
-
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        lookup.to_csv(OUTPUT_FILE, index=False)
-
-        logger.info(f"saved lookup -> {OUTPUT_FILE}")
+        save_csv(lookup, OUTPUT_FILE, logger)
         return lookup
 
     except requests.exceptions.RequestException as e:

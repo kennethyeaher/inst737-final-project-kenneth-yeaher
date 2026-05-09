@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import sys
 import warnings
 import requests
 import numpy as np
@@ -10,13 +8,10 @@ from io import StringIO
 from pathlib import Path
 from scipy import stats as scipy_stats
 
-warnings.filterwarnings("ignore", message=".*LibreSSL.*")
-
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
+from utils.io import save_csv, save_json
 from utils.logging_config import setup_logger
+
+warnings.filterwarnings("ignore", message=".*LibreSSL.*")
 
 logger = setup_logger("ovara.hrsa_validation")
 
@@ -70,9 +65,7 @@ def fetch_hrsa_hpsa(refresh: bool = False) -> pd.DataFrame | None:
         resp = requests.get(HRSA_HPSA_URL, timeout=HRSA_FETCH_TIMEOUT)
         resp.raise_for_status()
         raw = pd.read_csv(StringIO(resp.text), low_memory=False)
-        HRSA_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        raw.to_csv(HRSA_CACHE_FILE, index=False)
-        logger.info(f"cached HRSA data -> {HRSA_CACHE_FILE} ({len(raw):,} rows)")
+        save_csv(raw, HRSA_CACHE_FILE, logger)
         return _normalize(raw)
 
     except requests.exceptions.Timeout:
@@ -255,9 +248,7 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
             "hrsa_avg_score", "hrsa_fte_shortage",
         ] if c in merged.columns]
 
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        merged[output_cols].to_csv(OUTPUT_FILE, index=False)
-        logger.info(f"saved validation -> {OUTPUT_FILE}")
+        save_csv(merged[output_cols], OUTPUT_FILE, logger)
 
         metadata = {
             "hrsa_source": HRSA_HPSA_URL,
@@ -266,9 +257,7 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
             "total_states": len(merged),
             **metrics,
         }
-        with open(METADATA_FILE, "w") as f:
-            json.dump(metadata, f, indent=2)
-        logger.info(f"saved metadata -> {METADATA_FILE}")
+        save_json(metadata, METADATA_FILE, logger)
 
         return merged
 
