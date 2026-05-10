@@ -301,8 +301,11 @@ def county_kpi_cards(df: pd.DataFrame) -> list:
     pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
     med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
 
-    # ignore tiny counties here so this card does not overreact to very small populations
-    worst = df[df["total_population"] > 1000].nsmallest(1, "providers_per_100k")
+    # match the bar chart filter so this KPI and the chart agree on what "most underserved" means.
+    # access deserts (provider_count == 0) already get their own KPI card, so this tile points
+    # at the worst county that actually has at least one provider on the registry.
+    worst_pool = df[(df["total_population"] > 1000) & (df["provider_count"] > 0)]
+    worst = worst_pool.nsmallest(1, "providers_per_100k")
     worst_name = worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0] if len(worst) > 0 else "N/A"
 
     def _card(title, value, subtitle="", color=COLORS["text"], accent=COLORS["card_border"]):
