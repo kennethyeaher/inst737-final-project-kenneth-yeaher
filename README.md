@@ -121,7 +121,7 @@ pip install -e .
 python main.py
 
 # Launch the interactive dashboard separately
-python vis/interactive_visualizations.py
+python -m vis.interactive_visualizations
 ```
 
 Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any state on the map to filter the bar chart. Use **Reset** to return to the default view.
