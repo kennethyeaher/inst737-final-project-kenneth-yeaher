@@ -41,7 +41,12 @@ def find_provider_file() -> Path:
     """locate the actual provider data csv (not the header file)."""
     files = list(DATA_DIR.glob("npidata*.csv"))
 
-    # remove header definition files
+    # prefer the pre filtered reproductive health file when available
+    rh_file = DATA_DIR / "npidata_reproductive_health.csv"
+    if rh_file.exists():
+        return rh_file
+    
+    files = list(DATA_DIR.glob("npidata*.csv"))
     files = [f for f in files if "fileheader" not in f.name.lower()]
 
     if not files:

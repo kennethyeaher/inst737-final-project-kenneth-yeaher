@@ -180,9 +180,6 @@ __marimo__/
 data/visualizations/
 data/visualizations/*.html
 
-# large nppes raw files
-data/extracted/nppes_weekly_raw/npidata_pfile_*.csv
-data/extracted/nppes_weekly_raw/npidata_reproductive_health.csv
 
 # pipeline logs
 logs/
