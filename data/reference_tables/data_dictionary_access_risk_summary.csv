@@ -1,0 +1,7 @@
+attribute_name,description,data_type,example_value,unit
+risk_tier,"Categorical risk tier label: high_risk, moderate_risk, adequate, or well_served.",string,high_risk,
+state_count,Number of states assigned to this risk tier.,integer,13,states
+avg_residual,"Mean residual across states in the tier; negative values indicate undersupply.",float,-3.21,providers per 100k
+avg_density,Mean actual providers per 100k population across states in the tier.,float,18.5,providers per 100k
+avg_supply_gap,Mean supply gap magnitude across states in the tier.,float,3.21,providers per 100k
+avg_risk_score,Mean continuous risk score across states in the tier.,float,87.6,score

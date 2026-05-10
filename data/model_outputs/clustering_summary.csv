@@ -1,0 +1,3 @@
+cluster,cluster_label,state_count,avg_density,avg_diversity,avg_growth_per_100k,avg_enum_year,member_states
+1,low_supply,47,8.47603455719348,2.586025923553605,0.4777280246588985,2011.2322188880676,"AL, AR, AZ, CA, CO, CT, DC, DE, FL, GA, IA, ID, IL, IN, KS, KY, LA, MA, MD, ME, MI, MN, MO, MS, MT, NC, ND, NE, NH, NJ, NM, NV, NY, OH, OK, OR, PA, RI, SC, SD, TN, TX, UT, VA, WA, WI, WV"
+2,high_supply,4,52.097262948541044,2.4506944444444443,2.7900893690978097,2011.4847693673944,"AK, HI, VT, WY"

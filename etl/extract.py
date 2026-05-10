@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.extract")
@@ -75,12 +76,8 @@ def extract_nppes() -> pd.DataFrame:
         df = df[cols_existing].copy()
         logger.info(f"filtered dataset shape: {df.shape}")
 
-        # ensure output directory exists
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-        # save standardized raw dataset
-        df.to_csv(OUTPUT_FILE, index=False)
-        logger.info(f"saved standardized raw file -> {OUTPUT_FILE}")
+        # save standardized raw dataset for the transform stage
+        save_csv(df, OUTPUT_FILE, logger)
 
         return df
 

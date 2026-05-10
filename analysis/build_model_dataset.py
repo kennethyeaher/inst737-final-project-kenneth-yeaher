@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.build_model_dataset")
@@ -79,12 +80,9 @@ def build_provider_geo_features() -> pd.DataFrame:
             axis=1,
         ).fillna(0).reset_index()
 
-        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        geo_features.to_csv(OUTPUT_FILE, index=False)
-
         logger.info(f"zip-level rows: {geo_features.shape[0]:,}")
         logger.info(f"states covered: {geo_features['practice_state'].nunique()}")
-        logger.info(f"saved -> {OUTPUT_FILE}")
+        save_csv(geo_features, OUTPUT_FILE, logger)
 
         return geo_features
 

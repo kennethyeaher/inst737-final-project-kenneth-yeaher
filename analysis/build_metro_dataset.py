@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.build_metro_dataset")
@@ -88,8 +89,8 @@ def prepare_cbsa_county(cbsa_county: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"metropolitan county rows: {metro_county.shape[0]:,}")
 
     metro_county["county_fips"] = (
-        metro_county["FIPS State Code"].astype(str).str.zfill(2)
-        + metro_county["FIPS County Code"].astype(str).str.zfill(3)
+        metro_county["FIPS State Code"].astype(int).astype(str).str.zfill(2)
+        + metro_county["FIPS County Code"].astype(int).astype(str).str.zfill(3)
     )
 
     metro_county = metro_county[
@@ -147,12 +148,9 @@ def merge_cbsa_reference(
 # save stage
 
 def save_output(df: pd.DataFrame) -> None:
-    """save the metro reference dataset."""
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_FILE, index=False)
-
+    """Save the metro reference dataset for downstream joins."""
     logger.info(f"rows: {df.shape[0]:,}")
-    logger.info(f"saved -> {OUTPUT_FILE}")
+    save_csv(df, OUTPUT_FILE, logger)
 
 
 # workflow manager

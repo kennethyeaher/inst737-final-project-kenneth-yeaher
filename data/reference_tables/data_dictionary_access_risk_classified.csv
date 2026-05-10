@@ -1,0 +1,14 @@
+attribute_name,description,data_type,example_value,unit
+practice_state,Two letter state abbreviation.,string,MD,
+state_name,Full state name.,string,Maryland,
+provider_count,Total active reproductive health providers in the state.,integer,1842,providers
+metro_population,Aggregated metropolitan population from Census CBSA estimates.,float,6185278,residents
+providers_per_100k,Actual provider count per 100k metro population.,float,29.78,providers per 100k
+predicted_provider_density,Model predicted provider density based on regression features.,float,27.44,providers per 100k
+residual,Difference between actual and predicted provider density.,float,-2.34,providers per 100k
+risk_score,"Continuous 0 to 100 score based on residual percentile; 100 is most underserved.",float,82.4,score
+risk_tier,"Categorical tier assigned by residual quartile: high_risk, moderate_risk, adequate, or well_served.",string,high_risk,
+supply_gap,"Absolute provider shortfall relative to prediction; zero for states above prediction.",float,2.34,providers per 100k
+risk_rank,State rank by severity where 1 is most underserved.,integer,3,
+taxonomy_diversity,Average number of unique taxonomy codes across ZIP areas in the state.,float,2.35,taxonomy groups
+recent_provider_growth,Total providers enumerated within the recent three year lookback window.,integer,312,providers

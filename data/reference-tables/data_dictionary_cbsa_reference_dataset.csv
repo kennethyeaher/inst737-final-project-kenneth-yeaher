@@ -1,9 +1,0 @@
-attribute_name,description,data_type,example_value,unit
-CBSA Code,Core Based Statistical Area code used by Census/OMB metro delineation files.,string,47900,
-CBSA Title,Official CBSA metropolitan area title.,string,"Washington-Arlington-Alexandria, DC-VA-MD-WV",
-county_fips,Combined 5 digit county FIPS code built from state and county FIPS components.,string,24031,
-County/County Equivalent,County or county-equivalent name associated with the CBSA.,string,Montgomery County,
-State Name,State name associated with the county row in the CBSA delineation file.,string,Maryland,
-cbsa_title,Metro title field from the Census population workbook before cleaning.,string,"Washington-Arlington-Alexandria, DC-VA-MD-WV Metro Area",
-population_2024,2024 metro population estimate from Census reference file.,integer,6390000,residents
-cbsa_title_clean,Cleaned metro title used to support joining between delineation and population files.,string,"Washington-Arlington-Alexandria, DC-VA-MD-WV",

@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
+from utils.io import save_csv
 from utils.logging_config import setup_logger
 
 logger = setup_logger("ovara.regression_model")
@@ -78,10 +79,8 @@ def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
 
 
 def save_results(df: pd.DataFrame) -> None:
-    """save regression outputs for downstream risk classification."""
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_FILE, index=False)
-    logger.info(f"saved -> {OUTPUT_FILE}")
+    """Save regression outputs so the risk classification stage can read them."""
+    save_csv(df, OUTPUT_FILE, logger)
 
 
 def run_regression_model() -> pd.DataFrame:

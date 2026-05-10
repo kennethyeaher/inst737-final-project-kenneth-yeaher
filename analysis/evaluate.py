@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import json
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
+from utils.io import save_csv, save_json
 from utils.logging_config import setup_logger
 from analysis.regression_model import FEATURE_COLUMNS, TARGET_COLUMN
 
@@ -103,25 +103,15 @@ def evaluate_model(df: pd.DataFrame) -> dict:
 
 
 def save_results(results: dict, df: pd.DataFrame) -> None:
-    """save evaluation json and per-state detail csv."""
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    # per-state detail
+    """Save evaluation json and per state detail csv."""
+    # build the per state detail table sorted by residual so the worst gaps come first
     detail = df[["practice_state", "state_name", "providers_per_100k",
                   "predicted_provider_density", "residual"]].copy()
     detail["abs_error"] = detail["residual"].abs()
     detail = detail.sort_values("residual").reset_index(drop=True)
 
-    json_path = OUTPUT_DIR / "evaluation_results.json"
-    csv_path = OUTPUT_DIR / "evaluation_detail.csv"
-
-    with open(json_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    detail.to_csv(csv_path, index=False)
-
-    logger.info(f"saved -> {json_path}")
-    logger.info(f"saved -> {csv_path}")
+    save_json(results, OUTPUT_DIR / "evaluation_results.json", logger)
+    save_csv(detail, OUTPUT_DIR / "evaluation_detail.csv", logger)
 
 
 def run_evaluation() -> dict:

@@ -1,0 +1,7 @@
+attribute_name,description,data_type,example_value,unit
+practice_state,Two letter state abbreviation.,string,MD,
+state_name,Full state name.,string,Maryland,
+providers_per_100k,Actual provider count per 100k metro population.,float,29.78,providers per 100k
+predicted_provider_density,Model predicted provider density from the regression.,float,27.44,providers per 100k
+residual,Difference between actual and predicted provider density.,float,-2.34,providers per 100k
+abs_error,Absolute value of the residual used for per state error reporting.,float,2.34,providers per 100k

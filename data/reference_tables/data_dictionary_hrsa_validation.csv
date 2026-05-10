@@ -1,0 +1,11 @@
+attribute_name,description,data_type,example_value,unit
+practice_state,Two letter state abbreviation.,string,WV,
+state_name,Full state name.,string,West Virginia,
+risk_tier,"Ovara access risk tier assigned by residual quartile: high_risk, moderate_risk, adequate, or well_served.",string,high_risk,
+risk_score,"Continuous Ovara risk score 0 to 100; 100 is most underserved.",float,96.1,score
+risk_rank,Ovara severity rank where 1 is most underserved.,integer,2,
+hrsa_hpsa_present,"True if the state has at least one active HRSA Primary Care HPSA designation; False otherwise.",boolean,True,
+hrsa_hpsa_count,Number of active HRSA Primary Care HPSA designations in the state.,integer,14,designations
+hrsa_shortage_pop,Total population living in HRSA-designated Primary Care shortage areas within the state.,float,312450,residents
+hrsa_avg_score,"Mean HRSA HPSA score across the state's active designations; higher scores indicate greater shortage severity (0 to 25 scale).",float,17.3,score
+hrsa_fte_shortage,Estimated full-time equivalent provider shortage across all active HPSA designations in the state.,float,8.4,FTE providers

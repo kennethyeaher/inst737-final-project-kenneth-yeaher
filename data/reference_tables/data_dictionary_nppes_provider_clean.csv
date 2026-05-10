@@ -1,0 +1,19 @@
+attribute_name,description,data_type,example_value,unit
+npi,Unique National Provider Identifier for each provider record.,string,1234567890,
+entity_type_code,Indicates whether the provider is an individual (1) or organization (2).,integer,1,
+provider_org_name,Legal business name for organization records.,string,ABC Fertility Center,
+provider_last_name,Provider last name for individual records.,string,Smith,
+provider_first_name,Provider first name for individual records.,string,Jane,
+provider_credential,Clinical credential or degree if provided.,string,MD,
+practice_city,Business practice location city.,string,Rockville,
+practice_state,Business practice location state abbreviation or code after cleaning.,string,MD,
+practice_zip,Original business practice postal code from NPPES.,string,20850-1234,
+practice_phone,Business practice location telephone number.,string,3015551234,
+taxonomy_code_1,Primary listed taxonomy code from NPPES field set.,string,207VX0000X,
+primary_taxonomy_switch_1,Indicator showing whether taxonomy_code_1 is marked primary.,string,Y,
+taxonomy_group_1,Broad taxonomy group associated with taxonomy_code_1.,string,Allopathic & Osteopathic Physicians,
+provider_enumeration_date,Date the NPI was originally enumerated.,date,2018-05-10,YYYY-MM-DD
+last_update_date,Most recent NPPES update date for the provider record.,date,2025-12-15,YYYY-MM-DD
+npi_deactivation_date,"Date the NPI was deactivated, if applicable.",date,,YYYY-MM-DD
+npi_reactivation_date,"Date the NPI was reactivated after deactivation, if applicable.",date,,YYYY-MM-DD
+zip5,Standardized 5 digit ZIP code derived from practice_zip for geography joins.,string,20850,
