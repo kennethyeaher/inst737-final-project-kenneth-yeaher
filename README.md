@@ -152,14 +152,17 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `preprocess_nppes.py` | One time NPPES filter to reproductive health taxonomy codes |
 | File | `transform.py` | Cleaning, filtering, and standardization |
 | **Folder** | **`vis/`** | **Visualization and dashboard modules** |
-| File | `_styles.py` | Shared color, font, and layout tokens |
-| File | `_components.py` | Reusable widgets including KPI cards and state detail cards |
+| File | `_brand.py` | Brand palette, typography stack, and tier color mapping |
+| File | `_branding.py` | Sticky topnav with the Ovara wordmark and logo mark |
+| File | `_components.py` | Shared KPI cards and state and county detail strips |
+| File | `_styles.py` | Semantic UI tokens, chart layout defaults, font presets |
 | File | `county_visualizations.py` | County choropleth, county bar chart, and county components |
 | File | `dashboard.py` | Layout assembly and callback registration |
 | File | `exports.py` | Static HTML exports for the four state level figures |
+| File | `findings_card.py` | Cream editorial findings card with state and county variants |
 | File | `interactive_visualizations.py` | Thin entry point that runs the dashboard workflow |
 | File | `state_charts.py` | State level chart builders for bar, scatter, and choropleth charts |
-| File | `summary_text.py` | Executive summary text for the dashboard |
+| File | `tier_grid.py` | Risk tier explainer grid with live state and county counts |
 | **Folder** | **`utils/`** | **Shared configuration and helpers** |
 | File | `cache.py` | `load_or_fetch` wrapper for cached external downloads |
 | File | `fips.py` | Single source FIPS to state mapping |
@@ -400,11 +403,13 @@ Cluster ids are relabeled by ascending mean density so cluster 1 is always the l
 
 <br>
 
-A Dash web application with two views, controlled by a State Level vs County Level toggle at the top of the page.
+A Dash web application with two views, controlled by a State Level vs County Level toggle below the page header. The dashboard runs on a dark mode interface built around the Ovara brand palette and typography stack: Fraunces, Inter, and JetBrains Mono. Design tokens are centralized in `vis/_brand.py` and `vis/_styles.py` so the visual identity stays consistent across every chart, card, and panel.
 
-**State view** shows residual based access tiers across the 51 states. It includes a USA choropleth that can toggle between Access Gap and Risk Tier coloring, a filterable bar chart of the most underserved states, a predicted vs actual scatter with outlier annotations, KPI cards, and an automatically generated executive summary. Clicking a state filters the detail view.
+Both views follow the same structure: KPI tiles, a data visualization block, a US map, a click activated detail strip, a cream colored findings card with the model's main takeaways, and a risk tier explainer grid that defines each tier with live counts.
 
-**County view** shows density threshold tiers across all 3,144 counties. It uses Plotly Choroplethmapbox so users can pan and scroll zoom into individual counties. A state filter dropdown frames the map around the chosen state. The bar chart shows the most underserved counties that have at least one provider, while access deserts get their own KPI tile. Clicking a county brings up a detail card. The map is updated with Dash Patch on click so selecting a county does not re render all 3,144 polygons.
+**State view** shows residual based access tiers across the 51 states. It includes a USA choropleth that toggles between Access Gap and Risk Tier coloring, a tier colored bar chart of the most underserved states, a predicted vs actual scatter with outlier annotations, four KPI cards, a state level findings card, and a four card tier grid for Critical, At Risk, Adequate, and Well Served states. Clicking a state filters the bar chart and opens a detail strip with that state's main metrics.
+
+**County view** shows density threshold tiers across all 3,144 counties on a light Carto basemap so the brand colored tiers stay easy to read. It uses Plotly Choroplethmapbox so users can pan and scroll zoom into individual counties. A state filter dropdown reframes the map, KPI tiles, findings card, and tier grid around the chosen state in one callback so every county level section stays in sync. The bar chart shows the most underserved counties that have at least one provider, while access deserts get their own KPI tile. Clicking a county opens a detail card. The map uses Dash Patch on click so selecting a county does not re render all 3,144 polygons.
 
 > **Known limitation:** Connecticut is missing from the county map. The Census Bureau switched Connecticut from county based geography to nine Planning Regions in 2022. The county data uses the new Planning Region FIPS codes, but the bundled Plotly geojson still has the old county FIPS codes. Connecticut data is correct in the underlying CSV but does not render on the map until the geojson is refreshed.
 
