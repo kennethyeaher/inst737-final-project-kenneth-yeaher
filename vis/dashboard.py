@@ -33,11 +33,9 @@ from vis._styles import (
     COLORS,
     COUNTY_MAP_CONFIG,
     FONT_STACK,
-    SUMMARY_CARD_STYLE,
 )
 from vis.findings_card import county_findings_card, state_findings_card
 from vis.state_charts import build_bar, build_choropleth, build_scatter
-from vis.summary_text import generate_state_summary
 from vis.tier_grid import county_tier_grid, state_tier_grid
 
 
@@ -177,19 +175,6 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
         # findings card gives the map a clearer written takeaway before the rest of the page
         dbc.Row(dbc.Col(state_findings_card(state_df), width=12)),
 
-        # written summary panel
-        dbc.Row(dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Executive Summary", style={
-                "fontWeight": "700", "textTransform": "uppercase",
-                "letterSpacing": "0.05em", "color": COLORS["text_muted"],
-                "fontSize": "0.8rem",
-            }),
-            html.Div(generate_state_summary(state_df), style={
-                "fontSize": "0.95rem", "lineHeight": "1.7",
-                "color": COLORS["text"], "marginBottom": "0",
-            }),
-        ]), style=SUMMARY_CARD_STYLE), width=12), className="mb-4"),
-
         # framework reference grid at the bottom defines each tier
         dbc.Row(dbc.Col(state_tier_grid(state_df), width=12)),
     ])
@@ -203,7 +188,6 @@ def _county_view(county: _CountyBundle) -> html.Div:
         build_county_bar,
         build_county_choropleth,
         county_kpi_cards,
-        generate_county_summary,
     )
 
     return html.Div(id="county-view", style={"display": "none"}, children=[
@@ -213,36 +197,20 @@ def _county_view(county: _CountyBundle) -> html.Div:
             className="g-3 mb-3",
         ),
 
-        # bar chart on the left, written county summary on the right
-        dbc.Row([
-            dbc.Col(dbc.Card([
-                dcc.Graph(
-                    id="county-bar-chart",
-                    figure=build_county_bar(county.df) if county.available else go.Figure(),
-                    config=CHART_CONFIG,
-                ),
-                html.Div(
-                    dbc.Button("Reset", id="county-reset", size="sm",
-                               color="secondary", outline=True),
-                    style={"textAlign": "right", "padding": "6px 12px 10px 0"},
-                ),
-            ], style=CARD_STYLE), md=5),
-            dbc.Col(dbc.Card(dbc.CardBody([
-                html.H6("County Analysis", style={
-                    "fontWeight": "700", "textTransform": "uppercase",
-                    "letterSpacing": "0.05em", "color": COLORS["text_muted"],
-                    "fontSize": "0.8rem",
-                }),
-                html.Div(
-                    generate_county_summary(county.df) if county.available else [],
-                    id="county-summary-text",
-                    style={
-                        "fontSize": "0.95rem", "lineHeight": "1.7",
-                        "color": COLORS["text"], "marginBottom": "0",
-                    },
-                ),
-            ]), style=SUMMARY_CARD_STYLE), md=7),
-        ], className="g-3 mb-3"),
+        # bar chart now spans the full row since the analysis panel moved
+        # into the cream findings card below the map
+        dbc.Row(dbc.Col(dbc.Card([
+            dcc.Graph(
+                id="county-bar-chart",
+                figure=build_county_bar(county.df) if county.available else go.Figure(),
+                config=CHART_CONFIG,
+            ),
+            html.Div(
+                dbc.Button("Reset", id="county-reset", size="sm",
+                           color="secondary", outline=True),
+                style={"textAlign": "right", "padding": "6px 12px 10px 0"},
+            ),
+        ], style=CARD_STYLE), width=12), className="mb-3"),
 
         # county map with scroll zoom enabled for smaller counties
         dbc.Row(dbc.Col(dbc.Card(
@@ -448,7 +416,6 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         build_county_choropleth,
         county_detail_card,
         county_kpi_cards,
-        generate_county_summary,
     )
 
     @app.callback(
@@ -523,24 +490,22 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
 
     @app.callback(
         Output("county-kpi-row", "children"),
-        Output("county-summary-text", "children"),
         Output("county-findings-slot", "children"),
         Output("county-tier-grid-slot", "children"),
         Input("county-state-filter", "value"),
     )
-    def update_county_kpis_and_summary(state_filter):
+    def update_county_filtered_blocks(state_filter):
         """
         Update every county view section that depends on the state filter.
 
-        This keeps the KPI cards, summary text, findings card, and tier grid
-        aligned with the filtered map and bar chart.
+        This keeps the KPI cards, findings card, and tier grid aligned with
+        the filtered map and bar chart.
         """
         kpis = county_kpi_cards(county.df, state_filter=state_filter)
-        summary = generate_county_summary(county.df, state_filter=state_filter)
         findings = county_findings_card(county.df, state_filter=state_filter)
         tier_grid = county_tier_grid(county.df, state_filter=state_filter)
 
-        return kpis, summary, findings, tier_grid
+        return kpis, findings, tier_grid
 
 
 def _register_view_toggle(app: Dash) -> None:

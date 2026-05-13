@@ -119,28 +119,28 @@ def build_bar(
     selected_states: list[str] | None = None,
 ) -> go.Figure:
     """
-    Horizontal bar chart of the most underserved states.
+    Build the horizontal bar chart for the most underserved states.
 
-    When the user clicks a state on the map the chart filters to that state.
-    Otherwise it shows the bottom ten by residual.
-
-    Parameters
-    df : pd.DataFrame with risk tiers already assigned.
-    selected_states : list[str] or None
-        State abbreviations passed in from the map click. None shows the
-        default top ten view.
-
-    Returns
-    plotly Figure.
+    Bars are colored by each state's risk tier so the chart works as both
+    a residual ranking and a tier breakdown. When a user clicks a state on
+    the map, the chart filters to that selected state.
     """
     if selected_states:
         subset = df[df["practice_state"].isin(selected_states)].sort_values("residual")
-        title_text = f"Access Gap {', '.join(selected_states)}"
+        title_text = f"Access Gap for {', '.join(selected_states)}"
     else:
         subset = df.nsmallest(10, "residual").sort_values("residual")
         title_text = "Top 10 Most Underserved States"
 
     x_min = subset["residual"].min() if len(subset) > 0 else -4
+
+    # color each bar by risk tier so the chart is easier to read at a glance
+    from vis._styles import RISK_TIER_COLORS as TIER_COLORS
+
+    bar_colors = [
+        TIER_COLORS.get(tier, COLORS["neg_mid"])
+        for tier in subset["risk_tier"].astype(str)
+    ]
 
     fig = go.Figure(go.Bar(
         x=subset["residual"],
@@ -149,15 +149,7 @@ def build_bar(
         text=subset["residual"].round(2),
         textposition="outside",
         textfont={"size": 12, "color": COLORS["text"]},
-        marker={
-            "color": subset["residual"],
-            "colorscale": [
-                [0.0, COLORS["neg_strong"]],
-                [0.5, COLORS["neg_mid"]],
-                [1.0, "#fddbc7"],
-            ],
-            "showscale": False,
-        },
+        marker={"color": bar_colors},
         hovertemplate="<b>%{y}</b><br>Residual: %{x:.2f}<extra></extra>",
     ))
 

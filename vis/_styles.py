@@ -36,15 +36,15 @@ COLORS: Final[dict[str, str]] = {
     "kpi_good": UI["good"],
 }
 
-# diverging palette for access gap maps and the residual scatter.
-# the center anchor is the dashboard surface color so zero-residual
-# states recede on a dark background instead of glowing cream.
+# diverging palette for access gap maps and residual scatter plots
+# the center anchor uses the dashboard surface color so zero residual states recede
+# under supplied states use coral so they stay visually separate from the dashboard chrome
 UNIFIED_COLORSCALE: Final[list[list]] = [
-    [0.0,  BRAND["iris_deep"]],
-    [0.25, BRAND["coral"]],
-    [0.5,  UI["surface_alt"]],
-    [0.75, BRAND["marigold"]],
-    [1.0,  BRAND["sage"]],
+    [0.0, BRAND["coral"]],
+    [0.25, BRAND["marigold"]],
+    [0.5, UI["surface_alt"]],
+    [0.75, "#7FB389"],
+    [1.0, BRAND["sage"]],
 ]
 
 # state level risk tiers ordered from most underserved to best served

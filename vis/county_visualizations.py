@@ -157,13 +157,14 @@ def build_county_choropleth(
         for _, row in plot_df.iterrows()
     ]
 
-    # snap the map to a state when the user filters, otherwise start with the full US view
+    # snap the map to a state when the user filters, otherwise center on the contiguous 
+    # US at a zoom that fills the available width
     if state_filter and state_filter in STATE_VIEW_PARAMS:
         map_center = STATE_VIEW_PARAMS[state_filter]["center"]
         map_zoom = STATE_VIEW_PARAMS[state_filter]["zoom"]
     else:
-        map_center = {"lat": 38.5, "lon": -96.0}
-        map_zoom = 3.0
+        map_center = {"lat": 39.5, "lon": -98.0}
+        map_zoom = 3.6
 
     title = "County Level Reproductive Health Access"
     if state_filter:
@@ -360,84 +361,3 @@ def county_detail_card(row: pd.Series) -> dbc.Card:
     return _county_detail_card(row, tier_color=tier_color, tier_label=tier_label)
 
 
-def generate_county_summary(df: pd.DataFrame, state_filter: str | None = None) -> list:
-    """
-    Build the written summary for the county access view.
-
-    When a state is selected, all summary numbers are calculated only for that
-    state. The national access desert paragraph is skipped because it would no
-    longer match the filtered view.
-    """
-    scope = df[df["practice_state"] == state_filter] if state_filter else df
-
-    if len(scope) == 0:
-        return [html.Span("No county data available for this selection.")]
-
-    n_counties = len(scope)
-    n_desert = int((scope["provider_count"] == 0).sum())
-    pct_desert = round(n_desert / n_counties * 100) if n_counties > 0 else 0
-    pop_desert = int(scope[scope["provider_count"] == 0]["total_population"].sum())
-
-    n_critical = int((scope["risk_tier"] == "critical").sum())
-    n_underserved = int((scope["risk_tier"] == "underserved").sum())
-    n_concern = n_desert + n_critical + n_underserved
-
-    total_providers = int(scope["provider_count"].sum())
-
-    populated = scope[scope["total_population"] > 0]
-    med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
-
-    desert_states = df[df["provider_count"] == 0]["practice_state"].value_counts()
-    top_desert_states = ", ".join(desert_states.head(5).index.tolist())
-
-    b = lambda text: html.B(text, style={"color": COLORS["text"]})
-
-    paragraphs: list = [
-        html.Span([
-            "At the county level, the access picture becomes much sharper. Of the ",
-            b(f"{n_counties:,} counties"),
-            " in this analysis, ",
-            b(f"{n_desert:,} ({pct_desert}%)"),
-            " have ",
-            b("zero registered reproductive health providers"),
-            ". That means no OB/GYNs, no midwives, and no women's health NPs are listed "
-            "in the federal registry for those counties. These are not just areas with low "
-            "provider density. They are access deserts where the local provider workforce is "
-            "missing from the data entirely. The ",
-            b(f"{pop_desert:,} residents"),
-            " living in these counties likely have to travel to a neighboring county for care.",
-        ]),
-        html.Br(),
-        html.Br(),
-        html.Span([
-            "Beyond the access deserts, another ",
-            b(f"{n_critical:,} counties"),
-            " are classified as Critical, with fewer than 5 providers per 100,000 residents, and ",
-            b(f"{n_underserved:,}"),
-            " are classified as Underserved, with 5 to 10 providers per 100,000 residents. In total, ",
-            b(f"{n_concern:,} counties"),
-            ", or roughly ",
-            b(f"{round(n_concern / n_counties * 100)}%"),
-            " of all US counties, fall into a tier of concern. The national median county density is just ",
-            b(f"{med_density:.1f}"),
-            " providers per 100,000 residents, spread across a total workforce of ",
-            b(f"{total_providers:,}"),
-            " reproductive health providers.",
-        ]),
-            ]
-
-    # only show this paragraph for the national view because it compares states against each other
-    if not state_filter:
-        paragraphs.extend([
-            html.Br(),
-            html.Br(),
-            html.Span([
-                "The states with the most access desert counties are ",
-                b(top_desert_states),
-                ". This county level view shows gaps that state averages can completely hide. "
-                "A state can look adequate overall while still having dozens of counties where no "
-                "reproductive health provider is registered.",
-            ]),
-        ])
-
-    return paragraphs
