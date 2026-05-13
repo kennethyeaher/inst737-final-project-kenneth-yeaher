@@ -24,6 +24,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, ctx, dcc, html
 
+from vis._branding import topnav
 from vis._components import kpi_card, state_detail_card
 from vis._styles import (
     CARD_STYLE,
@@ -314,9 +315,9 @@ def _geo_toggle_row(county: _CountyBundle) -> dbc.Row:
     ], className="align-items-center mb-3")
 
 
-def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> dbc.Container:
-    """Compose the full app.layout from the header, toggle, and two view sections."""
-    return dbc.Container([
+def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
+    """Compose the full app.layout from the topnav, page container, and views."""
+    page = dbc.Container([
         _header(),
         html.Hr(style={"margin": "0 0 16px 0", "borderColor": COLORS["card_border"]}),
         _geo_toggle_row(county),
@@ -328,6 +329,8 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> dbc.Containe
         "maxWidth": "1440px",
         "paddingBottom": "40px",
     })
+
+    return html.Div([topnav(context_tag="State · 2026"), page])
 
 
 def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
