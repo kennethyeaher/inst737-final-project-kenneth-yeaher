@@ -21,30 +21,8 @@ from vis._styles import (
 GEOJSON_FILE = Path("data/reference_tables/counties_geojson.json")
 COUNTY_RISK_FILE = Path("data/model_outputs/county_risk_classified.csv")
 
-FONT_STACK = "Inter, Segoe UI, sans-serif"
-
-COLORS = {
-    "text": "#212529",
-    "text_muted": "#6c757d",
-    "card_border": "#e0e0e0",
-    "kpi_bad": "#c0392b",
-    "accent": "#2ca25f",
-}
-
-CARD_STYLE = {
-    "border": f"1px solid {COLORS['card_border']}",
-    "borderRadius": "10px",
-    "boxShadow": "0 1px 4px rgba(0,0,0,0.06)",
-}
-
-TIER_COLORS = {
-    "access_desert": "#67000d",
-    "critical": "#d32f2f",
-    "underserved": "#ef8a62",
-    "adequate": "#67a9cf",
-    "well_served": "#2166ac",
-}
-
+# county tier setup ordered from worst access to strongest access
+TIER_COLORS = COUNTY_TIER_COLORS
 TIER_ORDER = ["access_desert", "critical", "underserved", "adequate", "well_served"]
 
 TIER_LABELS = {
