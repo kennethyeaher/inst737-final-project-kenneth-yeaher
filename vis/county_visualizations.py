@@ -195,7 +195,7 @@ def build_county_choropleth(
     ))
 
     fig.update_layout(
-        mapbox_style="carto-darkmatter",
+        mapbox_style="carto-positron",
         mapbox_zoom=map_zoom,
         mapbox_center=map_center,
         margin={"l": 0, "r": 0, "t": 50, "b": 0},
@@ -340,53 +340,17 @@ def county_kpi_cards(df: pd.DataFrame) -> list:
 
 
 def county_detail_card(row: pd.Series) -> dbc.Card:
-    """build the detail card for the county a user selects."""
-    name = row["county_name"]
+    """
+    Small wrapper around the shared county detail card.
+
+    County tier labels and colors live in this file, so this function resolves
+    them first and then sends the row to the shared layout component.
+    """
     tier = str(row["risk_tier"])
     tier_color = TIER_COLORS.get(tier, COLORS["text"])
     tier_label = TIER_LABELS.get(tier, tier)
 
-    metrics = [
-        ("Providers", f"{int(row['provider_count']):,}"),
-        ("Density / 100k", f"{row['providers_per_100k']:.1f}"),
-        ("Population", f"{int(row['total_population']):,}"),
-        ("Specialties", f"{int(row.get('unique_taxonomies', 0))}"),
-        ("Recent Growth", f"{int(row.get('recent_provider_growth', 0))}"),
-    ]
-
-    metric_cols = [
-        dbc.Col(html.Div([
-            html.P(label, className="mb-0", style={
-                "fontSize": "0.75rem",
-                "color": COLORS["text_muted"],
-                "textTransform": "uppercase",
-                "fontWeight": "600",
-            }),
-            html.P(value, className="mb-0", style={
-                "fontSize": "1.3rem",
-                "fontWeight": "700",
-                "color": COLORS["text"],
-            }),
-        ], style={"textAlign": "center"}), md=2)
-        for label, value in metrics
-    ]
-
-    return dbc.Card(dbc.CardBody([
-        dbc.Row([
-            dbc.Col(html.Div([
-                html.H5(name, className="mb-1", style={"fontWeight": "700"}),
-                html.Span(tier_label, style={
-                    "fontSize": "0.85rem",
-                    "fontWeight": "600",
-                    "color": "white",
-                    "backgroundColor": tier_color,
-                    "padding": "3px 12px",
-                    "borderRadius": "12px",
-                }),
-            ]), md=2),
-            *metric_cols,
-        ], className="align-items-center"),
-    ]), style={**CARD_STYLE, "borderLeft": f"5px solid {tier_color}"})
+    return _county_detail_card(row, tier_color=tier_color, tier_label=tier_label)
 
 
 def generate_county_summary(df: pd.DataFrame) -> list:
