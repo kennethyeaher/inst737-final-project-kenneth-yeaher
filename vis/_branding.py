@@ -8,43 +8,37 @@ know hex values or font names.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import dash_bootstrap_components as dbc
 from dash import html
-from dash import svg as DashSvg
 
 from vis._brand import BRAND, FONT_HEADING, FONT_MONO
 from vis._styles import COLORS
 
 
-def _logo_mark(size: int = 26) -> html.Div:
+def _logo_mark(size: int = 26) -> html.Img:
     """
-    Build the Ovara logo mark: an iris purple rounded square with a
-    cream ring and dot. Rendered as inline SVG so it scales cleanly
-    and inherits brand colors without any image asset.
+    Build the Ovara logo mark: an iris-purple rounded square with a
+    cream ring and dot. Rendered as a URL-encoded SVG data URI so it
+    scales cleanly without needing an image asset on disk.
     """
     iris = BRAND["iris"]
     cream = BRAND["cream"]
 
-    svg = DashSvg.Svg(
-        [
-            DashSvg.Rect(width="26", height="26", rx="6", fill=iris),
-            DashSvg.Circle(
-                cx="13", cy="13", r="7.5",
-                fill="none", stroke=cream, strokeOpacity="0.93", strokeWidth="1.8",
-            ),
-            DashSvg.Circle(
-                cx="13", cy="13", r="2.8",
-                fill=cream, fillOpacity="0.93",
-            ),
-        ],
-        xmlns="http://www.w3.org/2000/svg",
-        viewBox="0 0 26 26",
-        width=str(size),
-        height=str(size),
-        style={"display": "block"},
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">'
+        f'<rect width="26" height="26" rx="6" fill="{iris}"/>'
+        f'<circle cx="13" cy="13" r="7.5" fill="none" '
+        f'stroke="{cream}" stroke-opacity="0.93" stroke-width="1.8"/>'
+        f'<circle cx="13" cy="13" r="2.8" fill="{cream}" fill-opacity="0.93"/>'
+        f'</svg>'
     )
 
-    return html.Div(svg, style={"display": "flex", "alignItems": "center"})
+    return html.Img(
+        src=f"data:image/svg+xml;utf8,{quote(svg)}",
+        style={"width": f"{size}px", "height": f"{size}px", "display": "block"},
+    )
 
 
 def wordmark(size_px: int = 17) -> html.Span:
