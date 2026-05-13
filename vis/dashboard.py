@@ -24,6 +24,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, ctx, dcc, html
 
+from vis._brand import BRAND, FONT_HEADING
 from vis._branding import topnav
 from vis._components import kpi_card, state_detail_card
 from vis._styles import (
@@ -247,72 +248,104 @@ def _county_view(county: _CountyBundle) -> html.Div:
 
 
 def _header() -> dbc.Row:
-    """The dashboard title and subtitle row at the top of the page."""
-    return dbc.Row(dbc.Col(html.Div([
-        html.H3(
-            "Reproductive Health Provider Access Dashboard",
-            className="mb-2",
-            style={
-                "fontWeight": "700",
-                "color": COLORS["text"],
-                "letterSpacing": "-0.01em",
-            },
+    """
+    The page header: Fraunces serif title with italic coral accent on
+    'Access', plus a left aligned subhead. Sits below the topnav and
+    above the level toggle.
+    """
+    title = html.H1(
+        [
+            "Provider ",
+            html.Em("Access", style={"color": BRAND["coral"], "fontStyle": "italic"}),
+            " Dashboard",
+        ],
+        style={
+            "fontFamily": FONT_HEADING,
+            "fontWeight": "900",
+            "fontSize": "30px",
+            "letterSpacing": "-0.015em",
+            "color": COLORS["text"],
+            "marginBottom": "8px",
+        },
+    )
+
+    subhead = html.P(
+        "Residuals highlight where reproductive health provider supply "
+        "falls below or exceeds model expectations. Click a state on the "
+        "map to filter. Toggle between access gap and risk tier views.",
+        style={
+            "fontSize": "13px",
+            "color": COLORS["text_muted"],
+            "maxWidth": "820px",
+            "lineHeight": "1.65",
+            "marginBottom": "0",
+        },
+    )
+
+    return dbc.Row(
+        dbc.Col(
+            html.Div([title, subhead], style={"padding": "36px 0 22px 0"}),
+            width=12,
         ),
-        html.P(
-            "Residuals highlight where reproductive health provider supply "
-            "falls below or exceeds model expectations. Click a state on the "
-            "map to filter the bar chart. Toggle between access gap and risk "
-            "tier views.",
-            className="mb-0",
-            style={
-                "color": COLORS["text_muted"],
-                "fontSize": "0.9rem",
-                "maxWidth": "780px",
-                "margin": "0 auto",
-            },
-        ),
-    ], style={"textAlign": "center", "padding": "24px 0 14px 0"}), width=12))
+    )
 
 
 def _geo_toggle_row(county: _CountyBundle) -> dbc.Row:
-    """Geographic level toggle plus the optional state filter dropdown."""
+    """
+    Geographic level toggle (State Level / County Level) plus the
+    optional state filter dropdown. Sits directly below the page header
+    with a thin border separator above the map.
+    """
     level_options = [{"label": " State Level", "value": "state"}]
     if county.available:
         level_options.append({"label": " County Level", "value": "county"})
 
     state_options: list = []
     if county.available:
-        state_options = [{"label": s, "value": s} for s in sorted(county.df["practice_state"].unique())]
+        state_options = [
+            {"label": s, "value": s}
+            for s in sorted(county.df["practice_state"].unique())
+        ]
 
-    return dbc.Row([
-        dbc.Col(html.Div(
-            dcc.RadioItems(
-                id="geo-level-toggle",
-                options=level_options,
-                value="state",
-                inline=True,
-                inputStyle={"marginRight": "6px"},
-                labelStyle={
-                    "marginRight": "24px", "fontSize": "0.95rem",
-                    "cursor": "pointer", "color": COLORS["text"],
-                    "fontWeight": "600",
-                },
+    toggle = dcc.RadioItems(
+        id="geo-level-toggle",
+        options=level_options,
+        value="state",
+        inline=True,
+        inputStyle={"marginRight": "8px"},
+        labelStyle={
+            "marginRight": "28px",
+            "fontSize": "13px",
+            "cursor": "pointer",
+            "color": COLORS["text"],
+            "fontWeight": "500",
+        },
+    )
+
+    dropdown = dcc.Dropdown(
+        id="county-state-filter",
+        options=state_options,
+        value=None,
+        placeholder="All states",
+        clearable=True,
+        style={"fontSize": "13px"},
+    )
+
+    return dbc.Row(
+        [
+            dbc.Col(toggle, md=8),
+            dbc.Col(
+                html.Div(dropdown, id="county-state-filter-wrap", style={"display": "none"}),
+                md=4,
             ),
-            style={"textAlign": "center"},
-        ), md=8),
-        dbc.Col(html.Div(
-            dcc.Dropdown(
-                id="county-state-filter",
-                options=state_options,
-                value=None,
-                placeholder="All states",
-                clearable=True,
-                style={"fontSize": "0.9rem"},
-            ),
-            id="county-state-filter-wrap",
-            style={"display": "none"},
-        ), md=4),
-    ], className="align-items-center mb-3")
+        ],
+        className="align-items-center",
+        style={
+            "paddingBottom": "24px",
+            "borderBottom": f"1px solid {COLORS['card_border']}",
+            "marginBottom": "20px",
+        },
+    )
 
 
 def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
