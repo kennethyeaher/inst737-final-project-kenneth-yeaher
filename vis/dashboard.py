@@ -93,27 +93,34 @@ def _state_kpi_row(state_df: pd.DataFrame) -> dbc.Row:
     n_at_risk = int((state_df["risk_tier"] == "At Risk").sum())
 
     return dbc.Row([
-        dbc.Col(kpi_card(
-            "States Analyzed", str(n_states),
-            subtitle=f"{total_providers:,} total providers",
-            accent=COLORS["pos_strong"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Avg Providers / 100k", f"{avg_dens:.2f}",
-            subtitle=f"Median: {med_dens:.2f}",
-            accent=COLORS["accent"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Critical + At Risk", f"{n_critical + n_at_risk}",
-            subtitle=f"{n_critical} critical, {n_at_risk} at risk",
-            color=COLORS["kpi_bad"], accent=COLORS["kpi_bad"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Most Underserved", worst_name,
-            subtitle=f"Gap: {worst_row['residual']:.2f}",
-            color=COLORS["kpi_bad"], accent=COLORS["neg_mid"],
-        ), md=3),
-    ], className="g-3 mb-3")
+    dbc.Col(kpi_card(
+        "States Analyzed",
+        str(n_states),
+        subtitle=f"{total_providers:,} total providers",
+        accent=COLORS["pos_strong"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Avg Providers / 100k",
+        f"{avg_dens:.2f}",
+        subtitle=f"Median: {med_dens:.2f}",
+        accent=COLORS["accent"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Critical + At Risk",
+        f"{n_critical + n_at_risk}",
+        subtitle=f"{n_critical} critical, {n_at_risk} at risk",
+        color=COLORS["kpi_bad"],
+        accent=COLORS["kpi_bad"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Most Underserved",
+        worst_name,
+        subtitle=f"Gap: {worst_row['residual']:.2f}",
+        color=COLORS["kpi_bad"],
+        accent=COLORS["neg_mid"],
+        style="serif",
+    ), md=3),
+], className="g-3 mb-3")
 
 
 def _state_view(state_df: pd.DataFrame) -> html.Div:
@@ -352,7 +359,6 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
     """Compose the full app.layout from the topnav, page container, and views."""
     page = dbc.Container([
         _header(),
-        html.Hr(style={"margin": "0 0 16px 0", "borderColor": COLORS["card_border"]}),
         _geo_toggle_row(county),
         _state_view(state_df),
         _county_view(county),
@@ -360,7 +366,7 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
         "backgroundColor": COLORS["bg"],
         "fontFamily": FONT_STACK,
         "maxWidth": "1440px",
-        "paddingBottom": "40px",
+        "padding": "0 40px 40px 40px",
     })
 
     return html.Div([topnav(context_tag="State · 2026"), page])

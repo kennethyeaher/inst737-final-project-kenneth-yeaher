@@ -9,8 +9,9 @@ import plotly.graph_objects as go
 from dash import html
 
 from vis._brand import COUNTY_TIER_COLORS
+from vis._components import county_detail_card as _county_detail_card
+from vis._components import kpi_card
 from vis._styles import (
-    CARD_STYLE,
     CHART_TITLE_FONT,
     COLORS,
     FONT_STACK,
@@ -289,70 +290,51 @@ def build_county_bar(
 
 
 def county_kpi_cards(df: pd.DataFrame) -> list:
-    """build the main KPI cards for the county view."""
+    """
+    Build the four KPI cards for the county view.
+
+    Uses the same kpi_card component as the state view so both views keep the
+    same typography, spacing, and accent rules.
+    """
     n_counties = len(df)
     n_desert = int((df["provider_count"] == 0).sum())
     pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
     med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
 
-    # match the bar chart filter so this KPI and the chart agree on what "most underserved" means.
-    # access deserts (provider_count == 0) already get their own KPI card, so this tile points
-    # at the worst county that actually has at least one provider on the registry.
+    # match the bar chart logic so the KPI and chart agree on most underserved
+    # access deserts already have their own card, so this shows the worst county with at least one provider
     worst_pool = df[(df["total_population"] > 1000) & (df["provider_count"] > 0)]
     worst = worst_pool.nsmallest(1, "providers_per_100k")
-    worst_name = worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0] if len(worst) > 0 else "N/A"
-
-    def _card(title, value, subtitle="", color=COLORS["text"], accent=COLORS["card_border"]):
-        children = [
-            html.P(title, className="mb-1", style={
-                "fontSize": "0.85rem",
-                "color": COLORS["text_muted"],
-                "fontWeight": "600",
-                "textTransform": "uppercase",
-                "letterSpacing": "0.05em",
-            }),
-            html.H2(value, className="mb-0", style={
-                "fontSize": "2.2rem",
-                "fontWeight": "700",
-                "color": color,
-            }),
-        ]
-
-        if subtitle:
-            children.append(html.P(subtitle, className="mb-0 mt-1", style={
-                "fontSize": "0.8rem",
-                "color": COLORS["text_muted"],
-            }))
-
-        return dbc.Card(
-            dbc.CardBody(children),
-            style={**CARD_STYLE, "textAlign": "center", "borderTop": f"4px solid {accent}"},
-        )
+    worst_name = (
+        worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0]
+        if len(worst) > 0 else "N/A"
+    )
 
     return [
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Counties Analyzed",
             f"{n_counties:,}",
-            accent="#2166ac",
+            accent=TIER_COLORS["well_served"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Access Deserts",
             f"{n_desert:,}",
             subtitle=f"{pop_desert:,} residents affected",
             color=COLORS["kpi_bad"],
-            accent="#67000d",
+            accent=TIER_COLORS["access_desert"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Median Density",
             f"{med_density:.1f}",
             subtitle="providers per 100k",
             accent=COLORS["accent"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Most Underserved",
             worst_name,
             color=COLORS["kpi_bad"],
-            accent="#d32f2f",
+            accent=TIER_COLORS["critical"],
+            style="serif",
         ), md=3),
     ]
 
