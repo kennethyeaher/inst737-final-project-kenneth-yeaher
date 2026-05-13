@@ -472,15 +472,27 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         Output("county-detail-panel", "children"),
         Input("county-choropleth", "clickData"),
         Input("county-reset", "n_clicks"),
+        Input("county-state-filter", "value"),
     )
-    def update_county_detail(click_data, _n_clicks):
-        """Show the clicked county's metrics card below the map."""
-        if ctx.triggered_id == "county-reset" or click_data is None:
+    def update_county_detail(click_data, _n_clicks, _state_filter):
+        """
+        Show the clicked county's metric card below the map.
+
+        The state filter is included as a trigger so changing the dropdown
+        clears any old detail card from the previous county view.
+        """
+        triggered = ctx.triggered_id
+
+        # clear the card on reset, filter change, or before any county is selected
+        if triggered in ("county-reset", "county-state-filter") or click_data is None:
             return None
+
         fips = click_data["points"][0]["location"]
         match = county.df[county.df["county_fips"] == fips]
+
         if len(match) == 0:
             return None
+
         return county_detail_card(match.iloc[0])
 
     @app.callback(
