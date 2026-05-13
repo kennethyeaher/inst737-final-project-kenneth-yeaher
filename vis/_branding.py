@@ -10,38 +10,41 @@ from __future__ import annotations
 
 import dash_bootstrap_components as dbc
 from dash import html
+from dash import svg as DashSvg
 
 from vis._brand import BRAND, FONT_HEADING, FONT_MONO
 from vis._styles import COLORS
 
 
-def _logo_mark(size: int = 26) -> html.Img:
+def _logo_mark(size: int = 26) -> html.Div:
     """
-    Build the Ovara logo mark as an inline SVG.
-
-    The mark is an iris purple rounded square with a cream ring and dot.
-    It uses a data URI so the dashboard does not need a separate image file.
+    Build the Ovara logo mark: an iris purple rounded square with a
+    cream ring and dot. Rendered as inline SVG so it scales cleanly
+    and inherits brand colors without any image asset.
     """
     iris = BRAND["iris"]
     cream = BRAND["cream"]
 
-    svg = (
-        f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'>"
-        f"<rect width='26' height='26' rx='6' fill='{iris}'/>"
-        f"<circle cx='13' cy='13' r='7.5' fill='none' "
-        f"stroke='{cream}' stroke-opacity='0.93' stroke-width='1.8'/>"
-        f"<circle cx='13' cy='13' r='2.8' fill='{cream}' fill-opacity='0.93'/>"
-        f"</svg>"
+    svg = DashSvg.Svg(
+        [
+            DashSvg.Rect(width="26", height="26", rx="6", fill=iris),
+            DashSvg.Circle(
+                cx="13", cy="13", r="7.5",
+                fill="none", stroke=cream, strokeOpacity="0.93", strokeWidth="1.8",
+            ),
+            DashSvg.Circle(
+                cx="13", cy="13", r="2.8",
+                fill=cream, fillOpacity="0.93",
+            ),
+        ],
+        xmlns="http://www.w3.org/2000/svg",
+        viewBox="0 0 26 26",
+        width=str(size),
+        height=str(size),
+        style={"display": "block"},
     )
 
-    return html.Img(
-        src=f"data:image/svg+xml;utf8,{svg}",
-        style={
-            "width": f"{size}px",
-            "height": f"{size}px",
-            "display": "block",
-        },
-    )
+    return html.Div(svg, style={"display": "flex", "alignItems": "center"})
 
 
 def wordmark(size_px: int = 17) -> html.Span:
