@@ -421,6 +421,8 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         build_county_bar,
         build_county_choropleth,
         county_detail_card,
+        county_kpi_cards,
+        generate_county_summary,
     )
 
     @app.callback(
@@ -480,6 +482,23 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         if len(match) == 0:
             return None
         return county_detail_card(match.iloc[0])
+
+    @app.callback(
+        Output("county-kpi-row", "children"),
+        Output("county-summary-text", "children"),
+        Input("county-state-filter", "value"),
+    )
+    def update_county_kpis_and_summary(state_filter):
+        """
+        Update the county KPI cards and summary when the state filter changes.
+
+        This keeps the cards and written summary aligned with the filtered map
+        and bar chart instead of leaving them on national totals.
+        """
+        kpis = county_kpi_cards(county.df, state_filter=state_filter)
+        summary = generate_county_summary(county.df, state_filter=state_filter)
+
+        return kpis, summary
 
 
 def _register_view_toggle(app: Dash) -> None:

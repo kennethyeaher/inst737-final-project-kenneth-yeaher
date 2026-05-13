@@ -289,30 +289,37 @@ def build_county_bar(
     return fig
 
 
-def county_kpi_cards(df: pd.DataFrame) -> list:
+def county_kpi_cards(df: pd.DataFrame, state_filter: str | None = None) -> list:
     """
     Build the four KPI cards for the county view.
 
     Uses the same kpi_card component as the state view so both views keep the
-    same typography, spacing, and accent rules.
+    same typography, spacing, and accent rules. When a state is selected, the
+    cards update to show only that state's counties.
     """
-    n_counties = len(df)
-    n_desert = int((df["provider_count"] == 0).sum())
-    pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
-    med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
+    scope = df[df["practice_state"] == state_filter] if state_filter else df
+
+    n_counties = len(scope)
+    n_desert = int((scope["provider_count"] == 0).sum())
+    pop_desert = int(scope[scope["provider_count"] == 0]["total_population"].sum())
+
+    populated = scope[scope["total_population"] > 0]
+    med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
 
     # match the bar chart logic so the KPI and chart agree on most underserved
     # access deserts already have their own card, so this shows the worst county with at least one provider
-    worst_pool = df[(df["total_population"] > 1000) & (df["provider_count"] > 0)]
+    worst_pool = scope[(scope["total_population"] > 1000) & (scope["provider_count"] > 0)]
     worst = worst_pool.nsmallest(1, "providers_per_100k")
     worst_name = (
         worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0]
         if len(worst) > 0 else "N/A"
     )
 
+    counties_label = "Counties in State" if state_filter else "Counties Analyzed"
+
     return [
         dbc.Col(kpi_card(
-            "Counties Analyzed",
+            counties_label,
             f"{n_counties:,}",
             accent=TIER_COLORS["well_served"],
         ), md=3),
@@ -353,26 +360,39 @@ def county_detail_card(row: pd.Series) -> dbc.Card:
     return _county_detail_card(row, tier_color=tier_color, tier_label=tier_label)
 
 
-def generate_county_summary(df: pd.DataFrame) -> list:
-    """build the written summary for the county access view."""
-    n_counties = len(df)
-    n_desert = int((df["provider_count"] == 0).sum())
-    pct_desert = round(n_desert / n_counties * 100)
-    pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
+def generate_county_summary(df: pd.DataFrame, state_filter: str | None = None) -> list:
+    """
+    Build the written summary for the county access view.
 
-    n_critical = int((df["risk_tier"] == "critical").sum())
-    n_underserved = int((df["risk_tier"] == "underserved").sum())
+    When a state is selected, all summary numbers are calculated only for that
+    state. The national access desert paragraph is skipped because it would no
+    longer match the filtered view.
+    """
+    scope = df[df["practice_state"] == state_filter] if state_filter else df
+
+    if len(scope) == 0:
+        return [html.Span("No county data available for this selection.")]
+
+    n_counties = len(scope)
+    n_desert = int((scope["provider_count"] == 0).sum())
+    pct_desert = round(n_desert / n_counties * 100) if n_counties > 0 else 0
+    pop_desert = int(scope[scope["provider_count"] == 0]["total_population"].sum())
+
+    n_critical = int((scope["risk_tier"] == "critical").sum())
+    n_underserved = int((scope["risk_tier"] == "underserved").sum())
     n_concern = n_desert + n_critical + n_underserved
 
-    total_providers = int(df["provider_count"].sum())
-    med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
+    total_providers = int(scope["provider_count"].sum())
+
+    populated = scope[scope["total_population"] > 0]
+    med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
 
     desert_states = df[df["provider_count"] == 0]["practice_state"].value_counts()
     top_desert_states = ", ".join(desert_states.head(5).index.tolist())
 
     b = lambda text: html.B(text, style={"color": COLORS["text"]})
 
-    return [
+    paragraphs: list = [
         html.Span([
             "At the county level, the access picture becomes much sharper. Of the ",
             b(f"{n_counties:,} counties"),
@@ -404,12 +424,20 @@ def generate_county_summary(df: pd.DataFrame) -> list:
             b(f"{total_providers:,}"),
             " reproductive health providers.",
         ]),
-        html.Br(),
-        html.Br(),
-        html.Span([
-            "The states with the most access desert counties are ",
-            b(top_desert_states),
-            ". This county level view shows gaps that state averages can completely hide. A state can look "
-            "adequate overall while still having dozens of counties where no reproductive health provider is registered.",
-        ]),
-    ]
+            ]
+
+    # only show this paragraph for the national view because it compares states against each other
+    if not state_filter:
+        paragraphs.extend([
+            html.Br(),
+            html.Br(),
+            html.Span([
+                "The states with the most access desert counties are ",
+                b(top_desert_states),
+                ". This county level view shows gaps that state averages can completely hide. "
+                "A state can look adequate overall while still having dozens of counties where no "
+                "reproductive health provider is registered.",
+            ]),
+        ])
+
+    return paragraphs
