@@ -35,6 +35,7 @@ from vis._styles import (
     FONT_STACK,
     SUMMARY_CARD_STYLE,
 )
+from vis.findings_card import county_findings_card, state_findings_card
 from vis.state_charts import build_bar, build_choropleth, build_scatter
 from vis.summary_text import generate_state_summary
 
@@ -163,14 +164,17 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
             style={"textAlign": "center", "padding": "6px 0"},
         ), width=12)),
 
-        # the choropleth itself
+        # main state choropleth
         dbc.Row(dbc.Col(dbc.Card(
             dcc.Graph(id="choropleth", figure=build_choropleth(state_df), config=CHART_CONFIG),
             style=CARD_STYLE,
         ), width=12), className="mb-3"),
 
-        # detail panel that fills in when a state is clicked
+        # state detail panel appears after a user clicks a state
         dbc.Row(dbc.Col(html.Div(id="state-detail-panel"), width=12), className="mb-3"),
+
+        # findings card gives the map a clearer written takeaway before the rest of the page
+        dbc.Row(dbc.Col(state_findings_card(state_df), width=12)),
 
         # written summary panel
         dbc.Row(dbc.Col(dbc.Card(dbc.CardBody([
@@ -236,7 +240,7 @@ def _county_view(county: _CountyBundle) -> html.Div:
             ]), style=SUMMARY_CARD_STYLE), md=7),
         ], className="g-3 mb-3"),
 
-        # the county map (scroll zoom enabled in COUNTY_MAP_CONFIG)
+        # county map with scroll zoom enabled for smaller counties
         dbc.Row(dbc.Col(dbc.Card(
             dcc.Loading(
                 dcc.Graph(
@@ -250,7 +254,17 @@ def _county_view(county: _CountyBundle) -> html.Div:
             style=CARD_STYLE,
         ), width=12), className="mb-3"),
 
+        # county detail panel appears after a user clicks a county
         dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
+
+        # findings card updates when the county state filter changes
+        dbc.Row(dbc.Col(
+            html.Div(
+                county_findings_card(county.df) if county.available else None,
+                id="county-findings-slot",
+            ),
+            width=12,
+        )),
     ])
 
 
@@ -498,19 +512,21 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
     @app.callback(
         Output("county-kpi-row", "children"),
         Output("county-summary-text", "children"),
+        Output("county-findings-slot", "children"),
         Input("county-state-filter", "value"),
     )
     def update_county_kpis_and_summary(state_filter):
         """
-        Update the county KPI cards and summary when the state filter changes.
+        Update county KPI cards, summary text, and findings card when the state filter changes.
 
-        This keeps the cards and written summary aligned with the filtered map
-        and bar chart instead of leaving them on national totals.
+        This keeps every county level section aligned with the filtered map and bar chart
+        instead of leaving anything stuck on national totals.
         """
         kpis = county_kpi_cards(county.df, state_filter=state_filter)
         summary = generate_county_summary(county.df, state_filter=state_filter)
+        findings = county_findings_card(county.df, state_filter=state_filter)
 
-        return kpis, summary
+        return kpis, summary, findings
 
 
 def _register_view_toggle(app: Dash) -> None:
