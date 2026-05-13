@@ -38,6 +38,7 @@ from vis._styles import (
 from vis.findings_card import county_findings_card, state_findings_card
 from vis.state_charts import build_bar, build_choropleth, build_scatter
 from vis.summary_text import generate_state_summary
+from vis.tier_grid import county_tier_grid, state_tier_grid
 
 
 # small bundle so callbacks have all the data they need without globals
@@ -188,6 +189,9 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
                 "color": COLORS["text"], "marginBottom": "0",
             }),
         ]), style=SUMMARY_CARD_STYLE), width=12), className="mb-4"),
+
+        # framework reference grid at the bottom defines each tier
+        dbc.Row(dbc.Col(state_tier_grid(state_df), width=12)),
     ])
 
 
@@ -254,14 +258,22 @@ def _county_view(county: _CountyBundle) -> html.Div:
             style=CARD_STYLE,
         ), width=12), className="mb-3"),
 
-        # county detail panel appears after a user clicks a county
-        dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
+       dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
 
-        # findings card updates when the county state filter changes
+        # editorial findings card, rebuilt by callback when the state filter changes
         dbc.Row(dbc.Col(
             html.Div(
                 county_findings_card(county.df) if county.available else None,
                 id="county-findings-slot",
+            ),
+            width=12,
+        )),
+
+        # framework reference grid at the bottom of the county view
+        dbc.Row(dbc.Col(
+            html.Div(
+                county_tier_grid(county.df) if county.available else None,
+                id="county-tier-grid-slot",
             ),
             width=12,
         )),
@@ -513,20 +525,22 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         Output("county-kpi-row", "children"),
         Output("county-summary-text", "children"),
         Output("county-findings-slot", "children"),
+        Output("county-tier-grid-slot", "children"),
         Input("county-state-filter", "value"),
     )
     def update_county_kpis_and_summary(state_filter):
         """
-        Update county KPI cards, summary text, and findings card when the state filter changes.
+        Update every county view section that depends on the state filter.
 
-        This keeps every county level section aligned with the filtered map and bar chart
-        instead of leaving anything stuck on national totals.
+        This keeps the KPI cards, summary text, findings card, and tier grid
+        aligned with the filtered map and bar chart.
         """
         kpis = county_kpi_cards(county.df, state_filter=state_filter)
         summary = generate_county_summary(county.df, state_filter=state_filter)
         findings = county_findings_card(county.df, state_filter=state_filter)
+        tier_grid = county_tier_grid(county.df, state_filter=state_filter)
 
-        return kpis, summary, findings
+        return kpis, summary, findings, tier_grid
 
 
 def _register_view_toggle(app: Dash) -> None:
