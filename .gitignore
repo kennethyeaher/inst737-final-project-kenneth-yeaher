@@ -183,3 +183,6 @@ data/visualizations/*.html
 
 # pipeline logs
 logs/
+
+# raw nppes weekly download (large file, not tracked)
+data/extracted/nppes_weekly_raw/

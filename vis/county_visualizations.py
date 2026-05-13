@@ -8,34 +8,22 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import html
 
+from vis._brand import COUNTY_TIER_COLORS
+from vis._components import county_detail_card as _county_detail_card
+from vis._components import kpi_card
+from vis._styles import (
+    CHART_TITLE_FONT,
+    COLORS,
+    FONT_STACK,
+    apply_axis_defaults,
+)
+
 # main file paths for county dashboard data
 GEOJSON_FILE = Path("data/reference_tables/counties_geojson.json")
 COUNTY_RISK_FILE = Path("data/model_outputs/county_risk_classified.csv")
 
-FONT_STACK = "Inter, Segoe UI, sans-serif"
-
-COLORS = {
-    "text": "#212529",
-    "text_muted": "#6c757d",
-    "card_border": "#e0e0e0",
-    "kpi_bad": "#c0392b",
-    "accent": "#2ca25f",
-}
-
-CARD_STYLE = {
-    "border": f"1px solid {COLORS['card_border']}",
-    "borderRadius": "10px",
-    "boxShadow": "0 1px 4px rgba(0,0,0,0.06)",
-}
-
-TIER_COLORS = {
-    "access_desert": "#67000d",
-    "critical": "#d32f2f",
-    "underserved": "#ef8a62",
-    "adequate": "#67a9cf",
-    "well_served": "#2166ac",
-}
-
+# county tier setup ordered from worst access to strongest access
+TIER_COLORS = COUNTY_TIER_COLORS
 TIER_ORDER = ["access_desert", "critical", "underserved", "adequate", "well_served"]
 
 TIER_LABELS = {
@@ -169,13 +157,14 @@ def build_county_choropleth(
         for _, row in plot_df.iterrows()
     ]
 
-    # snap the map to a state when the user filters, otherwise start with the full US view
+    # snap the map to a state when the user filters, otherwise center on the contiguous 
+    # US at a zoom that fills the available width
     if state_filter and state_filter in STATE_VIEW_PARAMS:
         map_center = STATE_VIEW_PARAMS[state_filter]["center"]
         map_zoom = STATE_VIEW_PARAMS[state_filter]["zoom"]
     else:
-        map_center = {"lat": 38.5, "lon": -96.0}
-        map_zoom = 3.0
+        map_center = {"lat": 39.5, "lon": -98.0}
+        map_zoom = 3.6
 
     title = "County Level Reproductive Health Access"
     if state_filter:
@@ -213,7 +202,7 @@ def build_county_choropleth(
         margin={"l": 0, "r": 0, "t": 50, "b": 0},
         height=560,
         font={"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
-        title={"text": title, "font": {"size": 15}},
+        title={"text": title, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         paper_bgcolor="rgba(0,0,0,0)",
     )
 
@@ -245,6 +234,8 @@ def build_county_bar(
         margin={"l": 10, "r": 20, "t": 60, "b": 40},
         height=420,
         font={"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
 
     # show a clean empty state when every county in the filter has zero providers
@@ -255,7 +246,11 @@ def build_county_bar(
         )
 
         fig = go.Figure()
-        fig.update_layout(**layout_base, title={"text": msg, "font": {"size": 14}})
+        fig.update_layout(**layout_base, title={
+            "text": msg, "font": CHART_TITLE_FONT,
+            "x": 0.02, "xanchor": "left",
+        })
+        apply_axis_defaults(fig)
         return fig
 
     show_n = min(top_n, len(plot_df))
@@ -286,190 +281,83 @@ def build_county_bar(
 
     fig.update_layout(
         **layout_base,
-        title={"text": title, "font": {"size": 13}},
+        title={"text": title, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         xaxis={"title": "Providers per 100k", "range": [0, x_max]},
         yaxis={"title": ""},
     )
+    apply_axis_defaults(fig)
 
     return fig
 
 
-def county_kpi_cards(df: pd.DataFrame) -> list:
-    """build the main KPI cards for the county view."""
-    n_counties = len(df)
-    n_desert = int((df["provider_count"] == 0).sum())
-    pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
-    med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
+def county_kpi_cards(df: pd.DataFrame, state_filter: str | None = None) -> list:
+    """
+    Build the four KPI cards for the county view.
 
-    # match the bar chart filter so this KPI and the chart agree on what "most underserved" means.
-    # access deserts (provider_count == 0) already get their own KPI card, so this tile points
-    # at the worst county that actually has at least one provider on the registry.
-    worst_pool = df[(df["total_population"] > 1000) & (df["provider_count"] > 0)]
+    Uses the same kpi_card component as the state view so both views keep the
+    same typography, spacing, and accent rules. When a state is selected, the
+    cards update to show only that state's counties.
+    """
+    scope = df[df["practice_state"] == state_filter] if state_filter else df
+
+    n_counties = len(scope)
+    n_desert = int((scope["provider_count"] == 0).sum())
+    pop_desert = int(scope[scope["provider_count"] == 0]["total_population"].sum())
+
+    populated = scope[scope["total_population"] > 0]
+    med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
+
+    # match the bar chart logic so the KPI and chart agree on most underserved
+    # access deserts already have their own card, so this shows the worst county with at least one provider
+    worst_pool = scope[(scope["total_population"] > 1000) & (scope["provider_count"] > 0)]
     worst = worst_pool.nsmallest(1, "providers_per_100k")
-    worst_name = worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0] if len(worst) > 0 else "N/A"
+    worst_name = (
+        worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0]
+        if len(worst) > 0 else "N/A"
+    )
 
-    def _card(title, value, subtitle="", color=COLORS["text"], accent=COLORS["card_border"]):
-        children = [
-            html.P(title, className="mb-1", style={
-                "fontSize": "0.85rem",
-                "color": COLORS["text_muted"],
-                "fontWeight": "600",
-                "textTransform": "uppercase",
-                "letterSpacing": "0.05em",
-            }),
-            html.H2(value, className="mb-0", style={
-                "fontSize": "2.2rem",
-                "fontWeight": "700",
-                "color": color,
-            }),
-        ]
-
-        if subtitle:
-            children.append(html.P(subtitle, className="mb-0 mt-1", style={
-                "fontSize": "0.8rem",
-                "color": COLORS["text_muted"],
-            }))
-
-        return dbc.Card(
-            dbc.CardBody(children),
-            style={**CARD_STYLE, "textAlign": "center", "borderTop": f"4px solid {accent}"},
-        )
+    counties_label = "Counties in State" if state_filter else "Counties Analyzed"
 
     return [
-        dbc.Col(_card(
-            "Counties Analyzed",
+        dbc.Col(kpi_card(
+            counties_label,
             f"{n_counties:,}",
-            accent="#2166ac",
+            accent=TIER_COLORS["well_served"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Access Deserts",
             f"{n_desert:,}",
             subtitle=f"{pop_desert:,} residents affected",
             color=COLORS["kpi_bad"],
-            accent="#67000d",
+            accent=TIER_COLORS["access_desert"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Median Density",
             f"{med_density:.1f}",
             subtitle="providers per 100k",
             accent=COLORS["accent"],
         ), md=3),
-        dbc.Col(_card(
+        dbc.Col(kpi_card(
             "Most Underserved",
             worst_name,
             color=COLORS["kpi_bad"],
-            accent="#d32f2f",
+            accent=TIER_COLORS["critical"],
+            style="serif",
         ), md=3),
     ]
 
 
 def county_detail_card(row: pd.Series) -> dbc.Card:
-    """build the detail card for the county a user selects."""
-    name = row["county_name"]
+    """
+    Small wrapper around the shared county detail card.
+
+    County tier labels and colors live in this file, so this function resolves
+    them first and then sends the row to the shared layout component.
+    """
     tier = str(row["risk_tier"])
     tier_color = TIER_COLORS.get(tier, COLORS["text"])
     tier_label = TIER_LABELS.get(tier, tier)
 
-    metrics = [
-        ("Providers", f"{int(row['provider_count']):,}"),
-        ("Density / 100k", f"{row['providers_per_100k']:.1f}"),
-        ("Population", f"{int(row['total_population']):,}"),
-        ("Specialties", f"{int(row.get('unique_taxonomies', 0))}"),
-        ("Recent Growth", f"{int(row.get('recent_provider_growth', 0))}"),
-    ]
-
-    metric_cols = [
-        dbc.Col(html.Div([
-            html.P(label, className="mb-0", style={
-                "fontSize": "0.75rem",
-                "color": COLORS["text_muted"],
-                "textTransform": "uppercase",
-                "fontWeight": "600",
-            }),
-            html.P(value, className="mb-0", style={
-                "fontSize": "1.3rem",
-                "fontWeight": "700",
-                "color": COLORS["text"],
-            }),
-        ], style={"textAlign": "center"}), md=2)
-        for label, value in metrics
-    ]
-
-    return dbc.Card(dbc.CardBody([
-        dbc.Row([
-            dbc.Col(html.Div([
-                html.H5(name, className="mb-1", style={"fontWeight": "700"}),
-                html.Span(tier_label, style={
-                    "fontSize": "0.85rem",
-                    "fontWeight": "600",
-                    "color": "white",
-                    "backgroundColor": tier_color,
-                    "padding": "3px 12px",
-                    "borderRadius": "12px",
-                }),
-            ]), md=2),
-            *metric_cols,
-        ], className="align-items-center"),
-    ]), style={**CARD_STYLE, "borderLeft": f"5px solid {tier_color}"})
+    return _county_detail_card(row, tier_color=tier_color, tier_label=tier_label)
 
 
-def generate_county_summary(df: pd.DataFrame) -> list:
-    """build the written summary for the county access view."""
-    n_counties = len(df)
-    n_desert = int((df["provider_count"] == 0).sum())
-    pct_desert = round(n_desert / n_counties * 100)
-    pop_desert = int(df[df["provider_count"] == 0]["total_population"].sum())
-
-    n_critical = int((df["risk_tier"] == "critical").sum())
-    n_underserved = int((df["risk_tier"] == "underserved").sum())
-    n_concern = n_desert + n_critical + n_underserved
-
-    total_providers = int(df["provider_count"].sum())
-    med_density = df[df["total_population"] > 0]["providers_per_100k"].median()
-
-    desert_states = df[df["provider_count"] == 0]["practice_state"].value_counts()
-    top_desert_states = ", ".join(desert_states.head(5).index.tolist())
-
-    b = lambda text: html.B(text, style={"color": COLORS["text"]})
-
-    return [
-        html.Span([
-            "At the county level, the access picture becomes much sharper. Of the ",
-            b(f"{n_counties:,} counties"),
-            " in this analysis, ",
-            b(f"{n_desert:,} ({pct_desert}%)"),
-            " have ",
-            b("zero registered reproductive health providers"),
-            ". That means no OB/GYNs, no midwives, and no women's health NPs are listed "
-            "in the federal registry for those counties. These are not just areas with low "
-            "provider density. They are access deserts where the local provider workforce is "
-            "missing from the data entirely. The ",
-            b(f"{pop_desert:,} residents"),
-            " living in these counties likely have to travel to a neighboring county for care.",
-        ]),
-        html.Br(),
-        html.Br(),
-        html.Span([
-            "Beyond the access deserts, another ",
-            b(f"{n_critical:,} counties"),
-            " are classified as Critical, with fewer than 5 providers per 100,000 residents, and ",
-            b(f"{n_underserved:,}"),
-            " are classified as Underserved, with 5 to 10 providers per 100,000 residents. In total, ",
-            b(f"{n_concern:,} counties"),
-            ", or roughly ",
-            b(f"{round(n_concern / n_counties * 100)}%"),
-            " of all US counties, fall into a tier of concern. The national median county density is just ",
-            b(f"{med_density:.1f}"),
-            " providers per 100,000 residents, spread across a total workforce of ",
-            b(f"{total_providers:,}"),
-            " reproductive health providers.",
-        ]),
-        html.Br(),
-        html.Br(),
-        html.Span([
-            "The states with the most access desert counties are ",
-            b(top_desert_states),
-            ". This county level view shows gaps that state averages can completely hide. A state can look "
-            "adequate overall while still having dozens of counties where no reproductive health provider is registered.",
-        ]),
-    ]
