@@ -333,8 +333,8 @@ def build_choropleth(
         title={"text": title_text, "font": {"size": 15}},
         geo=dict(
             scope="usa", projection_type="albers usa",
-            showland=True, landcolor="#f0f0f0",
-            showlakes=True, lakecolor="#e8f0fa",
+            showland=True, landcolor=COLORS["bg"],
+            showlakes=True, lakecolor=COLORS["card_bg"],
             showframe=False, bgcolor="rgba(0,0,0,0)",
         ),
     )

@@ -62,15 +62,17 @@ COUNTY_TIER_COLORS: Final[dict[str, str]] = {
 }
 
 
-# semantic ui tokens
+# semantic ui 
+# dark mode by default to match the brand guide's primary aesthetic.
+# bg and surface are derived from plum ink with depth steps, text is cream with alpha for muted variants.
 
 UI: Final[dict[str, str]] = {
-    "bg":          BRAND["cream"],
-    "surface":     "#ffffff",
-    "surface_alt": BRAND["cream_deep"],
-    "border":      "rgba(47, 26, 62, 0.12)",
-    "text":        BRAND["plum_ink"],
-    "text_muted":  "rgba(47, 26, 62, 0.6)",
+    "bg":          "#17102C",
+    "surface":     "#201440",
+    "surface_alt": "#2A1A52",
+    "border":      "rgba(245, 239, 228, 0.10)",
+    "text":        BRAND["cream"],
+    "text_muted":  "rgba(245, 239, 228, 0.65)",
     "accent":      BRAND["iris"],
     "accent_deep": BRAND["iris_deep"],
     "attention":   BRAND["coral"],

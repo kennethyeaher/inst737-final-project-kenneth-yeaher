@@ -34,14 +34,15 @@ COLORS: Final[dict[str, str]] = {
     "kpi_good": UI["good"],
 }
 
-# diverging palette for access gap maps and residual scatter plots
-# under supply and over supply use the same brand logic as the risk tiers
+# diverging palette for access gap maps and the residual scatter.
+# the center anchor is the dashboard surface color so zero-residual
+# states recede on a dark background instead of glowing cream.
 UNIFIED_COLORSCALE: Final[list[list]] = [
-    [0.0, BRAND["iris_deep"]],
+    [0.0,  BRAND["iris_deep"]],
     [0.25, BRAND["coral"]],
-    [0.5, BRAND["cream_deep"]],
+    [0.5,  UI["surface_alt"]],
     [0.75, BRAND["marigold"]],
-    [1.0, BRAND["sage"]],
+    [1.0,  BRAND["sage"]],
 ]
 
 # state level risk tiers ordered from most underserved to best served
@@ -77,7 +78,7 @@ CHART_HEIGHT: Final[int] = 420
 CARD_STYLE: Final[dict] = {
     "border": f"1px solid {COLORS['card_border']}",
     "borderRadius": "10px",
-    "boxShadow": "0 1px 4px rgba(47, 26, 62, 0.06)",
+    "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.25)",
     "backgroundColor": COLORS["card_bg"],
 }
 
