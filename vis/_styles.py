@@ -13,6 +13,8 @@ from typing import Final
 from vis._brand import (
     BRAND,
     FONT_BODY,
+    FONT_HEADING,
+    FONT_MONO,
     STATE_TIER_COLORS,
     UI,
 )
@@ -73,7 +75,29 @@ RISK_COLORSCALE: Final[list[list]] = [
 
 # layout tokens shared by every chart
 FONT_STACK: Final[str] = FONT_BODY
+FONT_SERIF: Final[str] = FONT_HEADING
+FONT_TECHNICAL: Final[str] = FONT_MONO
 CHART_HEIGHT: Final[int] = 420
+
+# typography tokens for Plotly chart elements
+# chart titles stay simple, while axis ticks use the mono font so numbers feel more data focused
+CHART_TITLE_FONT: Final[dict] = {
+    "family": FONT_STACK,
+    "size": 13,
+    "color": COLORS["text"],
+}
+
+CHART_AXIS_TICK_FONT: Final[dict] = {
+    "family": FONT_TECHNICAL,
+    "size": 10,
+    "color": COLORS["text_muted"],
+}
+
+CHART_AXIS_TITLE_FONT: Final[dict] = {
+    "family": FONT_STACK,
+    "size": 11,
+    "color": COLORS["text_muted"],
+}
 
 CARD_STYLE: Final[dict] = {
     "border": f"1px solid {COLORS['card_border']}",
@@ -98,6 +122,24 @@ BASE_LAYOUT: Final[dict] = {
     "paper_bgcolor": "rgba(0,0,0,0)",
     "plot_bgcolor": "rgba(0,0,0,0)",
 }
+
+# axis defaults get applied after update_layout so chart specific settings still work
+AXIS_DEFAULTS: Final[dict] = {
+    "tickfont": CHART_AXIS_TICK_FONT,
+    "title_font": CHART_AXIS_TITLE_FONT,
+    "gridcolor": "rgba(245,239,228,0.06)",
+    "zerolinecolor": "rgba(245,239,228,0.12)",
+}
+
+
+def apply_axis_defaults(fig) -> None:
+    """
+    Apply the shared axis styling to a Plotly figure.
+
+    Call this after update_layout so chart specific titles and ranges stay intact.
+    """
+    fig.update_xaxes(**AXIS_DEFAULTS)
+    fig.update_yaxes(**AXIS_DEFAULTS)
 
 # graph config for inline charts where zoom would make the dashboard feel messy
 CHART_CONFIG: Final[dict] = {

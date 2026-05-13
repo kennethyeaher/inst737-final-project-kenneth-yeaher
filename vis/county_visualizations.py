@@ -8,6 +8,15 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import html
 
+from vis._brand import COUNTY_TIER_COLORS
+from vis._styles import (
+    CARD_STYLE,
+    CHART_TITLE_FONT,
+    COLORS,
+    FONT_STACK,
+    apply_axis_defaults,
+)
+
 # main file paths for county dashboard data
 GEOJSON_FILE = Path("data/reference_tables/counties_geojson.json")
 COUNTY_RISK_FILE = Path("data/model_outputs/county_risk_classified.csv")
@@ -213,7 +222,7 @@ def build_county_choropleth(
         margin={"l": 0, "r": 0, "t": 50, "b": 0},
         height=560,
         font={"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
-        title={"text": title, "font": {"size": 15}},
+        title={"text": title, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         paper_bgcolor="rgba(0,0,0,0)",
     )
 
@@ -245,6 +254,8 @@ def build_county_bar(
         margin={"l": 10, "r": 20, "t": 60, "b": 40},
         height=420,
         font={"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
 
     # show a clean empty state when every county in the filter has zero providers
@@ -255,7 +266,11 @@ def build_county_bar(
         )
 
         fig = go.Figure()
-        fig.update_layout(**layout_base, title={"text": msg, "font": {"size": 14}})
+        fig.update_layout(**layout_base, title={
+            "text": msg, "font": CHART_TITLE_FONT,
+            "x": 0.02, "xanchor": "left",
+        })
+        apply_axis_defaults(fig)
         return fig
 
     show_n = min(top_n, len(plot_df))
@@ -286,10 +301,11 @@ def build_county_bar(
 
     fig.update_layout(
         **layout_base,
-        title={"text": title, "font": {"size": 13}},
+        title={"text": title, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         xaxis={"title": "Providers per 100k", "range": [0, x_max]},
         yaxis={"title": ""},
     )
+    apply_axis_defaults(fig)
 
     return fig
 

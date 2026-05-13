@@ -20,10 +20,12 @@ import plotly.graph_objects as go
 
 from vis._styles import (
     BASE_LAYOUT,
+    CHART_TITLE_FONT,
     COLORS,
     RISK_COLORSCALE,
     RISK_TIER_LABELS,
     UNIFIED_COLORSCALE,
+    apply_axis_defaults,
 )
 
 
@@ -161,10 +163,11 @@ def build_bar(
 
     fig.update_layout(
         **BASE_LAYOUT,
-        title={"text": title_text, "font": {"size": 15}},
+        title={"text": title_text, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         xaxis={"title": "Residual (actual − predicted)", "range": [x_min * 1.30, 0.3]},
         yaxis={"title": ""},
     )
+    apply_axis_defaults(fig)
     return fig
 
 
@@ -223,11 +226,17 @@ def build_scatter(df: pd.DataFrame) -> go.Figure:
 
     fig.update_layout(
         **BASE_LAYOUT,
-        title={"text": "Predicted vs Actual Reproductive Health Provider Density", "font": {"size": 15}},
+        title={
+            "text": "Predicted vs Actual Reproductive Health Provider Density",
+            "font": CHART_TITLE_FONT,
+            "x": 0.02,
+            "xanchor": "left",
+        },
         xaxis={"title": "Predicted Providers per 100k", "range": axis_range},
         yaxis={"title": "Actual Providers per 100k", "range": axis_range},
         annotations=annotations,
     )
+    apply_axis_defaults(fig)
     return fig
 
 
@@ -330,7 +339,7 @@ def build_choropleth(
 
     fig.update_layout(
         **{**BASE_LAYOUT, "height": 520, "margin": {"l": 0, "r": 0, "t": 50, "b": 0}},
-        title={"text": title_text, "font": {"size": 15}},
+        title={"text": title_text, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
         geo=dict(
             scope="usa", projection_type="albers usa",
             showland=True, landcolor=COLORS["bg"],
