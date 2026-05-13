@@ -24,6 +24,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, ctx, dcc, html
 
+from vis._brand import BRAND, FONT_HEADING
+from vis._branding import topnav
 from vis._components import kpi_card, state_detail_card
 from vis._styles import (
     CARD_STYLE,
@@ -32,8 +34,9 @@ from vis._styles import (
     COUNTY_MAP_CONFIG,
     FONT_STACK,
 )
+from vis.findings_card import county_findings_card, state_findings_card
 from vis.state_charts import build_bar, build_choropleth, build_scatter
-from vis.summary_text import generate_state_summary
+from vis.tier_grid import county_tier_grid, state_tier_grid
 
 
 # small bundle so callbacks have all the data they need without globals
@@ -90,27 +93,34 @@ def _state_kpi_row(state_df: pd.DataFrame) -> dbc.Row:
     n_at_risk = int((state_df["risk_tier"] == "At Risk").sum())
 
     return dbc.Row([
-        dbc.Col(kpi_card(
-            "States Analyzed", str(n_states),
-            subtitle=f"{total_providers:,} total providers",
-            accent=COLORS["pos_strong"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Avg Providers / 100k", f"{avg_dens:.2f}",
-            subtitle=f"Median: {med_dens:.2f}",
-            accent=COLORS["accent"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Critical + At Risk", f"{n_critical + n_at_risk}",
-            subtitle=f"{n_critical} critical, {n_at_risk} at risk",
-            color=COLORS["kpi_bad"], accent=COLORS["kpi_bad"],
-        ), md=3),
-        dbc.Col(kpi_card(
-            "Most Underserved", worst_name,
-            subtitle=f"Gap: {worst_row['residual']:.2f}",
-            color=COLORS["kpi_bad"], accent=COLORS["neg_mid"],
-        ), md=3),
-    ], className="g-3 mb-3")
+    dbc.Col(kpi_card(
+        "States Analyzed",
+        str(n_states),
+        subtitle=f"{total_providers:,} total providers",
+        accent=COLORS["pos_strong"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Avg Providers / 100k",
+        f"{avg_dens:.2f}",
+        subtitle=f"Median: {med_dens:.2f}",
+        accent=COLORS["accent"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Critical + At Risk",
+        f"{n_critical + n_at_risk}",
+        subtitle=f"{n_critical} critical, {n_at_risk} at risk",
+        color=COLORS["kpi_bad"],
+        accent=COLORS["kpi_bad"],
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Most Underserved",
+        worst_name,
+        subtitle=f"Gap: {worst_row['residual']:.2f}",
+        color=COLORS["kpi_bad"],
+        accent=COLORS["neg_mid"],
+        style="serif",
+    ), md=3),
+], className="g-3 mb-3")
 
 
 def _state_view(state_df: pd.DataFrame) -> html.Div:
@@ -153,27 +163,20 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
             style={"textAlign": "center", "padding": "6px 0"},
         ), width=12)),
 
-        # the choropleth itself
+        # main state choropleth
         dbc.Row(dbc.Col(dbc.Card(
             dcc.Graph(id="choropleth", figure=build_choropleth(state_df), config=CHART_CONFIG),
             style=CARD_STYLE,
         ), width=12), className="mb-3"),
 
-        # detail panel that fills in when a state is clicked
+        # state detail panel appears after a user clicks a state
         dbc.Row(dbc.Col(html.Div(id="state-detail-panel"), width=12), className="mb-3"),
 
-        # written summary panel
-        dbc.Row(dbc.Col(dbc.Card(dbc.CardBody([
-            html.H6("Executive Summary", style={
-                "fontWeight": "700", "textTransform": "uppercase",
-                "letterSpacing": "0.05em", "color": COLORS["text_muted"],
-                "fontSize": "0.8rem",
-            }),
-            html.Div(generate_state_summary(state_df), style={
-                "fontSize": "0.95rem", "lineHeight": "1.7",
-                "color": COLORS["text"], "marginBottom": "0",
-            }),
-        ]), style={**CARD_STYLE, "backgroundColor": "#f0f4f8"}), width=12), className="mb-4"),
+        # findings card gives the map a clearer written takeaway before the rest of the page
+        dbc.Row(dbc.Col(state_findings_card(state_df), width=12)),
+
+        # framework reference grid at the bottom defines each tier
+        dbc.Row(dbc.Col(state_tier_grid(state_df), width=12)),
     ])
 
 
@@ -185,7 +188,6 @@ def _county_view(county: _CountyBundle) -> html.Div:
         build_county_bar,
         build_county_choropleth,
         county_kpi_cards,
-        generate_county_summary,
     )
 
     return html.Div(id="county-view", style={"display": "none"}, children=[
@@ -195,38 +197,22 @@ def _county_view(county: _CountyBundle) -> html.Div:
             className="g-3 mb-3",
         ),
 
-        # bar chart on the left, written county summary on the right
-        dbc.Row([
-            dbc.Col(dbc.Card([
-                dcc.Graph(
-                    id="county-bar-chart",
-                    figure=build_county_bar(county.df) if county.available else go.Figure(),
-                    config=CHART_CONFIG,
-                ),
-                html.Div(
-                    dbc.Button("Reset", id="county-reset", size="sm",
-                               color="secondary", outline=True),
-                    style={"textAlign": "right", "padding": "6px 12px 10px 0"},
-                ),
-            ], style=CARD_STYLE), md=5),
-            dbc.Col(dbc.Card(dbc.CardBody([
-                html.H6("County Analysis", style={
-                    "fontWeight": "700", "textTransform": "uppercase",
-                    "letterSpacing": "0.05em", "color": COLORS["text_muted"],
-                    "fontSize": "0.8rem",
-                }),
-                html.Div(
-                    generate_county_summary(county.df) if county.available else [],
-                    id="county-summary-text",
-                    style={
-                        "fontSize": "0.95rem", "lineHeight": "1.7",
-                        "color": COLORS["text"], "marginBottom": "0",
-                    },
-                ),
-            ]), style={**CARD_STYLE, "backgroundColor": "#f0f4f8"}), md=7),
-        ], className="g-3 mb-3"),
+        # bar chart now spans the full row since the analysis panel moved
+        # into the cream findings card below the map
+        dbc.Row(dbc.Col(dbc.Card([
+            dcc.Graph(
+                id="county-bar-chart",
+                figure=build_county_bar(county.df) if county.available else go.Figure(),
+                config=CHART_CONFIG,
+            ),
+            html.Div(
+                dbc.Button("Reset", id="county-reset", size="sm",
+                           color="secondary", outline=True),
+                style={"textAlign": "right", "padding": "6px 12px 10px 0"},
+            ),
+        ], style=CARD_STYLE), width=12), className="mb-3"),
 
-        # the county map (scroll zoom enabled in COUNTY_MAP_CONFIG)
+        # county map with scroll zoom enabled for smaller counties
         dbc.Row(dbc.Col(dbc.Card(
             dcc.Loading(
                 dcc.Graph(
@@ -240,75 +226,133 @@ def _county_view(county: _CountyBundle) -> html.Div:
             style=CARD_STYLE,
         ), width=12), className="mb-3"),
 
-        dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
+       dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
+
+        # editorial findings card, rebuilt by callback when the state filter changes
+        dbc.Row(dbc.Col(
+            html.Div(
+                county_findings_card(county.df) if county.available else None,
+                id="county-findings-slot",
+            ),
+            width=12,
+        )),
+
+        # framework reference grid at the bottom of the county view
+        dbc.Row(dbc.Col(
+            html.Div(
+                county_tier_grid(county.df) if county.available else None,
+                id="county-tier-grid-slot",
+            ),
+            width=12,
+        )),
     ])
 
 
 def _header() -> dbc.Row:
-    """The dashboard title and subtitle row at the top of the page."""
-    return dbc.Row(dbc.Col(html.Div([
-        html.H3(
-            "Reproductive Health Provider Access Dashboard",
-            className="mb-0",
-            style={"fontWeight": "700"},
+    """
+    The page header: Fraunces serif title with italic coral accent on
+    'Access', plus a left aligned subhead. Sits below the topnav and
+    above the level toggle.
+    """
+    title = html.H1(
+        [
+            "Provider ",
+            html.Em("Access", style={"color": BRAND["coral"], "fontStyle": "italic"}),
+            " Dashboard",
+        ],
+        style={
+            "fontFamily": FONT_HEADING,
+            "fontWeight": "900",
+            "fontSize": "30px",
+            "letterSpacing": "-0.015em",
+            "color": COLORS["text"],
+            "marginBottom": "8px",
+        },
+    )
+
+    subhead = html.P(
+        "Residuals highlight where reproductive health provider supply "
+        "falls below or exceeds model expectations. Click a state on the "
+        "map to filter. Toggle between access gap and risk tier views.",
+        style={
+            "fontSize": "13px",
+            "color": COLORS["text_muted"],
+            "maxWidth": "820px",
+            "lineHeight": "1.65",
+            "marginBottom": "0",
+        },
+    )
+
+    return dbc.Row(
+        dbc.Col(
+            html.Div([title, subhead], style={"padding": "36px 0 22px 0"}),
+            width=12,
         ),
-        html.P(
-            "Residuals highlight where reproductive health provider supply "
-            "falls below or exceeds model expectations. Click a state on the "
-            "map to filter the bar chart. Toggle between access gap and risk "
-            "tier views.",
-            className="mb-0",
-            style={"color": COLORS["text_muted"], "fontSize": "0.9rem"},
-        ),
-    ], style={"textAlign": "center", "padding": "18px 0 10px 0"}), width=12))
+    )
 
 
 def _geo_toggle_row(county: _CountyBundle) -> dbc.Row:
-    """Geographic level toggle plus the optional state filter dropdown."""
+    """
+    Geographic level toggle (State Level / County Level) plus the
+    optional state filter dropdown. Sits directly below the page header
+    with a thin border separator above the map.
+    """
     level_options = [{"label": " State Level", "value": "state"}]
     if county.available:
         level_options.append({"label": " County Level", "value": "county"})
 
     state_options: list = []
     if county.available:
-        state_options = [{"label": s, "value": s} for s in sorted(county.df["practice_state"].unique())]
+        state_options = [
+            {"label": s, "value": s}
+            for s in sorted(county.df["practice_state"].unique())
+        ]
 
-    return dbc.Row([
-        dbc.Col(html.Div(
-            dcc.RadioItems(
-                id="geo-level-toggle",
-                options=level_options,
-                value="state",
-                inline=True,
-                inputStyle={"marginRight": "6px"},
-                labelStyle={
-                    "marginRight": "24px", "fontSize": "0.95rem",
-                    "cursor": "pointer", "color": COLORS["text"],
-                    "fontWeight": "600",
-                },
+    toggle = dcc.RadioItems(
+        id="geo-level-toggle",
+        options=level_options,
+        value="state",
+        inline=True,
+        inputStyle={"marginRight": "8px"},
+        labelStyle={
+            "marginRight": "28px",
+            "fontSize": "13px",
+            "cursor": "pointer",
+            "color": COLORS["text"],
+            "fontWeight": "500",
+        },
+    )
+
+    dropdown = dcc.Dropdown(
+        id="county-state-filter",
+        options=state_options,
+        value=None,
+        placeholder="All states",
+        clearable=True,
+        style={"fontSize": "13px"},
+    )
+
+    return dbc.Row(
+        [
+            dbc.Col(toggle, md=8),
+            dbc.Col(
+                html.Div(dropdown, id="county-state-filter-wrap", style={"display": "none"}),
+                md=4,
             ),
-            style={"textAlign": "center"},
-        ), md=8),
-        dbc.Col(html.Div(
-            dcc.Dropdown(
-                id="county-state-filter",
-                options=state_options,
-                value=None,
-                placeholder="All states",
-                clearable=True,
-                style={"fontSize": "0.9rem"},
-            ),
-            id="county-state-filter-wrap",
-            style={"display": "none"},
-        ), md=4),
-    ], className="align-items-center mb-3")
+        ],
+        className="align-items-center",
+        style={
+            "paddingBottom": "24px",
+            "borderBottom": f"1px solid {COLORS['card_border']}",
+            "marginBottom": "20px",
+        },
+    )
 
 
-def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> dbc.Container:
-    """Compose the full app.layout from the header, toggle, and two view sections."""
-    return dbc.Container([
+def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
+    """Compose the full app.layout from the topnav, page container, and views."""
+    page = dbc.Container([
         _header(),
-        html.Hr(style={"margin": "0 0 16px 0", "borderColor": COLORS["card_border"]}),
         _geo_toggle_row(county),
         _state_view(state_df),
         _county_view(county),
@@ -316,8 +360,10 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> dbc.Containe
         "backgroundColor": COLORS["bg"],
         "fontFamily": FONT_STACK,
         "maxWidth": "1440px",
-        "paddingBottom": "40px",
+        "padding": "0 40px 40px 40px",
     })
+
+    return html.Div([topnav(context_tag="State · 2026"), page])
 
 
 def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
@@ -369,6 +415,7 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         build_county_bar,
         build_county_choropleth,
         county_detail_card,
+        county_kpi_cards,
     )
 
     @app.callback(
@@ -418,16 +465,47 @@ def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
         Output("county-detail-panel", "children"),
         Input("county-choropleth", "clickData"),
         Input("county-reset", "n_clicks"),
+        Input("county-state-filter", "value"),
     )
-    def update_county_detail(click_data, _n_clicks):
-        """Show the clicked county's metrics card below the map."""
-        if ctx.triggered_id == "county-reset" or click_data is None:
+    def update_county_detail(click_data, _n_clicks, _state_filter):
+        """
+        Show the clicked county's metric card below the map.
+
+        The state filter is included as a trigger so changing the dropdown
+        clears any old detail card from the previous county view.
+        """
+        triggered = ctx.triggered_id
+
+        # clear the card on reset, filter change, or before any county is selected
+        if triggered in ("county-reset", "county-state-filter") or click_data is None:
             return None
+
         fips = click_data["points"][0]["location"]
         match = county.df[county.df["county_fips"] == fips]
+
         if len(match) == 0:
             return None
+
         return county_detail_card(match.iloc[0])
+
+    @app.callback(
+        Output("county-kpi-row", "children"),
+        Output("county-findings-slot", "children"),
+        Output("county-tier-grid-slot", "children"),
+        Input("county-state-filter", "value"),
+    )
+    def update_county_filtered_blocks(state_filter):
+        """
+        Update every county view section that depends on the state filter.
+
+        This keeps the KPI cards, findings card, and tier grid aligned with
+        the filtered map and bar chart.
+        """
+        kpis = county_kpi_cards(county.df, state_filter=state_filter)
+        findings = county_findings_card(county.df, state_filter=state_filter)
+        tier_grid = county_tier_grid(county.df, state_filter=state_filter)
+
+        return kpis, findings, tier_grid
 
 
 def _register_view_toggle(app: Dash) -> None:
@@ -476,6 +554,39 @@ def run_dashboard(
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         title="Ovara: A Reproductive Health Access Dashboard",
     )
+
+    # set the page background at the body level so the dashboard surface extends to the edges of the viewport instead of bleeding to default white
+    app.index_string = f"""
+<!DOCTYPE html>
+<html>
+    <head>
+        {{%metas%}}
+        <title>{{%title%}}</title>
+        {{%favicon%}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700;1,9..144,900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        {{%css%}}
+        <style>
+            html, body {{
+                background-color: {COLORS["bg"]};
+                margin: 0;
+                padding: 0;
+                min-height: 100vh;
+            }}
+        </style>
+    </head>
+    <body>
+        {{%app_entry%}}
+        <footer>
+            {{%config%}}
+            {{%scripts%}}
+            {{%renderer%}}
+        </footer>
+    </body>
+</html>
+"""
+
     app.layout = _build_layout(state_df, county)
 
     _register_view_toggle(app)
