@@ -82,6 +82,14 @@ CARD_STYLE: Final[dict] = {
     "backgroundColor": COLORS["card_bg"],
 }
 
+# variant card style for the written summary panels.
+# uses surface_alt so the summary reads as a distinct block from charts without leaving the dark theme.
+SUMMARY_CARD_STYLE: Final[dict] = {
+    **CARD_STYLE,
+    "backgroundColor": UI["surface_alt"],
+    "borderLeft": f"3px solid {COLORS['accent']}",
+}
+
 BASE_LAYOUT: Final[dict] = {
     "template": "plotly_white",
     "margin": {"l": 10, "r": 20, "t": 50, "b": 40},

@@ -207,7 +207,7 @@ def build_county_choropleth(
     ))
 
     fig.update_layout(
-        mapbox_style="carto-positron",
+        mapbox_style="carto-darkmatter",
         mapbox_zoom=map_zoom,
         mapbox_center=map_center,
         margin={"l": 0, "r": 0, "t": 50, "b": 0},

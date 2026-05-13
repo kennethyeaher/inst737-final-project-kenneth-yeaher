@@ -31,6 +31,7 @@ from vis._styles import (
     COLORS,
     COUNTY_MAP_CONFIG,
     FONT_STACK,
+    SUMMARY_CARD_STYLE,
 )
 from vis.state_charts import build_bar, build_choropleth, build_scatter
 from vis.summary_text import generate_state_summary
@@ -173,7 +174,7 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
                 "fontSize": "0.95rem", "lineHeight": "1.7",
                 "color": COLORS["text"], "marginBottom": "0",
             }),
-        ]), style={**CARD_STYLE, "backgroundColor": "#f0f4f8"}), width=12), className="mb-4"),
+        ]), style=SUMMARY_CARD_STYLE), width=12), className="mb-4"),
     ])
 
 
@@ -223,7 +224,7 @@ def _county_view(county: _CountyBundle) -> html.Div:
                         "color": COLORS["text"], "marginBottom": "0",
                     },
                 ),
-            ]), style={**CARD_STYLE, "backgroundColor": "#f0f4f8"}), md=7),
+            ]), style=SUMMARY_CARD_STYLE), md=7),
         ], className="g-3 mb-3"),
 
         # the county map (scroll zoom enabled in COUNTY_MAP_CONFIG)
@@ -249,8 +250,12 @@ def _header() -> dbc.Row:
     return dbc.Row(dbc.Col(html.Div([
         html.H3(
             "Reproductive Health Provider Access Dashboard",
-            className="mb-0",
-            style={"fontWeight": "700"},
+            className="mb-2",
+            style={
+                "fontWeight": "700",
+                "color": COLORS["text"],
+                "letterSpacing": "-0.01em",
+            },
         ),
         html.P(
             "Residuals highlight where reproductive health provider supply "
@@ -258,9 +263,14 @@ def _header() -> dbc.Row:
             "map to filter the bar chart. Toggle between access gap and risk "
             "tier views.",
             className="mb-0",
-            style={"color": COLORS["text_muted"], "fontSize": "0.9rem"},
+            style={
+                "color": COLORS["text_muted"],
+                "fontSize": "0.9rem",
+                "maxWidth": "780px",
+                "margin": "0 auto",
+            },
         ),
-    ], style={"textAlign": "center", "padding": "18px 0 10px 0"}), width=12))
+    ], style={"textAlign": "center", "padding": "24px 0 14px 0"}), width=12))
 
 
 def _geo_toggle_row(county: _CountyBundle) -> dbc.Row:
@@ -476,6 +486,39 @@ def run_dashboard(
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         title="Ovara: A Reproductive Health Access Dashboard",
     )
+
+    # set the page background at the body level so the dashboard surface extends to the edges of the viewport instead of bleeding to default white
+    app.index_string = f"""
+<!DOCTYPE html>
+<html>
+    <head>
+        {{%metas%}}
+        <title>{{%title%}}</title>
+        {{%favicon%}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700;1,9..144,900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        {{%css%}}
+        <style>
+            html, body {{
+                background-color: {COLORS["bg"]};
+                margin: 0;
+                padding: 0;
+                min-height: 100vh;
+            }}
+        </style>
+    </head>
+    <body>
+        {{%app_entry%}}
+        <footer>
+            {{%config%}}
+            {{%scripts%}}
+            {{%renderer%}}
+        </footer>
+    </body>
+</html>
+"""
+
     app.layout = _build_layout(state_df, county)
 
     _register_view_toggle(app)
