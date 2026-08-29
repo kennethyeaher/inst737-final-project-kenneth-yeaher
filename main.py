@@ -13,6 +13,7 @@ Usage
 from __future__ import annotations
 
 from utils.logging_config import setup_logger
+from utils.manifest import write_run_manifest
 from utils.pipeline import Stage, run_pipeline
 
 logger = setup_logger("ovara.pipeline")
@@ -92,6 +93,11 @@ def main() -> None:
     """Run the full Ovara pipeline from extract through dashboard exports."""
     logger.info("starting Ovara pipeline...\n")
     run_pipeline(_build_stages(), logger)
+
+    # record the data vintages behind this run so two Census vintages
+    # cannot drift apart unnoticed again
+    write_run_manifest()
+
     logger.info("Ovara pipeline finished")
 
 
