@@ -27,3 +27,18 @@ FIPS_TO_STATE: dict[str, str] = {
 
 # reverse lookup for the same set, useful when joining model output back to FIPS
 STATE_TO_FIPS: dict[str, str] = {abbr: fips for fips, abbr in FIPS_TO_STATE.items()}
+
+# Connecticut retired its eight legacy counties and the nine planning regions
+# became the county equivalent from the 2022 ACS onward. Any join against a
+# 2022 or later Census product has to use these codes, not 09001 through 09015.
+CT_PLANNING_REGIONS: dict[str, str] = {
+    "09110": "Capitol Planning Region",
+    "09120": "Greater Bridgeport Planning Region",
+    "09130": "Lower Connecticut River Valley Planning Region",
+    "09140": "Naugatuck Valley Planning Region",
+    "09150": "Northeastern Connecticut Planning Region",
+    "09160": "Northwest Hills Planning Region",
+    "09170": "South Central Connecticut Planning Region",
+    "09180": "Southeastern Connecticut Planning Region",
+    "09190": "Western Connecticut Planning Region",
+}

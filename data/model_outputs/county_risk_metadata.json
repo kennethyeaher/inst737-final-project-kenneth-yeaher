@@ -6,8 +6,8 @@
     "adequate": 20.0
   },
   "total_counties": 3144,
-  "counties_zero_providers": 1038,
-  "population_in_access_deserts": 14529192,
+  "counties_zero_providers": 1029,
+  "population_in_access_deserts": 10917875,
   "states_with_deserts": [
     "AK",
     "AL",
@@ -15,7 +15,6 @@
     "AZ",
     "CA",
     "CO",
-    "CT",
     "FL",
     "GA",
     "HI",

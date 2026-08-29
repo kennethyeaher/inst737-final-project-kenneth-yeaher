@@ -457,7 +457,8 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 |---|---|
 | `cbsa_reference_dataset.csv` | Maps CBSA codes to county FIPS, state names, and 2024 population estimates |
 | `acs_female_25_44_by_state.csv` | Female population aged 25 to 44 by state from Census ACS used as fertility age demand proxy |
-| `zip_county_lookup.csv` | ZIP code to county FIPS lookup from the Census 2020 ZCTA relationship file |
+| `zip_county_lookup.csv` | ZIP code to county FIPS lookup from the Census 2020 ZCTA relationship file, with Connecticut ZIPs re pointed to the nine planning regions so they match the 2022 ACS population vintage |
+| `ct_zip_planning_region.csv` | Connecticut ZIP to planning region crosswalk vendored from CTData Collaborative. Their assignment is a centroid nearest neighbour spatial join in QGIS against 2022 Census boundaries, so it is approximate where a ZIP straddles a planning region boundary. Such a ZIP is assigned whole to the region its centroid falls in |
 | `county_population.csv` | Total population per county from Census ACS 5 year, used as the county density denominator |
 | `counties_geojson.json` | County boundary geojson used by the county choropleth map |
 | `hrsa_hpsa_raw.csv` | Cached HRSA Primary Care HPSA designations used by the validation stage |

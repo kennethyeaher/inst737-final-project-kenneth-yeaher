@@ -20,6 +20,11 @@ FETCH_TIMEOUT = 60
 CACHE_FILE = Path("data/reference_tables/zcta_county_crosswalk.csv")
 OUTPUT_FILE = Path("data/reference_tables/zip_county_lookup.csv")
 
+# vendored by etl/build_ct_planning_region_crosswalk.py from CTData Collaborative
+CT_CROSSWALK_FILE = Path("data/reference_tables/ct_zip_planning_region.csv")
+
+CT_STATE_FIPS = "09"
+
 
 def _download_crosswalk() -> pd.DataFrame:
     """Pull the Census ZCTA to county crosswalk text file and parse it as a DataFrame."""
@@ -74,11 +79,65 @@ def build_largest_share_lookup(raw: pd.DataFrame) -> pd.DataFrame:
     return lookup
 
 
+def apply_connecticut_planning_regions(lookup: pd.DataFrame) -> pd.DataFrame:
+    """
+    Re point Connecticut ZIPs from legacy counties onto the nine planning regions.
+
+    The Census relationship file is still on the 2020 county vintage, so it
+    hands Connecticut the eight legacy county codes 09001 through 09015. County
+    population comes from the 2022 ACS, where the nine planning regions are the
+    county equivalent, so the two vintages share no codes and every Connecticut
+    provider is lost at the population join. This swaps in the planning region
+    code from the vendored CTData crosswalk before that join happens.
+
+    Parameters
+    lookup : pd.DataFrame
+        The national ZIP to county lookup, one row per ZCTA.
+
+    Returns
+    pd.DataFrame with the same shape minus any Connecticut ZIP that the CTData
+    crosswalk does not cover, since a legacy code would only be dropped later.
+    """
+    ct_crosswalk = pd.read_csv(CT_CROSSWALK_FILE, dtype={"county_fips": str})
+    planning_region_by_zip = dict(zip(ct_crosswalk["zip5"], ct_crosswalk["county_fips"]))
+
+    lookup = lookup.copy()
+    is_ct = lookup["state_fips"] == CT_STATE_FIPS
+    reassigned = lookup.loc[is_ct, "zip5"].map(planning_region_by_zip)
+
+    unmatched = int(reassigned.isna().sum())
+    if unmatched > 0:
+        logger.warning(
+            f"CT ZIPs with no planning region match, dropped from the lookup: {unmatched}"
+        )
+
+    lookup.loc[is_ct, "county_fips"] = reassigned
+
+    # a Connecticut ZIP the CTData file does not cover keeps no usable code,
+    # so drop it rather than leave a legacy county behind
+    lookup = lookup.dropna(subset=["county_fips"])
+
+    # recompute state FIPS from the new code so the two columns stay consistent
+    lookup["state_fips"] = lookup["county_fips"].str[:2]
+
+    ct_codes = set(lookup.loc[lookup["state_fips"] == CT_STATE_FIPS, "county_fips"])
+    assert len(ct_codes) == 9, (
+        f"expected 9 CT planning regions, found {len(ct_codes)}: {sorted(ct_codes)}"
+    )
+    assert all(code.startswith("091") for code in ct_codes), (
+        f"non planning region CT codes: {sorted(ct_codes)}"
+    )
+
+    logger.info(f"CT ZIPs reassigned to planning regions: {int(is_ct.sum()) - unmatched:,}")
+    return lookup.reset_index(drop=True)
+
+
 def build_zip_county_crosswalk(refresh: bool = False) -> pd.DataFrame:
     """Run the full ZCTA to county lookup workflow and save the output."""
     try:
         raw = fetch_zcta_crosswalk(refresh=refresh)
         lookup = build_largest_share_lookup(raw)
+        lookup = apply_connecticut_planning_regions(lookup)
         save_csv(lookup, OUTPUT_FILE, logger)
         return lookup
 
