@@ -14,7 +14,7 @@
 
 **University of Maryland, College of Information | INST737: Data Science Techniques | Final Project**
 
-[View Dashboard](#running-the-project) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Methodology](METHODOLOGY.md) · [Future Work](#next-steps-and-future-considerations)
+[View Dashboard](#running-the-project) · [Known Limitations](#known-limitations) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Methodology](METHODOLOGY.md) · [Future Work](#next-steps-and-future-considerations)
 
 ---
 
@@ -34,6 +34,25 @@ States with large negative residuals between predicted and actual provider densi
 
 ---
 
+## Known Limitations
+
+**Connecticut was reported as a statewide access desert, and that was wrong.** The county layer assigned zero providers to all of Connecticut because two Census vintages disagreed. The ZIP to county crosswalk came from the 2020 ZCTA relationship file, which still emits Connecticut's eight legacy county codes 09001 through 09015. County population came from the 2022 ACS, the first vintage in which the nine planning regions are the county equivalent, so it holds 09110 through 09190. The two sets share no codes, the population join dropped every matched Connecticut provider, and the nine planning regions were published as access deserts with zero providers each. Nothing warned.
+
+Connecticut ZIPs are now routed to planning regions through a vendored CTData Collaborative crosswalk, and `analysis/build_county_dataset.py` raises rather than writing zeros if a state's crosswalk geography and population geography ever diverge again.
+
+| Figure | Published before | Corrected |
+|---|---:|---:|
+| CT providers in the county layer | 0 | 1,275 |
+| CT planning regions with providers | 0 of 9 | 9 of 9 |
+| National access desert counties | 1,038 | 1,029 |
+| Residents in access deserts | 14,529,192 | 10,917,875 |
+
+None of the nine planning regions is an access desert. Six are Well Served and three are Adequate.
+
+Two caveats remain. The ZIP to planning region assignment is approximate at boundaries: CTData built it as a centroid nearest neighbour spatial join against 2022 Census boundaries, so a ZIP that straddles two regions is assigned whole to the region containing its centroid. And 89 Connecticut providers still fail the ZIP lookup outright, the same way providers in every other state do when their practice ZIP has no ZCTA match.
+
+---
+
 ## Data and Sources
 
 <details>
@@ -50,6 +69,7 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 | HealthData.gov | Supporting health datasets | [healthdata.gov](https://healthdata.gov) |
 | HRSA | Health workforce and shortage designation data | [data.hrsa.gov](https://data.hrsa.gov) |
 | KFF | Health policy research and context | [kff.org](https://www.kff.org) |
+| CTData Collaborative | Connecticut ZIP to planning region crosswalk, used to reach the 2022 ACS county equivalents. Published under the MIT licence and vendored to `data/reference_tables/ct_zip_planning_region.csv` | [github.com](https://github.com/CT-Data-Collaborative/zip-to-planningregion) |
 
 </details>
 
@@ -330,11 +350,11 @@ Classifies counties into five access tiers using fixed density thresholds instea
 
 | Tier | Density per 100k | Counties | Population |
 |---|---|---:|---:|
-| Access Desert | 0.0 | 1,038 | 14.5M |
+| Access Desert | 0.0 | 1,029 | 10.9M |
 | Critical | 0.0 to 5.0 | 154 | 6.6M |
 | Underserved | 5.0 to 10.0 | 314 | 11.3M |
-| Adequate | 10.0 to 20.0 | 594 | 52.6M |
-| Well Served | over 20.0 | 1,044 | 246.1M |
+| Adequate | 10.0 to 20.0 | 597 | 52.9M |
+| Well Served | over 20.0 | 1,050 | 249.3M |
 
 Each county also receives a continuous risk score from 0 to 100 and a national rank.
 
@@ -411,7 +431,7 @@ Both views follow the same structure: KPI tiles, a data visualization block, a U
 
 **County view** shows density threshold tiers across all 3,144 counties on a light Carto basemap so the brand colored tiers stay easy to read. It uses Plotly Choroplethmapbox so users can pan and scroll zoom into individual counties. A state filter dropdown reframes the map, KPI tiles, findings card, and tier grid around the chosen state in one callback so every county level section stays in sync. The bar chart shows the most underserved counties that have at least one provider, while access deserts get their own KPI tile. Clicking a county opens a detail card. The map uses Dash Patch on click so selecting a county does not re render all 3,144 polygons.
 
-> **Known limitation:** Connecticut is missing from the county map. The Census Bureau switched Connecticut from county based geography to nine Planning Regions in 2022. The county data uses the new Planning Region FIPS codes, but the bundled Plotly geojson still has the old county FIPS codes. Connecticut data is correct in the underlying CSV but does not render on the map until the geojson is refreshed.
+> **Connecticut:** the county layer used to report zero providers for the whole state. That was a data defect, not a map defect, and it is now fixed. See [Known Limitations](#known-limitations) for what changed and what remains approximate.
 
 </details>
 
@@ -451,6 +471,12 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_clustering_results.csv` | State supply archetype clustering output | 8 |
 | `data_dictionary_hrsa_validation.csv` | HRSA HPSA external validation output | 10 |
 
+### Data Vintages
+
+Every run writes `data/model_outputs/run_manifest.json`, which records the vintage behind each output: the NPPES source file and its size, the ACS year used for county population and the one used for demand features, the CBSA delineation and population files, the ZCTA relationship file vintage, the CT planning region crosswalk source and vendoring date, the HRSA cache timestamp, the git commit, and the installed pandas, numpy, and scikit learn versions.
+
+The manifest exists because two Census vintages drifted apart unnoticed and cost Connecticut its entire county layer. Read it before comparing numbers across runs. Values are pulled from the module constants the stages themselves use, so the manifest cannot fall out of step with the pipeline.
+
 ### Reference Tables
 
 | File | Purpose |
@@ -474,8 +500,6 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | **CDC ART Integration** | Join CDC fertility clinic treatment data from roughly 500 clinics | Add treatment volume and outcomes as a second access dimension |
 | **Network Modeling** | Neo4j graph analysis of provider, clinic, metro, and referral relationships | Shift from density based access measurement to connectivity based access measurement |
 | **ZIP Level Drill Down** | ZIP level choropleth with risk tier overlays | Push geographic resolution below county level for more targeted planning |
-| **Refresh County Geojson** | Replace the bundled county geojson with a 2024 Census TIGER pull that includes Connecticut Planning Regions | Restore Connecticut to the county choropleth |
-| **Add CT Crosswalk Patch** | Map old Connecticut county FIPS codes used by NPPES ZIPs to the new Planning Region FIPS | Route Connecticut providers to the right new region so the access desert flag is accurate |
 
 ---
 
