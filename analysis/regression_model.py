@@ -19,7 +19,6 @@ OUTPUT_FILE = Path("data/model_outputs/regression_results.csv")
 
 FEATURE_COLUMNS = [
     "taxonomy_diversity",
-    "growth_per_100k",
 ]
 
 TARGET_COLUMN = "providers_per_100k"

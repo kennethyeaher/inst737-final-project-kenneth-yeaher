@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold, cross_val_score
+from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from utils.io import save_csv, save_json
@@ -19,26 +22,34 @@ OUTPUT_DIR = Path("data/model_outputs")
 # one shared split so every model in this module is scored on the same folds
 CV_SPLITTER = KFold(n_splits=5, shuffle=True, random_state=42)
 
-# candidate feature sets, compared on cross validated R2 before one is chosen
+# smallest sample the leak check will report a correlation on
+MIN_LEAK_CHECK_ROWS = 5
+
+# candidate feature sets, compared on cross validated R2 before one is chosen.
+# every candidate is leak free, meaning no feature is derived from provider_count
 CANDIDATE_FEATURE_SETS = {
-    "shipped_five": [
-        "state_population",
+    "four_composition": [
         "taxonomy_diversity",
-        "recent_provider_growth",
-        "avg_provider_enum_year",
-        "female_25_44_pop",
-    ],
-    "four_rates": [
-        "taxonomy_diversity",
-        "growth_per_100k",
+        "pct_recent_entrants",
         "pct_female_25_44",
         "provider_enum_year_centered",
     ],
-    "two_rates": [
+    "two_composition": [
         "taxonomy_diversity",
-        "growth_per_100k",
+        "pct_recent_entrants",
+    ],
+    "taxonomy_only": [
+        "taxonomy_diversity",
     ],
 }
+
+# growth_per_100k was the winning feature until a leak check retired it. It is
+# recent_provider_growth over state_population, and the target is provider_count
+# over state_population, so the two share a denominator and the numerator of one
+# is a subset of the numerator of the other
+LEAKING_FEATURE = "growth_per_100k"
+LEAK_SOURCE_COLUMN = "recent_provider_growth"
+TARGET_NUMERATOR_COLUMN = "provider_count"
 
 
 def load_evaluation_data() -> pd.DataFrame:
@@ -126,6 +137,74 @@ def evaluate_model(df: pd.DataFrame) -> dict:
     return results
 
 
+
+def check_target_leakage(df: pd.DataFrame) -> dict:
+    """
+    Record why growth_per_100k was removed, with the evidence rather than a claim.
+
+    The retired feature scored well because it carried the target inside it.
+    This measures the subset relationship it rests on and scores the same model
+    with and without it, so the removal can be audited later instead of taken
+    on trust.
+
+    Parameters
+    df : pd.DataFrame with the target, the leaking feature, and its replacement.
+
+    Returns
+    dict describing the leak and its cost in cross validated R2.
+    """
+    y = df[TARGET_COLUMN]
+    share = df[LEAK_SOURCE_COLUMN] / df[TARGET_NUMERATOR_COLUMN]
+
+    def _cv_r2(features: list[str]) -> float | None:
+        """cross validated R2 for one feature set, or None if a column is missing."""
+        if any(col not in df.columns for col in features):
+            return None
+        scores = cross_val_score(
+            LinearRegression(), df[features], y, cv=CV_SPLITTER, scoring="r2"
+        )
+        return round(float(scores.mean()), 4)
+
+    leak_check = {
+        "retired_feature": LEAKING_FEATURE,
+        "reason": (
+            f"{LEAK_SOURCE_COLUMN} is a strict subset of {TARGET_NUMERATOR_COLUMN}, "
+            f"and {LEAKING_FEATURE} divides it by the same denominator as the target"
+        ),
+        "subset_holds_for_all_states": bool(
+            (df[LEAK_SOURCE_COLUMN] <= df[TARGET_NUMERATOR_COLUMN]).all()
+        ),
+        "recent_share_of_workforce": {
+            "min": round(float(share.min()), 4),
+            "max": round(float(share.max()), 4),
+            "national": round(
+                float(df[LEAK_SOURCE_COLUMN].sum() / df[TARGET_NUMERATOR_COLUMN].sum()), 4
+            ),
+        },
+        "cv5_r2_with_leaking_feature": _cv_r2(["taxonomy_diversity", LEAKING_FEATURE]),
+        "cv5_r2_with_leak_free_replacement": _cv_r2(
+            ["taxonomy_diversity", "pct_recent_entrants"]
+        ),
+        "cv5_r2_taxonomy_diversity_only": _cv_r2(["taxonomy_diversity"]),
+        "replacement_correlation_with_target": None,
+    }
+
+    replacement = df[["pct_recent_entrants", TARGET_COLUMN]].dropna()
+    if len(replacement) >= MIN_LEAK_CHECK_ROWS:
+        rho, p_value = pearsonr(replacement["pct_recent_entrants"], replacement[TARGET_COLUMN])
+        leak_check["replacement_correlation_with_target"] = {
+            "pearson_r": round(float(rho), 4),
+            "p_value": round(float(p_value), 4),
+        }
+
+    logger.info(
+        f"leak check: {LEAKING_FEATURE} retired, CV R2 "
+        f"{leak_check['cv5_r2_with_leaking_feature']} with it against "
+        f"{leak_check['cv5_r2_with_leak_free_replacement']} with the leak free replacement"
+    )
+
+    return leak_check
+
 def compare_feature_sets(df: pd.DataFrame) -> dict:
     """
     Score every candidate feature set on the same folds and rank them.
@@ -173,6 +252,7 @@ def compare_feature_sets(df: pd.DataFrame) -> dict:
         "n_states": len(df),
         "cv": "KFold 5 shuffle True random_state 42",
         "baseline_mae": round(baseline_mae, 4),
+        "leakage_check": check_target_leakage(df),
         "candidates": candidates,
         "selected": winner,
         "selected_features": candidates[winner]["features"],

@@ -21,6 +21,8 @@ import pandas as pd
 import pytest
 from scipy.stats import spearmanr
 
+from analysis.regression_model import FEATURE_COLUMNS
+
 STATE_DATASET_FILE = Path("data/load/access_model_dataset.csv")
 
 # no state is smaller than Wyoming or larger than California
@@ -39,6 +41,15 @@ MAX_DENSITY = 200
 MIN_COUNT_POPULATION_SPEARMAN = 0.9
 
 EXPECTED_STATE_ROWS = 51
+
+# columns built out of provider_count, which is the numerator of the target.
+# a rate model cannot use a component of its own target as a predictor
+TARGET_DERIVED_FEATURES = {
+    "provider_count": "the numerator of the target",
+    "providers_per_100k": "the target itself",
+    "recent_provider_growth": "a strict subset of provider_count",
+    "growth_per_100k": "a subset of provider_count over the target denominator",
+}
 
 
 @pytest.fixture(scope="module")
@@ -105,3 +116,29 @@ def test_dataset_shape_and_completeness(state_dataset):
     nulls = state_dataset[required].isna().sum()
 
     assert nulls.sum() == 0, f"nulls in modeling columns: {nulls[nulls > 0].to_dict()}"
+
+
+def test_recent_growth_is_a_subset_of_provider_count(state_dataset):
+    """Recently enumerated providers are counted inside provider_count, in every state."""
+    over_count = state_dataset[
+        state_dataset["recent_provider_growth"] > state_dataset["provider_count"]
+    ]
+
+    assert over_count.empty, (
+        "states where recent_provider_growth exceeds provider_count: "
+        f"{over_count['practice_state'].tolist()}"
+    )
+
+
+def test_no_model_feature_is_derived_from_the_target():
+    """No feature may be arithmetically derived from provider_count."""
+    leaking = {
+        column: reason
+        for column, reason in TARGET_DERIVED_FEATURES.items()
+        if column in FEATURE_COLUMNS
+    }
+
+    assert not leaking, (
+        "FEATURE_COLUMNS contains features derived from the target: "
+        + ", ".join(f"{column} is {reason}" for column, reason in leaking.items())
+    )

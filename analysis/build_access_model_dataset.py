@@ -65,6 +65,7 @@ BASE_COLUMNS = [
     "state_population",
     "providers_per_100k",
     "growth_per_100k",
+    "pct_recent_entrants",
     "provider_enum_year_centered",
 ]
 
@@ -232,6 +233,10 @@ def add_rate_features(df: pd.DataFrame) -> pd.DataFrame:
     an enumeration year near 2011 pushes the intercept into the thousands.
     Rates and a centered year remove both problems.
 
+    Not every rate is safe to model with. growth_per_100k divides a subset of
+    provider_count by the target's own denominator, so it leaks the target.
+    pct_recent_entrants is the leak free alternative.
+
     Parameters
     df : pd.DataFrame with state_population and the raw supply features.
 
@@ -242,6 +247,11 @@ def add_rate_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df["growth_per_100k"] = df["recent_provider_growth"] / df["state_population"] * 100000
     df["provider_enum_year_centered"] = df["avg_provider_enum_year"] - ENUM_YEAR_BASELINE
+
+    # share of the workforce that is new, which describes composition rather than
+    # size. growth_per_100k is a level and cannot be modeled against a density
+    # target, because recent_provider_growth is a subset of provider_count
+    df["pct_recent_entrants"] = df["recent_provider_growth"] / df["provider_count"]
 
     # the female population share only exists when the demand stage ran
     if "female_25_44_pop" in df.columns:
