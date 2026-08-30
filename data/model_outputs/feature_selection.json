@@ -1,0 +1,57 @@
+{
+  "n_states": 51,
+  "cv": "KFold 5 shuffle True random_state 42",
+  "baseline_mae": 6.03,
+  "candidates": {
+    "shipped_five": {
+      "features": [
+        "state_population",
+        "taxonomy_diversity",
+        "recent_provider_growth",
+        "avg_provider_enum_year",
+        "female_25_44_pop"
+      ],
+      "n_features": 5,
+      "cv5_r2_mean": 0.114,
+      "cv5_r2_std": 0.4319,
+      "cv5_mae_mean": 5.0977,
+      "cv5_mae_std": 0.7314,
+      "beats_baseline_mae": true
+    },
+    "four_rates": {
+      "features": [
+        "taxonomy_diversity",
+        "growth_per_100k",
+        "pct_female_25_44",
+        "provider_enum_year_centered"
+      ],
+      "n_features": 4,
+      "cv5_r2_mean": 0.2292,
+      "cv5_r2_std": 0.3456,
+      "cv5_mae_mean": 4.8801,
+      "cv5_mae_std": 1.547,
+      "beats_baseline_mae": true
+    },
+    "two_rates": {
+      "features": [
+        "taxonomy_diversity",
+        "growth_per_100k"
+      ],
+      "n_features": 2,
+      "cv5_r2_mean": 0.3253,
+      "cv5_r2_std": 0.2467,
+      "cv5_mae_mean": 4.4821,
+      "cv5_mae_std": 0.9403,
+      "beats_baseline_mae": true
+    }
+  },
+  "selected": "two_rates",
+  "selected_features": [
+    "taxonomy_diversity",
+    "growth_per_100k"
+  ],
+  "in_use": [
+    "taxonomy_diversity",
+    "growth_per_100k"
+  ]
+}

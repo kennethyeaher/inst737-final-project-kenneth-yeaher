@@ -1,29 +1,25 @@
 {
   "n_states": 51,
-  "n_features": 5,
-  "train_r2": 0.4666,
-  "train_mae": 4.5109,
-  "train_rmse": 6.0924,
-  "cv5_r2_mean": -0.0719,
-  "cv5_r2_std": 0.4379,
-  "cv5_mae_mean": 5.4081,
-  "cv5_mae_std": 1.507,
+  "n_features": 2,
+  "train_r2": 0.4375,
+  "train_mae": 4.3302,
+  "train_rmse": 6.2564,
+  "cv5_r2_mean": 0.3253,
+  "cv5_r2_std": 0.2467,
+  "cv5_mae_mean": 4.4821,
+  "cv5_mae_std": 0.9403,
   "baseline_mae": 6.03,
   "standardized_coefficients": {
-    "state_population": -2.6701,
-    "taxonomy_diversity": 5.8303,
-    "recent_provider_growth": -1.1487,
-    "avg_provider_enum_year": 0.9014,
-    "female_25_44_pop": 0.8114
+    "taxonomy_diversity": 3.761,
+    "growth_per_100k": 2.7918
   },
-  "intercept": -2303.2446,
-  "residual_std": 6.1531,
-  "residual_skewness": 0.9005,
-  "residual_kurtosis": 2.0273,
+  "intercept": -6.688,
+  "residual_std": 6.3187,
+  "residual_skewness": 1.4877,
+  "residual_kurtosis": 3.2248,
   "outlier_states": [
     "Alaska",
     "District of Columbia",
-    "Nevada",
     "Vermont"
   ]
 }

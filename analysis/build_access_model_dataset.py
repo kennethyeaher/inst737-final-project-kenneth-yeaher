@@ -50,6 +50,9 @@ POP_REQUIRED_COLUMNS = {
 MIN_STATE_POPULATION = 400_000
 MAX_STATE_POPULATION = 45_000_000
 
+# enumeration years enter the model centered so the intercept stays interpretable
+ENUM_YEAR_BASELINE = 2010
+
 # output column order
 
 BASE_COLUMNS = [
@@ -61,11 +64,14 @@ BASE_COLUMNS = [
     "recent_provider_growth",
     "state_population",
     "providers_per_100k",
+    "growth_per_100k",
+    "provider_enum_year_centered",
 ]
 
 DEMAND_COLUMNS = [
     "female_25_44_pop",
     "providers_per_100k_demand",
+    "pct_female_25_44",
 ]
 
 
@@ -216,6 +222,33 @@ def merge_features(supply, pop, demand=None) -> pd.DataFrame:
     return df
 
 
+
+def add_rate_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Express the count and level features as rates so they match the rate target.
+
+    The target is providers per 100k, but the raw features mix counts with
+    levels. A count of recent providers partly measures how big a state is, and
+    an enumeration year near 2011 pushes the intercept into the thousands.
+    Rates and a centered year remove both problems.
+
+    Parameters
+    df : pd.DataFrame with state_population and the raw supply features.
+
+    Returns
+    pd.DataFrame with the rate features added.
+    """
+    df = df.copy()
+
+    df["growth_per_100k"] = df["recent_provider_growth"] / df["state_population"] * 100000
+    df["provider_enum_year_centered"] = df["avg_provider_enum_year"] - ENUM_YEAR_BASELINE
+
+    # the female population share only exists when the demand stage ran
+    if "female_25_44_pop" in df.columns:
+        df["pct_female_25_44"] = df["female_25_44_pop"] / df["state_population"]
+
+    return df
+
 def save_output(df: pd.DataFrame) -> None:
     """save the access modeling dataset for regression and clustering."""
 
@@ -237,6 +270,7 @@ def build_access_model_dataset() -> pd.DataFrame:
         supply = build_supply_features(providers)
         pop = build_state_population(county_pop)
         access_model_df = merge_features(supply, pop, demand)
+        access_model_df = add_rate_features(access_model_df)
         save_output(access_model_df)
 
         return access_model_df

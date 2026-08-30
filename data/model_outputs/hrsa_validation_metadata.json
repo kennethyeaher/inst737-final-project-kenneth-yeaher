@@ -13,43 +13,43 @@
   "recall": 0.2549,
   "f1_score": 0.4062,
   "agreement_rate": 0.2549,
-  "spearman_r_risk_vs_hpsa_shortage_pop": -0.0158,
-  "spearman_p_hpsa_shortage_pop": 0.9122,
-  "spearman_r_risk_vs_hrsa_avg_score": 0.1558,
-  "spearman_p_hrsa_avg_score": 0.2748,
+  "spearman_r_risk_vs_hpsa_shortage_pop": 0.3454,
+  "spearman_p_hpsa_shortage_pop": 0.013,
+  "spearman_r_risk_vs_hrsa_avg_score": 0.1746,
+  "spearman_p_hrsa_avg_score": 0.2205,
   "avg_hrsa_shortage_pop_by_tier": {
-    "adequate": 46035203.92,
-    "high_risk": 9774101.15,
-    "moderate_risk": 24808738.85,
-    "well_served": 16515129.15
+    "adequate": 40584969.25,
+    "high_risk": 28259511.15,
+    "moderate_risk": 22639506.15,
+    "well_served": 5229937.69
   },
   "avg_hrsa_hpsa_score_by_tier": {
-    "adequate": 15.26,
-    "high_risk": 15.06,
-    "moderate_risk": 15.23,
-    "well_served": 13.59
+    "adequate": 15.4,
+    "high_risk": 15.15,
+    "moderate_risk": 14.92,
+    "well_served": 13.68
   },
   "high_risk_state_detail": [
     {
-      "practice_state": "NV",
+      "practice_state": "MD",
       "risk_score": 98.0,
+      "hrsa_hpsa_present": true,
+      "hrsa_hpsa_count": 204,
+      "hrsa_avg_score": 16.08823529411765
+    },
+    {
+      "practice_state": "NV",
+      "risk_score": 96.1,
       "hrsa_hpsa_present": true,
       "hrsa_hpsa_count": 99,
       "hrsa_avg_score": 15.232323232323232
     },
     {
       "practice_state": "AZ",
-      "risk_score": 96.1,
+      "risk_score": 94.1,
       "hrsa_hpsa_present": true,
       "hrsa_hpsa_count": 991,
       "hrsa_avg_score": 15.113017154389505
-    },
-    {
-      "practice_state": "MS",
-      "risk_score": 94.1,
-      "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 181,
-      "hrsa_avg_score": 19.640883977900554
     },
     {
       "practice_state": "NE",
@@ -59,67 +59,67 @@
       "hrsa_avg_score": 12.524137931034483
     },
     {
-      "practice_state": "AL",
-      "risk_score": 90.2,
-      "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 105,
-      "hrsa_avg_score": 16.257142857142856
-    },
-    {
-      "practice_state": "AR",
-      "risk_score": 88.2,
-      "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 149,
-      "hrsa_avg_score": 15.248322147651006
-    },
-    {
-      "practice_state": "ND",
-      "risk_score": 86.3,
-      "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 135,
-      "hrsa_avg_score": 15.148148148148149
-    },
-    {
       "practice_state": "SC",
-      "risk_score": 84.3,
+      "risk_score": 90.2,
       "hrsa_hpsa_present": true,
       "hrsa_hpsa_count": 231,
       "hrsa_avg_score": 11.186147186147187
     },
     {
+      "practice_state": "VA",
+      "risk_score": 88.2,
+      "hrsa_hpsa_present": true,
+      "hrsa_hpsa_count": 214,
+      "hrsa_avg_score": 14.509345794392523
+    },
+    {
+      "practice_state": "MS",
+      "risk_score": 86.3,
+      "hrsa_hpsa_present": true,
+      "hrsa_hpsa_count": 181,
+      "hrsa_avg_score": 19.640883977900554
+    },
+    {
       "practice_state": "GA",
-      "risk_score": 82.4,
+      "risk_score": 84.3,
       "hrsa_hpsa_present": true,
       "hrsa_hpsa_count": 189,
       "hrsa_avg_score": 17.444444444444443
     },
     {
       "practice_state": "KS",
-      "risk_score": 80.4,
+      "risk_score": 82.4,
       "hrsa_hpsa_present": true,
       "hrsa_hpsa_count": 156,
       "hrsa_avg_score": 14.070512820512821
     },
     {
-      "practice_state": "RI",
+      "practice_state": "FL",
+      "risk_score": 80.4,
+      "hrsa_hpsa_present": true,
+      "hrsa_hpsa_count": 359,
+      "hrsa_avg_score": 15.746518105849582
+    },
+    {
+      "practice_state": "CA",
       "risk_score": 78.4,
       "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 15,
-      "hrsa_avg_score": 13.733333333333333
+      "hrsa_hpsa_count": 1586,
+      "hrsa_avg_score": 13.87452711223203
     },
     {
-      "practice_state": "IN",
+      "practice_state": "AL",
       "risk_score": 76.5,
       "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 225,
-      "hrsa_avg_score": 14.866666666666667
+      "hrsa_hpsa_count": 105,
+      "hrsa_avg_score": 16.257142857142856
     },
     {
-      "practice_state": "DE",
+      "practice_state": "TX",
       "risk_score": 74.5,
       "hrsa_hpsa_present": true,
-      "hrsa_hpsa_count": 88,
-      "hrsa_avg_score": 15.284090909090908
+      "hrsa_hpsa_count": 1233,
+      "hrsa_avg_score": 15.30089213300892
     }
   ]
 }

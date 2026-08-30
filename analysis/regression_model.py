@@ -13,13 +13,12 @@ INPUT_FILE = Path("data/load/access_model_dataset.csv")
 OUTPUT_FILE = Path("data/model_outputs/regression_results.csv")
 
 # feature set for provider density estimation
+# chosen by cross validated R2 in analysis/evaluate.py, see
+# data/model_outputs/feature_selection.json for the comparison that picked it
 
 FEATURE_COLUMNS = [
-    "state_population",
     "taxonomy_diversity",
-    "recent_provider_growth",
-    "avg_provider_enum_year",
-    "female_25_44_pop",
+    "growth_per_100k",
 ]
 
 TARGET_COLUMN = "providers_per_100k"
