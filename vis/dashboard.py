@@ -248,6 +248,26 @@ def _county_view(county: _CountyBundle) -> html.Div:
     ])
 
 
+# view copy, kept together so the two views cannot drift apart.
+# the county tiers come from fixed density thresholds, not from the regression,
+# and the copy has to say so
+
+STATE_SUBHEAD = (
+    "Residuals highlight where reproductive health provider supply falls below "
+    "or exceeds model expectations. Click a state on the map to filter. Toggle "
+    "between access gap and risk tier views."
+)
+
+COUNTY_SUBHEAD = (
+    "County tiers come from fixed provider density thresholds, not from the "
+    "regression model. Counties are ranked by registered providers per 100,000 "
+    "residents. Filter to a state, then click a county for its detail."
+)
+
+STATE_CONTEXT_TAG = "State · 2026"
+COUNTY_CONTEXT_TAG = "County · 2026"
+
+
 def _header() -> dbc.Row:
     """
     The page header: Fraunces serif title with italic coral accent on
@@ -271,9 +291,8 @@ def _header() -> dbc.Row:
     )
 
     subhead = html.P(
-        "Residuals highlight where reproductive health provider supply "
-        "falls below or exceeds model expectations. Click a state on the "
-        "map to filter. Toggle between access gap and risk tier views.",
+        STATE_SUBHEAD,
+        id="view-subhead",
         style={
             "fontSize": "13px",
             "color": COLORS["text_muted"],
@@ -363,7 +382,7 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
         "padding": "0 40px 40px 40px",
     })
 
-    return html.Div([topnav(context_tag="State · 2026"), page])
+    return html.Div([topnav(context_tag=STATE_CONTEXT_TAG), page])
 
 
 def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
@@ -515,13 +534,33 @@ def _register_view_toggle(app: Dash) -> None:
         Output("state-view", "style"),
         Output("county-view", "style"),
         Output("county-state-filter-wrap", "style"),
+        Output("view-subhead", "children"),
+        Output("view-context-tag", "children"),
         Input("geo-level-toggle", "value"),
     )
     def toggle_view(level):
-        """Show either the state or county dashboard based on the radio button."""
+        """
+        Show either the state or county dashboard based on the radio button.
+
+        The subhead and the context tag switch with the view so the page never
+        describes the county tiers as model residuals.
+        """
         if level == "county":
-            return {"display": "none"}, {"display": "block"}, {"display": "block"}
-        return {"display": "block"}, {"display": "none"}, {"display": "none"}
+            return (
+                {"display": "none"},
+                {"display": "block"},
+                {"display": "block"},
+                COUNTY_SUBHEAD,
+                COUNTY_CONTEXT_TAG,
+            )
+
+        return (
+            {"display": "block"},
+            {"display": "none"},
+            {"display": "none"},
+            STATE_SUBHEAD,
+            STATE_CONTEXT_TAG,
+        )
 
 
 def run_dashboard(
