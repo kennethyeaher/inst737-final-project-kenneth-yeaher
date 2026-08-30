@@ -33,7 +33,7 @@ from vis._styles import (
 REQUIRED_COLUMNS: Final[set[str]] = {
     "practice_state",
     "provider_count",
-    "metro_population",
+    "state_population",
     "providers_per_100k",
     "predicted_provider_density",
     "residual",

@@ -1,27 +1,29 @@
 {
   "n_states": 51,
   "n_features": 5,
-  "train_r2": 0.151,
-  "train_mae": 8.217,
-  "train_rmse": 13.0674,
-  "cv5_r2_mean": -0.226,
-  "cv5_r2_std": 0.3397,
-  "cv5_mae_mean": 8.8606,
-  "cv5_mae_std": 2.3634,
-  "baseline_mae": 8.9207,
+  "train_r2": 0.4666,
+  "train_mae": 4.5109,
+  "train_rmse": 6.0924,
+  "cv5_r2_mean": -0.0719,
+  "cv5_r2_std": 0.4379,
+  "cv5_mae_mean": 5.4081,
+  "cv5_mae_std": 1.507,
+  "baseline_mae": 6.03,
   "standardized_coefficients": {
-    "metro_population": -3.9479,
-    "taxonomy_diversity": 0.1693,
-    "recent_provider_growth": -4.2419,
-    "avg_provider_enum_year": -0.6688,
-    "female_25_44_pop": 2.5082
+    "state_population": -2.6701,
+    "taxonomy_diversity": 5.8303,
+    "recent_provider_growth": -1.1487,
+    "avg_provider_enum_year": 0.9014,
+    "female_25_44_pop": 0.8114
   },
-  "intercept": 1714.5329,
-  "residual_std": 13.1975,
-  "residual_skewness": 3.091,
-  "residual_kurtosis": 13.0496,
+  "intercept": -2303.2446,
+  "residual_std": 6.1531,
+  "residual_skewness": 0.9005,
+  "residual_kurtosis": 2.0273,
   "outlier_states": [
-    "Vermont",
-    "Wyoming"
+    "Alaska",
+    "District of Columbia",
+    "Nevada",
+    "Vermont"
   ]
 }

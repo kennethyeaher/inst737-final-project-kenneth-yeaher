@@ -50,7 +50,7 @@ def load_clustering_data() -> pd.DataFrame:
     required = {
         "practice_state", "state_name", "providers_per_100k",
         "taxonomy_diversity", "recent_provider_growth",
-        "avg_provider_enum_year", "metro_population",
+        "avg_provider_enum_year", "state_population",
     }
     missing = required - set(df.columns)
     if missing:
@@ -60,7 +60,7 @@ def load_clustering_data() -> pd.DataFrame:
 
     # convert raw growth count into a population normalized rate so the clustering captures growth intensity rather than state size
     df["recent_growth_per_100k"] = (
-        df["recent_provider_growth"] / df["metro_population"] * 100000
+        df["recent_provider_growth"] / df["state_population"] * 100000
     )
 
     before = df.shape[0]

@@ -15,7 +15,7 @@ OUTPUT_FILE = Path("data/model_outputs/regression_results.csv")
 # feature set for provider density estimation
 
 FEATURE_COLUMNS = [
-    "metro_population",
+    "state_population",
     "taxonomy_diversity",
     "recent_provider_growth",
     "avg_provider_enum_year",

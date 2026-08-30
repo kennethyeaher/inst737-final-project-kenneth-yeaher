@@ -113,7 +113,7 @@ def state_detail_card(row: pd.Series) -> dbc.Card:
     metrics: list[tuple[str, str]] = [
         ("Providers", f"{int(row['provider_count']):,}"),
         ("Providers / 100k", f"{row['providers_per_100k']:.2f}"),
-        ("Metro Population", f"{int(row['metro_population']):,}"),
+        ("State Population", f"{int(row['state_population']):,}"),
         ("Access Gap", f"{row['residual']:.2f}"),
         ("Predicted Density", f"{row['predicted_provider_density']:.2f}"),
     ]

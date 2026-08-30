@@ -28,7 +28,7 @@ OUTPUT_COLUMNS = [
     "practice_state",
     "state_name",
     "provider_count",
-    "metro_population",
+    "state_population",
     "providers_per_100k",
     "predicted_provider_density",
     "residual",
