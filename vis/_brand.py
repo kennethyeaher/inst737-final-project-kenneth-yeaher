@@ -30,6 +30,7 @@ BRAND: Final[dict[str, str]] = {
     "cream":      "#F5EFE4",
     "cream_deep": "#ECE3D2",
     "plum_ink":   "#2F1A3E",
+    "teal":       "#1A89C5",
 }
 
 
@@ -40,25 +41,50 @@ FONT_BODY: Final[str] = "'Inter', 'Segoe UI', sans-serif"
 FONT_MONO: Final[str] = "'JetBrains Mono', 'Menlo', monospace"
 
 
-# state level risk tier mapping ordered from most underserved to best served so quartile codes 0..3
-# line up with the residual ranking
+# access tiers are ordered, so they get one hue at rising lightness rather than
+# four unrelated hues. lightness is the channel that survives greyscale, poor
+# screens and colour blindness, so severity stays readable when hue does not.
+#
+# the band is constrained from both ends. the county map draws these on a light
+# carto basemap, so the lightest step has to stay dark enough to see. every
+# other surface, the bars, the badges, the state choropleth, is dark plum, so
+# the darkest step has to stay light enough to read there. L 0.53 to 0.80 is
+# the window that satisfies both, measured at 1.78 minimum contrast on the
+# basemap and 3.03 on the dark surface.
 
-STATE_TIER_COLORS: Final[dict[str, str]] = {
-    "Critical":    BRAND["iris_deep"],
-    "At Risk":     BRAND["coral"],
-    "Adequate":    BRAND["marigold"],
-    "Well Served": BRAND["sage"],
-}
+SUPPLY_TIER_RAMP: Final[list[str]] = [
+    "#6E57BB",  # worst supply
+    "#8775D1",
+    "#A294E4",
+    "#BDB5EE",  # best supply
+]
+
+# zero providers is a different state rather than a smaller amount, so it sits
+# off the ramp in coral. that also leaves the ramp free to carry a no data
+# colour later without colliding with a real value.
+
+ACCESS_DESERT_COLOR: Final[str] = BRAND["coral"]
+
+# no county currently lacks data, but an ordered ramp with no slot for unknown
+# is how a join failure gets published as a real low value
+
+NO_DATA_COLOR: Final[str] = "#CFCBC4"
 
 
-# county level risk tier mapping access desert is the deepest plum because it represents zero supply, not just a low quartile
+# state level risk tiers, ordered most underserved to best served so quartile
+# codes 0..3 line up with the residual ranking
+
+STATE_TIER_COLORS: Final[dict[str, str]] = dict(
+    zip(["Critical", "At Risk", "Adequate", "Well Served"], SUPPLY_TIER_RAMP)
+)
+
+
+# county level risk tiers, the same ramp plus the off ramp desert colour, so a
+# tier means the same thing visually in both views
 
 COUNTY_TIER_COLORS: Final[dict[str, str]] = {
-    "access_desert": BRAND["plum_ink"],
-    "critical":      BRAND["iris_deep"],
-    "underserved":   BRAND["coral"],
-    "adequate":      BRAND["marigold"],
-    "well_served":   BRAND["sage"],
+    "access_desert": ACCESS_DESERT_COLOR,
+    **dict(zip(["critical", "underserved", "adequate", "well_served"], SUPPLY_TIER_RAMP)),
 }
 
 
