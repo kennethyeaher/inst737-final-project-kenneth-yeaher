@@ -254,17 +254,29 @@ def build_county_bar(
         return fig
 
     show_n = min(top_n, len(plot_df))
-    worst = plot_df.nsmallest(show_n, "providers_per_100k").sort_values("providers_per_100k")
+    showing_everything = show_n >= len(plot_df)
+
+    # plotly draws the first row at the bottom of a horizontal bar chart, so sort
+    # descending to put the lowest density county at the top where the title points
+    worst = plot_df.nsmallest(show_n, "providers_per_100k").sort_values(
+        "providers_per_100k", ascending=False
+    )
 
     short_names = worst["county_name"].str.replace(r",.*", "", regex=True)
     bar_colors = [TIER_COLORS.get(tier, "#999") for tier in worst["risk_tier"]]
 
-    desert_note = f" ({n_deserts} access desert counties excluded)" if n_deserts > 0 else ""
+    desert_note = f" ({n_deserts:,} access desert counties excluded)" if n_deserts > 0 else ""
 
-    if state_filter:
-        title = f"Most Underserved for {state_filter}{desert_note}"
+    # only claim "most underserved" when the chart is actually a worst-N subset,
+    # otherwise it is the full distribution and the superlative would be wrong
+    if showing_everything and state_filter:
+        title = f"Provider Density by County for {state_filter}{desert_note}"
+    elif showing_everything:
+        title = f"Provider Density by County{desert_note}"
+    elif state_filter:
+        title = f"{show_n} Lowest Density Counties in {state_filter}{desert_note}"
     else:
-        title = f"Top {show_n} Most Underserved Counties{desert_note}"
+        title = f"{show_n} Lowest Density Counties Nationally{desert_note}"
 
     x_max = max(worst["providers_per_100k"].max() * 1.4, 1.0)
 
@@ -290,6 +302,20 @@ def build_county_bar(
     return fig
 
 
+# connecticut replaced its counties with nine planning regions in 2022, so the
+# county label is wrong for exactly one state
+
+_PLANNING_REGION_STATES = {"CT"}
+
+
+def _area_label(state_filter: str | None) -> str:
+    """Return the right word for the geographic units in scope."""
+    if state_filter in _PLANNING_REGION_STATES:
+        return "Planning Regions"
+
+    return "Counties in State" if state_filter else "Counties Analyzed"
+
+
 def county_kpi_cards(df: pd.DataFrame, state_filter: str | None = None) -> list:
     """
     Build the four KPI cards for the county view.
@@ -307,16 +333,22 @@ def county_kpi_cards(df: pd.DataFrame, state_filter: str | None = None) -> list:
     populated = scope[scope["total_population"] > 0]
     med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
 
-    # match the bar chart logic so the KPI and chart agree on most underserved
-    # access deserts already have their own card, so this shows the worst county with at least one provider
+    # match the bar chart logic so the KPI and chart agree on the lowest density county
+    # access deserts already have their own card, so this shows the thinnest county with at least one provider
     worst_pool = scope[(scope["total_population"] > 1000) & (scope["provider_count"] > 0)]
     worst = worst_pool.nsmallest(1, "providers_per_100k")
-    worst_name = (
-        worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0]
-        if len(worst) > 0 else "N/A"
-    )
 
-    counties_label = "Counties in State" if state_filter else "Counties Analyzed"
+    if len(worst) > 0:
+        worst_name = worst["county_name"].str.replace(r",.*", "", regex=True).iloc[0]
+        worst_tier = TIER_LABELS.get(worst["risk_tier"].iloc[0], "")
+        worst_density = float(worst["providers_per_100k"].iloc[0])
+        worst_subtitle = f"{worst_density:.1f} per 100k · {worst_tier}"
+        worst_accent = TIER_COLORS.get(worst["risk_tier"].iloc[0], TIER_COLORS["critical"])
+    else:
+        worst_name, worst_subtitle = "N/A", ""
+        worst_accent = TIER_COLORS["critical"]
+
+    counties_label = _area_label(state_filter)
 
     return [
         dbc.Col(kpi_card(
@@ -338,10 +370,10 @@ def county_kpi_cards(df: pd.DataFrame, state_filter: str | None = None) -> list:
             accent=COLORS["accent"],
         ), md=3),
         dbc.Col(kpi_card(
-            "Most Underserved",
+            "Lowest Density",
             worst_name,
-            color=COLORS["kpi_bad"],
-            accent=TIER_COLORS["critical"],
+            subtitle=worst_subtitle,
+            accent=worst_accent,
             style="serif",
         ), md=3),
     ]
