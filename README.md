@@ -36,6 +36,22 @@ States with large negative residuals between predicted and actual provider densi
 
 ## Known Limitations
 
+**The state provider density denominator was wrong, and every state level number moved.** `build_population_proxy` summed the CBSA reference table by state. That table has one row per county with the whole metro's population on each row, so the 29 county Atlanta MSA added its 6,411,149 residents 29 times. Georgia's denominator came to 198,940,717 against a true 10,722,325, New Jersey to 266,785,188 against 9,249,063, and Wyoming was under counted at 182,193 against 577,929. Because CBSAs cross state lines, the Washington MSA's population was credited whole to DC, whose real population is 670,587. The 51 state populations summed to 2,187,759,309, about 6.6 times the country.
+
+The inflation ran 0.32x to 28.8x, so it scrambled the state ranking rather than scaling it. The denominator is now ACS county population summed to the state, the same table the county layer uses, and `check_population_plausible` raises if any state falls outside 400,000 to 45,000,000.
+
+| Figure | Published before | Corrected |
+|---|---:|---:|
+| National density per 100k | 4.55 | 30.06 |
+| Georgia denominator | 198,940,717 | 10,722,325 |
+| New Jersey denominator | 266,785,188 | 9,249,063 |
+| DC denominator | 6,436,489 | 670,587 |
+| Wyoming denominator | 182,193 | 577,929 |
+| 51 state total | 2,187,759,309 | 331,097,593 |
+| Thinnest states | NJ, VA, GA, IN | AR, AL, ND, MS, NV, IA |
+
+The corrected ordering matches published maternity care desert research. The shipped ordering contradicted it. The regression, the residuals, the risk tiers, the clustering, both state maps and the HRSA validation all changed as a result. The county layer was never affected, because county density always divided by ACS county population.
+
 **Connecticut was reported as a statewide access desert, and that was wrong.** The county layer assigned zero providers to all of Connecticut because two Census vintages disagreed. The ZIP to county crosswalk came from the 2020 ZCTA relationship file, which still emits Connecticut's eight legacy county codes 09001 through 09015. County population came from the 2022 ACS, the first vintage in which the nine planning regions are the county equivalent, so it holds 09110 through 09190. The two sets share no codes, the population join dropped every matched Connecticut provider, and the nine planning regions were published as access deserts with zero providers each. Nothing warned.
 
 Connecticut ZIPs are now routed to planning regions through a vendored CTData Collaborative crosswalk, and `analysis/build_county_dataset.py` raises rather than writing zeros if a state's crosswalk geography and population geography ever diverge again.
@@ -60,7 +76,7 @@ Two caveats remain. The ZIP to planning region assignment is approximate at boun
 
 <br>
 
-The NPPES registry provides provider identity, taxonomy classification, practice location, and enrollment timeline for every registered healthcare provider in the country. Census CBSA delineation files and metropolitan population estimates provide the demand side denominator for density calculations. HRSA shortage designations are used later as an external validation benchmark.
+The NPPES registry provides provider identity, taxonomy classification, practice location, and enrollment timeline for every registered healthcare provider in the country. Census ACS county population provides the denominator for both the state and county density calculations. Census CBSA delineation files and metropolitan population estimates supply the metro reference table used for geographic context. HRSA shortage designations are used later as an external validation benchmark.
 
 | Source | Description | URL |
 |---|---|---|
@@ -301,7 +317,7 @@ Aggregates the cleaned provider dataset to the ZIP level, producing four supply 
 
 <br>
 
-Builds a Census aligned metropolitan reference dataset by merging CBSA delineation files with population estimates. The output maps each county to its metropolitan statistical area and carries the 2024 population estimate used as the demand denominator in density calculations.
+Builds a Census aligned metropolitan reference dataset by merging CBSA delineation files with population estimates. The output maps each county to its metropolitan statistical area and carries the 2024 population estimate. It is a geographic reference table, not a density denominator. It carries one row per county with the whole metro's population on each row, so summing it by state counts a metro once per county it spans.
 
 </details>
 
@@ -365,7 +381,7 @@ Each county also receives a continuous risk score from 0 to 100 and a national r
 
 <br>
 
-Merges state level supply features with metro population totals and fertility age demand counts, then computes provider density as providers per 100,000 residents. This is the modeling ready dataset that feeds the regression model.
+Merges state level supply features with state population and fertility age demand counts, then computes provider density as providers per 100,000 residents. State population is ACS county population summed to the state, the same table the county layer divides by, and `check_population_plausible` raises if any state falls outside 400,000 to 45,000,000. The stage also derives the rate features the model uses: `growth_per_100k`, `pct_female_25_44`, and `provider_enum_year_centered`. This is the modeling ready dataset that feeds the regression model.
 
 </details>
 
@@ -374,7 +390,14 @@ Merges state level supply features with metro population totals and fertility ag
 
 <br>
 
-Fits a linear regression estimating expected reproductive health provider density from five features: metro population, taxonomy diversity, recent provider growth, average provider enumeration year, and fertility age female population. The residual for each state, meaning the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+Fits a linear regression estimating expected reproductive health provider density from two features chosen by cross validation: taxonomy diversity and `growth_per_100k`. The residual for each state, meaning the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+
+Residuals are scored **out of fold** with `cross_val_predict` on `KFold(5, shuffle=True, random_state=42)`. With 51 rows an in sample fit partly interpolates, so a state's own influence on the coefficients would otherwise leak into its own residual and then into its risk tier. The in sample fit is kept only for reporting coefficients, under `predicted_density_in_sample` and `residual_in_sample`.
+
+| | in sample | out of fold |
+|---|---:|---:|
+| R2 | 0.4375 | 0.3580 |
+| MAE | 4.3302 | 4.5011 |
 
 </details>
 
@@ -383,7 +406,26 @@ Fits a linear regression estimating expected reproductive health provider densit
 
 <br>
 
-Runs 5 fold cross validation, computes standardized feature coefficients for scale independent importance analysis, performs residual diagnostics, and benchmarks the model against a naive baseline. Residual diagnostics include skewness, kurtosis, and outlier detection. Structured results are saved as JSON and per state detail is saved as CSV.
+Runs 5 fold cross validation on `KFold(5, shuffle=True, random_state=42)`, computes standardized feature coefficients for scale independent importance analysis, performs residual diagnostics, and benchmarks the model against a naive baseline. Residual diagnostics include skewness, kurtosis, and outlier detection. Structured results are saved as JSON and per state detail is saved as CSV.
+
+The stage also fits three candidate feature sets on the same folds and saves the comparison to `data/model_outputs/feature_selection.json`, so the feature choice is auditable rather than asserted. Against a mean baseline MAE of 6.03:
+
+| Feature set | Features | CV R2 | CV MAE |
+|---|---:|---:|---:|
+| `shipped_five` | 5 | +0.1140 | 5.0977 |
+| `four_rates` | 4 | +0.2292 | 4.8801 |
+| `two_rates` | 2 | +0.3253 | 4.4821 |
+
+Fewer features win. On 51 rows the five feature set mixed counts with rates against a rate target and carried two collinear population proxies whose coefficients came out with opposite signs. The two rate model also has the lowest fold to fold variance, at 0.2467 against 0.4319. `FEATURE_COLUMNS` in `analysis/regression_model.py` is set to the winner, and the stage logs a warning if the two ever drift apart.
+
+| Metric | Value |
+|---|---:|
+| 5 fold CV R2 | 0.3253 +/- 0.2467 |
+| 5 fold CV MAE | 4.4821 |
+| Mean baseline MAE | 6.03 |
+| Intercept | -6.688 |
+| Standardized coefficient, taxonomy diversity | +3.761 |
+| Standardized coefficient, growth per 100k | +2.7918 |
 
 </details>
 
@@ -392,7 +434,7 @@ Runs 5 fold cross validation, computes standardized feature coefficients for sca
 
 <br>
 
-Converts regression residuals into usable risk labels. Each state receives a continuous risk score from 0 to 100, where 100 is most underserved. Each state also receives a categorical tier assignment based on residual quartile position: high risk, moderate risk, adequate, or well served. Supply gap magnitude, severity ranking, and threshold metadata are saved for reproducibility.
+Converts the out of fold regression residuals into usable risk labels. Each state receives a continuous risk score from 0 to 100, where 100 is most underserved. Each state also receives a categorical tier assignment based on residual quartile position: high risk, moderate risk, adequate, or well served. Supply gap magnitude, severity ranking, and threshold metadata are saved for reproducibility.
 
 </details>
 
@@ -403,7 +445,20 @@ Converts regression residuals into usable risk labels. Each state receives a con
 
 Benchmarks Ovara's access risk tiers against HRSA Health Professional Shortage Area Primary Care designations fetched from the HRSA data warehouse. Active HPSA designations are aggregated to the state level to produce shortage burden metrics, including count of designated areas, total shortage population, average HPSA score, and estimated FTE shortage.
 
-These metrics are joined with Ovara's risk output and evaluated for agreement. The validation computes precision and recall for the `high_risk` tier against HRSA flagged states, F1 score, overall agreement rate, and Spearman correlation between Ovara's continuous risk score and HRSA shortage measures. HRSA data is cached locally after the first fetch.
+These metrics are joined with Ovara's risk output and compared by **rank agreement**: Spearman correlation between Ovara's continuous risk score and each HRSA burden measure, expressed per 100,000 residents. HRSA data is cached locally after the first fetch.
+
+This stage used to report precision, recall, F1 and an agreement rate for the `high_risk` tier against HRSA flagged states, with a saved confusion matrix of tp 13, fp 0, fn 38, tn 0. There were no true negatives because every state has at least one designated Primary Care HPSA, so the ground truth label was positive for all 51 rows and a precision of 1.0 was an artefact of a constant label rather than a result. Those metrics have been removed.
+
+| HRSA burden measure, per 100k | Spearman rho | p | rho unnormalized |
+|---|---:|---:|---:|
+| Shortage population | +0.0953 | 0.5059 | +0.4108 |
+| FTE shortage | +0.2400 | 0.0898 | +0.4410 |
+| Designated area count | -0.2947 | 0.0358 | +0.3079 |
+| Average HPSA score, already a 0 to 25 scale | +0.1814 | 0.2026 | not applicable |
+
+**The model does not show meaningful agreement with HRSA burden on a size neutral basis.** The last column is the same correlation before dividing by population, and the gap between the two columns is the finding: most of the apparent agreement is state size. Large states have both large HRSA shortage populations and higher risk scores. Per resident, shortage population agreement is +0.10 and not significant, FTE shortage reaches +0.24 at p = 0.09, and designated area count runs the wrong way at -0.29. The unnormalized figures are kept in the metadata under `size_confounded_rho` so the difference stays visible rather than being hidden by whichever scale looks better.
+
+One caveat on the measure itself: HRSA designation populations overlap within a state, so `hrsa_shortage_pop` sums to more than the resident population in many states. DC totals 12,073,756 against 670,587 residents. Per 100k it is a designation intensity index, not a share of residents.
 
 </details>
 
@@ -413,6 +468,18 @@ These metrics are joined with Ovara's risk output and evaluated for agreement. T
 <br>
 
 Segments states into supply archetypes using K Means on four rate based features: provider density per 100k, taxonomy diversity, growth rate per 100k, and average provider enumeration year. Features are standardized with `StandardScaler`, and the optimal cluster count is selected by a silhouette score sweep across k = 2 through k = 6.
+
+Silhouette alone rewards a split that isolates a handful of extreme states, so `select_optimal_k` rejects any k whose smallest cluster holds fewer than five states, and logs the runner up alongside the winner. If no k qualifies it falls back to the highest silhouette with a warning rather than failing.
+
+| k | Silhouette | Cluster sizes | Outcome |
+|---:|---:|---|---|
+| 2 | 0.2642 | [18, 33] | **selected** |
+| 3 | 0.2487 | [5, 20, 26] | runner up |
+| 4 | 0.2808 | [4, 12, 15, 20] | rejected, smallest cluster under 5 |
+| 5 | 0.248 | [4, 9, 12, 12, 14] | rejected, smallest cluster under 5 |
+| 6 | 0.2842 | [4, 8, 8, 9, 10, 12] | rejected, smallest cluster under 5 |
+
+The guard is load bearing here: k = 6 and k = 4 carry the two highest silhouette scores and are both rejected for a four state cluster.
 
 Cluster ids are relabeled by ascending mean density so cluster 1 is always the lowest supply archetype. Human readable labels such as `low_supply`, `mid_supply`, and `high_supply` are added. A 2D PCA scatter is exported for presentation use.
 

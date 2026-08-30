@@ -19,11 +19,9 @@ Outputs written to data/figures:
 Figures whose inputs are missing are skipped rather than failing the run.
 
 The residual based figures, the access gap choropleth, the predicted against
-actual scatter, and the clustering plot, are deliberately not built here yet.
-They all derive from the state regression, whose population denominator sums
-each metro area once per county in it. Rebuilding them faithfully would only
-reproduce that defect at higher fidelity. Add them once the denominator is
-fixed.
+actual scatter, and the clustering plot, are not built here yet. They all
+derive from the state regression, whose denominator has since been rebuilt on
+ACS county population. Adding them is a separate change.
 """
 
 from __future__ import annotations
@@ -49,7 +47,6 @@ logger = setup_logger("ovara.make_figures")
 # input tables, all written by earlier pipeline stages
 
 ACCESS_MODEL_FILE = Path("data/load/access_model_dataset.csv")
-COUNTY_POPULATION_FILE = Path("data/reference_tables/county_population.csv")
 COUNTY_SUMMARY_FILE = Path("data/model_outputs/county_risk_summary.csv")
 PROVIDER_CLEAN_FILE = Path("data/transformed/nppes_provider_clean.csv")
 
@@ -178,40 +175,30 @@ def read_table(path: Path, **kwargs) -> pd.DataFrame | None:
     return pd.read_csv(path, **kwargs)
 
 
-def build_state_density(
-    access_model: pd.DataFrame,
-    county_population: pd.DataFrame,
-) -> pd.DataFrame:
+def build_state_density(access_model: pd.DataFrame) -> pd.DataFrame:
     """
-    Join state provider counts to state population and compute a rate.
+    Rank states by the provider density the pipeline already published.
 
-    Summing county population to the state level is presentation arithmetic on
-    a published table, not a model recomputation. Once the pipeline publishes
-    state_population directly this reduces to a column read.
+    This used to sum county population itself, which meant the denominator
+    check below could only ever pass. Reading state_population from the
+    published table makes that check load bearing: a bad denominator now
+    reaches this function instead of being recomputed away from it.
     """
-    population = (
-        county_population.groupby("practice_state", as_index=False)
-        .agg(state_population=("total_population", "sum"))
-    )
+    missing = {"state_population", "providers_per_100k"} - set(access_model.columns)
+    if missing:
+        raise ValueError(f"access model dataset is missing columns: {sorted(missing)}")
 
-    merged = access_model.merge(population, on="practice_state", how="inner")
-    merged["providers_per_100k"] = (
-        merged["provider_count"] / merged["state_population"] * 100_000
-    )
-
-    return merged.sort_values("providers_per_100k")
+    return access_model.sort_values("providers_per_100k")
 
 
 def is_denominator_trustworthy(state_density: pd.DataFrame) -> bool:
     """
     Report whether every state population falls in a believable range.
 
-    build_state_density currently sums ACS county population, which is sound,
-    so this check passes today. It is here for the change that is coming: once
-    the pipeline publishes state_population as a column, this function is what
-    stops a bad denominator reaching a published figure. An earlier version of
-    the pipeline put Georgia at 199 million by summing each metro area once per
-    county in it, and nothing caught it.
+    build_state_density reads state_population straight from the published
+    table, so this check is what stops a bad denominator reaching a published
+    figure. An earlier version of the pipeline put Georgia at 199 million by
+    summing each metro area once per county in it, and nothing caught it.
     """
     population = state_density["state_population"]
     outside = state_density[
@@ -472,7 +459,6 @@ def main() -> None:
     apply_style()
 
     access_model = read_table(ACCESS_MODEL_FILE)
-    county_population = read_table(COUNTY_POPULATION_FILE, dtype={"county_fips": str})
     county_summary = read_table(COUNTY_SUMMARY_FILE)
     providers = read_table(
         PROVIDER_CLEAN_FILE,
@@ -481,8 +467,8 @@ def main() -> None:
 
     written: list[Path] = []
 
-    if access_model is not None and county_population is not None:
-        state_density = build_state_density(access_model, county_population)
+    if access_model is not None:
+        state_density = build_state_density(access_model)
 
         if is_denominator_trustworthy(state_density):
             written.append(plot_provider_density_by_state(state_density))
