@@ -28,6 +28,17 @@ HRSA_FETCH_TIMEOUT = 45
 HPSA_ACTIVE_STATUS = "Designated"
 HPSA_DISCIPLINE = "Primary Care"
 
+# HRSA burden measures, each normalized per 100k residents so a big state
+# does not dominate the ranking purely by being big
+BURDEN_MEASURES = {
+    "hrsa_shortage_pop_per_100k": "hrsa_shortage_pop",
+    "hrsa_fte_shortage_per_100k": "hrsa_fte_shortage",
+    "hrsa_hpsa_count_per_100k": "hrsa_hpsa_count",
+}
+
+# smallest sample a correlation is reported on
+MIN_CORRELATION_ROWS = 5
+
 # normalized column name candidates (HRSA uses spaces; we lowercase + underscore after load)
 
 _STATE_COLS = ["common_state_abbr", "state_abbr", "state_abbreviation"]
@@ -129,39 +140,85 @@ def aggregate_hpsa_by_state(hrsa: pd.DataFrame) -> pd.DataFrame | None:
     return agg
 
 
+def add_burden_per_100k(merged: pd.DataFrame) -> pd.DataFrame:
+    """
+    Express each HRSA burden measure per 100k residents.
+
+    Raw HRSA totals scale with state size, so correlating them against a risk
+    score mostly measures which states are large. Dividing by population makes
+    the comparison about shortage intensity instead.
+
+    Parameters
+    merged : pd.DataFrame with state_population and the raw HRSA burden columns.
+
+    Returns
+    pd.DataFrame with one per 100k column per available burden measure.
+    """
+    merged = merged.copy()
+
+    for rate_col, raw_col in BURDEN_MEASURES.items():
+        if raw_col in merged.columns:
+            merged[rate_col] = merged[raw_col] / merged["state_population"] * 100000
+
+    return merged
+
+
 def compute_validation_metrics(merged: pd.DataFrame) -> dict:
-    """agreement and correlation between Ovara risk tiers and HRSA HPSA burden."""
-    ovara_high = merged["risk_tier"] == "high_risk"
-    hrsa_present = merged["hrsa_hpsa_present"].fillna(False)
+    """
+    Measure rank agreement between the Ovara risk score and HRSA shortage burden.
 
-    tp = int((ovara_high & hrsa_present).sum())
-    fp = int((ovara_high & ~hrsa_present).sum())
-    fn = int((~ovara_high & hrsa_present).sum())
-    tn = int((~ovara_high & ~hrsa_present).sum())
+    This used to report a confusion matrix, precision, recall, F1 and an
+    agreement rate against whether a state had any designated Primary Care
+    HPSA. Every state has at least one, so the ground truth label was constant
+    and precision of 1.0 was an artefact rather than a result. Rank correlation
+    against a continuous burden measure is the comparison that carries
+    information.
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-    agreement_rate = (tp + tn) / len(merged)
+    Parameters
+    merged : pd.DataFrame with risk_score and the per 100k burden columns.
 
-    # Spearman: Ovara risk_score vs raw HRSA shortage population
-    spearman_pop_r = spearman_pop_p = None
-    if "hrsa_shortage_pop" in merged.columns:
-        d = merged[["risk_score", "hrsa_shortage_pop"]].dropna()
-        if len(d) >= 5:
-            r, p = scipy_stats.spearmanr(d["risk_score"], d["hrsa_shortage_pop"])
-            spearman_pop_r, spearman_pop_p = round(float(r), 4), round(float(p), 4)
+    Returns
+    dict of rho and p for each burden measure plus per tier burden means.
+    """
+    correlations = {}
 
-    # Spearman: Ovara risk_score vs HRSA avg HPSA score (already normalized, 0-25 scale)
-    spearman_score_r = spearman_score_p = None
+    for rate_col, raw_col in BURDEN_MEASURES.items():
+        if rate_col not in merged.columns:
+            continue
+
+        pair = merged[["risk_score", rate_col, raw_col]].dropna()
+        if len(pair) < MIN_CORRELATION_ROWS:
+            logger.warning(f"too few states to correlate risk score against {rate_col}")
+            continue
+
+        rho, p_value = scipy_stats.spearmanr(pair["risk_score"], pair[rate_col])
+        raw_rho, raw_p = scipy_stats.spearmanr(pair["risk_score"], pair[raw_col])
+
+        correlations[rate_col] = {
+            "spearman_rho": round(float(rho), 4),
+            "p_value": round(float(p_value), 4),
+            "n_states": int(len(pair)),
+
+            # the same correlation before dividing by population, kept only to
+            # show how much of any agreement is really state size
+            "size_confounded_rho": round(float(raw_rho), 4),
+            "size_confounded_p_value": round(float(raw_p), 4),
+        }
+
+    # HPSA score is HRSA's own severity rating on a fixed 0 to 25 scale, so it
+    # needs no population adjustment
     if "hrsa_avg_score" in merged.columns:
-        d = merged[merged["hrsa_hpsa_present"]][["risk_score", "hrsa_avg_score"]].dropna()
-        if len(d) >= 5:
-            r, p = scipy_stats.spearmanr(d["risk_score"], d["hrsa_avg_score"])
-            spearman_score_r, spearman_score_p = round(float(r), 4), round(float(p), 4)
+        pair = merged[merged["hrsa_hpsa_present"]][["risk_score", "hrsa_avg_score"]].dropna()
+        if len(pair) >= MIN_CORRELATION_ROWS:
+            rho, p_value = scipy_stats.spearmanr(pair["risk_score"], pair["hrsa_avg_score"])
+            correlations["hrsa_avg_score"] = {
+                "spearman_rho": round(float(rho), 4),
+                "p_value": round(float(p_value), 4),
+                "n_states": int(len(pair)),
+            }
 
-    # mean HRSA burden by Ovara risk tier
     def _tier_means(col: str) -> dict:
+        """average one burden column within each risk tier."""
         if col not in merged.columns:
             return {}
         return {
@@ -169,42 +226,35 @@ def compute_validation_metrics(merged: pd.DataFrame) -> dict:
             for k, v in merged.groupby("risk_tier", observed=False)[col].mean().dropna().items()
         }
 
-    burden_by_tier = _tier_means("hrsa_shortage_pop")
-    avg_score_by_tier = _tier_means("hrsa_avg_score")
-
-    # high_risk states detail
-    detail_cols = [c for c in ["practice_state", "risk_score", "hrsa_hpsa_present",
-                                "hrsa_hpsa_count", "hrsa_avg_score"] if c in merged.columns]
+    detail_cols = [c for c in ["practice_state", "risk_score", "hrsa_hpsa_count",
+                                "hrsa_shortage_pop_per_100k", "hrsa_avg_score"]
+                   if c in merged.columns]
     high_risk_detail = (
-        merged[ovara_high][detail_cols]
+        merged[merged["risk_tier"] == "high_risk"][detail_cols]
         .sort_values("risk_score", ascending=False)
+        .round(4)
         .to_dict(orient="records")
     )
 
     metrics = {
-        "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
-        "precision": round(precision, 4),
-        "recall": round(recall, 4),
-        "f1_score": round(f1, 4),
-        "agreement_rate": round(agreement_rate, 4),
-        "spearman_r_risk_vs_hpsa_shortage_pop": spearman_pop_r,
-        "spearman_p_hpsa_shortage_pop": spearman_pop_p,
-        "spearman_r_risk_vs_hrsa_avg_score": spearman_score_r,
-        "spearman_p_hrsa_avg_score": spearman_score_p,
-        "avg_hrsa_shortage_pop_by_tier": burden_by_tier,
-        "avg_hrsa_hpsa_score_by_tier": avg_score_by_tier,
+        "rank_agreement": correlations,
+        "avg_hrsa_shortage_pop_per_100k_by_tier": _tier_means("hrsa_shortage_pop_per_100k"),
+        "avg_hrsa_hpsa_score_by_tier": _tier_means("hrsa_avg_score"),
         "high_risk_state_detail": high_risk_detail,
     }
 
-    logger.info(
-        f"precision={precision:.2%}  recall={recall:.2%}  "
-        f"f1={f1:.2%}  agreement={agreement_rate:.2%}"
-    )
-    if spearman_score_r is not None:
-        logger.info(
-            f"spearman r (risk_score vs hrsa_avg_score): {spearman_score_r}  "
-            f"p={spearman_score_p}"
+    logger.info("rank agreement between risk score and HRSA burden:")
+    for measure, scores in correlations.items():
+        line = (
+            f"  {measure}: rho {scores['spearman_rho']:+.4f} "
+            f"p {scores['p_value']:.4f} (n {scores['n_states']})"
         )
+        if "size_confounded_rho" in scores:
+            line += (
+                f", unnormalized rho {scores['size_confounded_rho']:+.4f} "
+                f"p {scores['size_confounded_p_value']:.4f}"
+            )
+        logger.info(line)
 
     return metrics
 
@@ -240,12 +290,15 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
             if col in merged.columns:
                 merged[col] = merged[col].fillna(fill)
 
+        merged = add_burden_per_100k(merged)
         metrics = compute_validation_metrics(merged)
 
         output_cols = [c for c in [
             "practice_state", "state_name", "risk_tier", "risk_score", "risk_rank",
             "hrsa_hpsa_present", "hrsa_hpsa_count", "hrsa_shortage_pop",
             "hrsa_avg_score", "hrsa_fte_shortage",
+            "hrsa_shortage_pop_per_100k", "hrsa_fte_shortage_per_100k",
+            "hrsa_hpsa_count_per_100k",
         ] if c in merged.columns]
 
         save_csv(merged[output_cols], OUTPUT_FILE, logger)
