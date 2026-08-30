@@ -3,137 +3,116 @@
   "hpsa_discipline_filter": "Primary Care",
   "hpsa_status_filter": "Designated",
   "total_states": 51,
+  "correlated_against": "providers_per_100k",
+  "expected_direction": "negative, more providers per resident means less shortage burden",
   "rank_agreement": {
     "hrsa_shortage_pop_per_100k": {
-      "spearman_rho": 0.0165,
-      "p_value": 0.9087,
+      "spearman_rho": 0.0021,
+      "p_value": 0.9884,
       "n_states": 51,
-      "size_confounded_rho": 0.3082,
-      "size_confounded_p_value": 0.0278
+      "size_confounded_rho": -0.0538,
+      "size_confounded_p_value": 0.7075
     },
     "hrsa_fte_shortage_per_100k": {
-      "spearman_rho": 0.1269,
-      "p_value": 0.375,
+      "spearman_rho": -0.0149,
+      "p_value": 0.9172,
       "n_states": 51,
-      "size_confounded_rho": 0.3096,
-      "size_confounded_p_value": 0.0271
+      "size_confounded_rho": -0.0663,
+      "size_confounded_p_value": 0.6437
     },
     "hrsa_hpsa_count_per_100k": {
-      "spearman_rho": -0.2289,
-      "p_value": 0.1062,
+      "spearman_rho": -0.109,
+      "p_value": 0.4462,
       "n_states": 51,
-      "size_confounded_rho": 0.2323,
-      "size_confounded_p_value": 0.101
+      "size_confounded_rho": -0.0867,
+      "size_confounded_p_value": 0.5454
     },
     "hrsa_avg_score": {
-      "spearman_rho": 0.2325,
-      "p_value": 0.1006,
+      "spearman_rho": -0.2405,
+      "p_value": 0.0892,
       "n_states": 51
     }
   },
-  "avg_hrsa_shortage_pop_per_100k_by_tier": {
-    "adequate": 354199.89,
-    "high_risk": 225926.3,
-    "moderate_risk": 416110.79,
-    "well_served": 323504.59
-  },
-  "avg_hrsa_hpsa_score_by_tier": {
-    "adequate": 14.95,
-    "high_risk": 15.2,
-    "moderate_risk": 15.36,
-    "well_served": 13.61
-  },
-  "high_risk_state_detail": [
-    {
-      "practice_state": "NV",
-      "risk_score": 98.0,
-      "hrsa_hpsa_count": 99,
-      "hrsa_shortage_pop_per_100k": 166705.0264,
-      "hrsa_avg_score": 15.2323
-    },
-    {
-      "practice_state": "CA",
-      "risk_score": 96.1,
-      "hrsa_hpsa_count": 1586,
-      "hrsa_shortage_pop_per_100k": 317781.0944,
-      "hrsa_avg_score": 13.8745
-    },
-    {
-      "practice_state": "AZ",
-      "risk_score": 94.1,
-      "hrsa_hpsa_count": 991,
-      "hrsa_shortage_pop_per_100k": 740294.2467,
-      "hrsa_avg_score": 15.113
-    },
-    {
-      "practice_state": "MS",
-      "risk_score": 92.2,
-      "hrsa_hpsa_count": 181,
-      "hrsa_shortage_pop_per_100k": 179277.394,
-      "hrsa_avg_score": 19.6409
-    },
-    {
-      "practice_state": "ND",
-      "risk_score": 90.2,
-      "hrsa_hpsa_count": 135,
-      "hrsa_shortage_pop_per_100k": 92183.932,
-      "hrsa_avg_score": 15.1481
-    },
-    {
-      "practice_state": "IN",
-      "risk_score": 88.2,
-      "hrsa_hpsa_count": 225,
-      "hrsa_shortage_pop_per_100k": 187956.6117,
-      "hrsa_avg_score": 14.8667
-    },
-    {
-      "practice_state": "FL",
-      "risk_score": 86.3,
-      "hrsa_hpsa_count": 359,
-      "hrsa_shortage_pop_per_100k": 107807.9167,
-      "hrsa_avg_score": 15.7465
-    },
-    {
-      "practice_state": "TX",
-      "risk_score": 84.3,
-      "hrsa_hpsa_count": 1233,
-      "hrsa_shortage_pop_per_100k": 331300.5641,
-      "hrsa_avg_score": 15.3009
-    },
-    {
-      "practice_state": "SC",
-      "risk_score": 82.4,
-      "hrsa_hpsa_count": 231,
-      "hrsa_shortage_pop_per_100k": 396463.0013,
-      "hrsa_avg_score": 11.1861
-    },
+  "thinnest_state_detail": [
     {
       "practice_state": "AR",
-      "risk_score": 80.4,
+      "providers_per_100k": 20.5057,
+      "density_rank": 1,
       "hrsa_hpsa_count": 149,
       "hrsa_shortage_pop_per_100k": 164242.2207,
       "hrsa_avg_score": 15.2483
     },
     {
       "practice_state": "AL",
-      "risk_score": 78.4,
+      "providers_per_100k": 21.4197,
+      "density_rank": 2,
       "hrsa_hpsa_count": 105,
       "hrsa_shortage_pop_per_100k": 96377.3336,
       "hrsa_avg_score": 16.2571
     },
     {
-      "practice_state": "NE",
-      "risk_score": 76.5,
-      "hrsa_hpsa_count": 145,
-      "hrsa_shortage_pop_per_100k": 89132.1782,
-      "hrsa_avg_score": 12.5241
+      "practice_state": "ND",
+      "providers_per_100k": 21.4964,
+      "density_rank": 3,
+      "hrsa_hpsa_count": 135,
+      "hrsa_shortage_pop_per_100k": 92183.932,
+      "hrsa_avg_score": 15.1481
     },
     {
-      "practice_state": "GA",
-      "risk_score": 74.5,
-      "hrsa_hpsa_count": 189,
-      "hrsa_shortage_pop_per_100k": 67520.3839,
-      "hrsa_avg_score": 17.4444
+      "practice_state": "MS",
+      "providers_per_100k": 21.9004,
+      "density_rank": 4,
+      "hrsa_hpsa_count": 181,
+      "hrsa_shortage_pop_per_100k": 179277.394,
+      "hrsa_avg_score": 19.6409
+    },
+    {
+      "practice_state": "NV",
+      "providers_per_100k": 22.5778,
+      "density_rank": 5,
+      "hrsa_hpsa_count": 99,
+      "hrsa_shortage_pop_per_100k": 166705.0264,
+      "hrsa_avg_score": 15.2323
+    },
+    {
+      "practice_state": "IA",
+      "providers_per_100k": 23.206,
+      "density_rank": 6,
+      "hrsa_hpsa_count": 323,
+      "hrsa_shortage_pop_per_100k": 342053.5895,
+      "hrsa_avg_score": 14.1517
+    },
+    {
+      "practice_state": "OK",
+      "providers_per_100k": 23.2465,
+      "density_rank": 7,
+      "hrsa_hpsa_count": 268,
+      "hrsa_shortage_pop_per_100k": 257255.5023,
+      "hrsa_avg_score": 17.1604
+    },
+    {
+      "practice_state": "SD",
+      "providers_per_100k": 23.4741,
+      "density_rank": 8,
+      "hrsa_hpsa_count": 113,
+      "hrsa_shortage_pop_per_100k": 119406.9245,
+      "hrsa_avg_score": 14.6726
+    },
+    {
+      "practice_state": "KS",
+      "providers_per_100k": 23.7745,
+      "density_rank": 9,
+      "hrsa_hpsa_count": 156,
+      "hrsa_shortage_pop_per_100k": 100999.3454,
+      "hrsa_avg_score": 14.0705
+    },
+    {
+      "practice_state": "WV",
+      "providers_per_100k": 24.3172,
+      "density_rank": 10,
+      "hrsa_hpsa_count": 123,
+      "hrsa_shortage_pop_per_100k": 154989.3556,
+      "hrsa_avg_score": 16.9106
     }
   ]
 }

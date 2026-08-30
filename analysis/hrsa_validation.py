@@ -17,7 +17,7 @@ logger = setup_logger("ovara.hrsa_validation")
 
 # file paths
 
-RISK_FILE = Path("data/model_outputs/access_risk_classified.csv")
+DENSITY_FILE = Path("data/model_outputs/state_density_ranking.csv")
 HRSA_CACHE_FILE = Path("data/reference_tables/hrsa_hpsa_raw.csv")
 OUTPUT_FILE = Path("data/model_outputs/hrsa_validation.csv")
 METADATA_FILE = Path("data/model_outputs/hrsa_validation_metadata.json")
@@ -38,6 +38,9 @@ BURDEN_MEASURES = {
 
 # smallest sample a correlation is reported on
 MIN_CORRELATION_ROWS = 5
+
+# what the burden measures are correlated against, now that the risk score is retired
+DENSITY_COLUMN = "providers_per_100k"
 
 # normalized column name candidates (HRSA uses spaces; we lowercase + underscore after load)
 
@@ -165,20 +168,19 @@ def add_burden_per_100k(merged: pd.DataFrame) -> pd.DataFrame:
 
 def compute_validation_metrics(merged: pd.DataFrame) -> dict:
     """
-    Measure rank agreement between the Ovara risk score and HRSA shortage burden.
+    Measure rank agreement between observed provider density and HRSA burden.
 
-    This used to report a confusion matrix, precision, recall, F1 and an
-    agreement rate against whether a state had any designated Primary Care
-    HPSA. Every state has at least one, so the ground truth label was constant
-    and precision of 1.0 was an artefact rather than a result. Rank correlation
-    against a continuous burden measure is the comparison that carries
-    information.
+    This used to correlate against a residual based risk score, which has since
+    been retired along with the tiers built on it. Observed density needs no
+    model, so it is the honest thing to validate. A state with more providers
+    per resident should carry less federal shortage burden, meaning every
+    correlation here is expected to be negative.
 
     Parameters
-    merged : pd.DataFrame with risk_score and the per 100k burden columns.
+    merged : pd.DataFrame with providers_per_100k and the per 100k burden columns.
 
     Returns
-    dict of rho and p for each burden measure plus per tier burden means.
+    dict of rho and p for each burden measure.
     """
     correlations = {}
 
@@ -186,13 +188,13 @@ def compute_validation_metrics(merged: pd.DataFrame) -> dict:
         if rate_col not in merged.columns:
             continue
 
-        pair = merged[["risk_score", rate_col, raw_col]].dropna()
+        pair = merged[[DENSITY_COLUMN, rate_col, raw_col]].dropna()
         if len(pair) < MIN_CORRELATION_ROWS:
             logger.warning(f"too few states to correlate risk score against {rate_col}")
             continue
 
-        rho, p_value = scipy_stats.spearmanr(pair["risk_score"], pair[rate_col])
-        raw_rho, raw_p = scipy_stats.spearmanr(pair["risk_score"], pair[raw_col])
+        rho, p_value = scipy_stats.spearmanr(pair[DENSITY_COLUMN], pair[rate_col])
+        raw_rho, raw_p = scipy_stats.spearmanr(pair[DENSITY_COLUMN], pair[raw_col])
 
         correlations[rate_col] = {
             "spearman_rho": round(float(rho), 4),
@@ -208,42 +210,33 @@ def compute_validation_metrics(merged: pd.DataFrame) -> dict:
     # HPSA score is HRSA's own severity rating on a fixed 0 to 25 scale, so it
     # needs no population adjustment
     if "hrsa_avg_score" in merged.columns:
-        pair = merged[merged["hrsa_hpsa_present"]][["risk_score", "hrsa_avg_score"]].dropna()
+        pair = merged[merged["hrsa_hpsa_present"]][[DENSITY_COLUMN, "hrsa_avg_score"]].dropna()
         if len(pair) >= MIN_CORRELATION_ROWS:
-            rho, p_value = scipy_stats.spearmanr(pair["risk_score"], pair["hrsa_avg_score"])
+            rho, p_value = scipy_stats.spearmanr(pair[DENSITY_COLUMN], pair["hrsa_avg_score"])
             correlations["hrsa_avg_score"] = {
                 "spearman_rho": round(float(rho), 4),
                 "p_value": round(float(p_value), 4),
                 "n_states": int(len(pair)),
             }
 
-    def _tier_means(col: str) -> dict:
-        """average one burden column within each risk tier."""
-        if col not in merged.columns:
-            return {}
-        return {
-            str(k): round(float(v), 2)
-            for k, v in merged.groupby("risk_tier", observed=False)[col].mean().dropna().items()
-        }
-
-    detail_cols = [c for c in ["practice_state", "risk_score", "hrsa_hpsa_count",
-                                "hrsa_shortage_pop_per_100k", "hrsa_avg_score"]
-                   if c in merged.columns]
-    high_risk_detail = (
-        merged[merged["risk_tier"] == "high_risk"][detail_cols]
-        .sort_values("risk_score", ascending=False)
+    thinnest_detail = (
+        merged.nsmallest(10, DENSITY_COLUMN)[
+            [c for c in ["practice_state", DENSITY_COLUMN, "density_rank",
+                         "hrsa_hpsa_count", "hrsa_shortage_pop_per_100k", "hrsa_avg_score"]
+             if c in merged.columns]
+        ]
         .round(4)
         .to_dict(orient="records")
     )
 
     metrics = {
+        "correlated_against": DENSITY_COLUMN,
+        "expected_direction": "negative, more providers per resident means less shortage burden",
         "rank_agreement": correlations,
-        "avg_hrsa_shortage_pop_per_100k_by_tier": _tier_means("hrsa_shortage_pop_per_100k"),
-        "avg_hrsa_hpsa_score_by_tier": _tier_means("hrsa_avg_score"),
-        "high_risk_state_detail": high_risk_detail,
+        "thinnest_state_detail": thinnest_detail,
     }
 
-    logger.info("rank agreement between risk score and HRSA burden:")
+    logger.info(f"rank agreement between {DENSITY_COLUMN} and HRSA burden:")
     for measure, scores in correlations.items():
         line = (
             f"  {measure}: rho {scores['spearman_rho']:+.4f} "
@@ -261,12 +254,12 @@ def compute_validation_metrics(merged: pd.DataFrame) -> dict:
 
 def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
     """
-    External validation: compare Ovara access risk tiers against HRSA HPSA
-    Primary Care shortage designations aggregated to the state level.
+    External validation: compare observed state provider density against HRSA
+    HPSA Primary Care shortage designations aggregated to the state level.
     """
     try:
-        risk = pd.read_csv(RISK_FILE)
-        logger.info(f"loaded risk classification: {risk.shape[0]} states")
+        density = pd.read_csv(DENSITY_FILE)
+        logger.info(f"loaded state density ranking: {density.shape[0]} states")
 
         hrsa_raw = fetch_hrsa_hpsa(refresh=refresh)
         if hrsa_raw is None:
@@ -278,7 +271,7 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
             logger.warning("HRSA aggregation failed, validation skipped")
             return None
 
-        merged = risk.merge(hrsa_state, on="practice_state", how="left")
+        merged = density.merge(hrsa_state, on="practice_state", how="left")
 
         for col, fill in [
             ("hrsa_hpsa_present", False),
@@ -294,7 +287,8 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
         metrics = compute_validation_metrics(merged)
 
         output_cols = [c for c in [
-            "practice_state", "state_name", "risk_tier", "risk_score", "risk_rank",
+            "practice_state", "state_name", "providers_per_100k", "density_rank",
+            "density_percentile",
             "hrsa_hpsa_present", "hrsa_hpsa_count", "hrsa_shortage_pop",
             "hrsa_avg_score", "hrsa_fte_shortage",
             "hrsa_shortage_pop_per_100k", "hrsa_fte_shortage_per_100k",
@@ -315,7 +309,7 @@ def run_hrsa_validation(refresh: bool = False) -> pd.DataFrame | None:
         return merged
 
     except FileNotFoundError:
-        logger.error(f"input file not found: {RISK_FILE}")
+        logger.error(f"input file not found: {DENSITY_FILE}")
         raise
 
     except Exception as e:
