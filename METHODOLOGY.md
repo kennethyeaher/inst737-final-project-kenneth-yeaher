@@ -311,7 +311,7 @@ State level analysis is useful as a national overview, but it hides huge variati
 
 ### Why I Use Density Thresholds Instead of Regression at the County Level
 
-The county dataset has 3,144 rows but a problematic distribution: 1,038 counties, or 33%, have zero providers. That zero inflated distribution violates the assumptions of the linear regression I use at the state level, and trying to model it would either need a hurdle model or a zero inflated regression, both of which add complexity without telling a clearer story.
+The county dataset has 3,144 rows but a problematic distribution: 1,029 counties, or 33%, have zero providers. That zero inflated distribution violates the assumptions of the linear regression I use at the state level, and trying to model it would either need a hurdle model or a zero inflated regression, both of which add complexity without telling a clearer story.
 
 Instead, I use fixed density thresholds to assign each county to one of five tiers. The thresholds are chosen to call out clinically meaningful supply levels rather than relative ranking, which is how readers naturally think about provider access. One provider per 100,000 residents is bad regardless of where the rest of the country sits.
 
@@ -329,15 +329,22 @@ Each county also gets a continuous risk score from 0 to 100 based on percentile 
 
 | Tier | Counties | Population in Tier |
 |---|---:|---:|
-| Access Desert | 1,038 | 14,529,192 |
+| Access Desert | 1,029 | 10,917,875 |
 | Critical | 154 | 6,620,090 |
 | Underserved | 314 | 11,329,729 |
-| Adequate | 594 | 52,555,233 |
-| Well Served | 1,044 | 246,063,349 |
+| Adequate | 597 | 52,938,860 |
+| Well Served | 1,050 | 249,291,039 |
 
-The headline finding is that **1,038 counties, or 33% of all US counties, have zero registered reproductive health providers**, and roughly **14.5 million Americans live in these access deserts**. These are residents who have no local OB/GYN, no local certified nurse midwife, and no local women's health nurse practitioner registered in NPPES. They have to travel to a neighboring county for any reproductive health visit.
+> **Corrected August 2026.** An earlier version of this table reported 1,038 access deserts holding
+> 14,529,192 residents. All nine Connecticut planning regions were in that count with zero providers
+> each, because the ZIP to county crosswalk and the county population table came from Census
+> vintages that use different Connecticut county codes. Connecticut has 1,275 providers in the
+> county layer and none of its nine regions is an access desert. See the Known Limitations section
+> of the README.
 
-A further 154 counties are Critical, meaning under 5 providers per 100k, and 314 are Underserved, meaning 5 to 10 providers per 100k. Combined with the access deserts, that is **1,506 counties, or 48%, in some tier of concern**. The provider workforce concentration is severe: the 1,044 Well Served counties hold 246 million residents, or 74% of the population, while the 1,506 concern tier counties hold only 32 million residents, or 10% of the population, but represent half the geography.
+The headline finding is that **1,029 counties, or 33% of all US counties, have zero registered reproductive health providers**, and roughly **10.9 million Americans live in these access deserts**. These are residents who have no local OB/GYN, no local certified nurse midwife, and no local women's health nurse practitioner registered in NPPES. They have to travel to a neighboring county for any reproductive health visit.
+
+A further 154 counties are Critical, meaning under 5 providers per 100k, and 314 are Underserved, meaning 5 to 10 providers per 100k. Combined with the access deserts, that is **1,497 counties, or 48%, in some tier of concern**. The provider workforce concentration is severe: the 1,050 Well Served counties hold 249 million residents, or 75% of the population, while the 1,497 concern tier counties hold only 29 million residents, or 9% of the population, but represent almost half the geography.
 
 ### Why the County View Matters Even Though It Cannot Be Modeled the Same Way
 
@@ -440,18 +447,18 @@ This analysis flags states as underserved relative to a statistical model, not r
 | 5 fold CV R² | −0.226 | The model should not be used to forecast unseen states |
 | CV MAE vs Baseline MAE | 8.86 vs 8.92 | Model performance is close to baseline |
 | High risk states identified | 13 | Bottom quartile of residual based access risk |
-| HRSA validation precision | 1.00 | Every high risk state also has federal shortage designations |
+| HRSA validation precision | 1.00 | Not evidence. Every state has a designation, so the label is constant and precision is 1.00 by construction |
 | HRSA avg HPSA score for well served states | 13.5 | Lower average federal shortage severity |
 | HRSA avg HPSA score for high risk states | 15.6 | Higher average federal shortage severity |
 | Optimal clustering k | 2 | States split most clearly into low supply and high supply groups |
 | Outlier states | Vermont, Wyoming | These states strongly affect model stability |
-| County access deserts | 1,038 | Counties with zero registered reproductive health providers |
-| Population in access deserts | 14.5M | Residents living in counties with no local provider |
-| Counties in concern tier | 1,506, or 48% | Sum of access desert, critical, and underserved counties |
+| County access deserts | 1,029 | Counties with zero registered reproductive health providers |
+| Population in access deserts | 10.9M | Residents living in counties with no local provider |
+| Counties in concern tier | 1,497, or 48% | Sum of access desert, critical, and underserved counties |
 
-The negative CV R² is the most important number in this table. It means the state level regression is not reliable as a prediction engine for unseen states. It also means the residuals should be interpreted as relative shortage signals within the observed dataset, not as forecasts. The 100% HRSA precision is the most validating number because it confirms that the states the model flags as most underserved are also states the federal shortage designation process has independently identified.
+The negative CV R² is the most important number in this table. It means the state level regression is not reliable as a prediction engine for unseen states. It also means the residuals should be interpreted as relative shortage signals within the observed dataset, not as forecasts. The 100% HRSA precision is not a validating number, and I originally read it as one. Every state in the country has at least one active Primary Care shortage designation, so the benchmark label is positive for all 51 rows. With a constant label there are no true negatives and no false positives, and any classifier that predicts positive at all scores 1.00. The number that actually carries information is the rank correlation between the continuous risk score and HRSA shortage burden, and at the time of writing that correlation is close to zero.
 
-The county level numbers are the most striking part of this analysis. The 1,038 access desert counties and 14.5 million residents living in them are not statistical artifacts. They are the result of a direct count: zero providers in those counties of any of the 13 reproductive health taxonomies tracked. The state level residual analysis tells you which states are underserved relative to expectation. The county level desert count tells you that even within the states that look fine on average, large pockets of zero access exist on the ground.
+The county level numbers are the most striking part of this analysis, and they are also where I found my own worst error. An earlier version of this document said the access desert count contained no statistical artifacts. That was wrong. A quarter of the reported population, 3.6 million people across Connecticut's nine planning regions, was a join failure between two Census vintages rather than a real absence of providers. After the correction the count rests on a direct count of registered providers in the 13 reproductive health taxonomies tracked, and the remaining caveat is coverage, not arithmetic: NPPES records where a provider bills, not whether a patient can get an appointment. The state level residual analysis tells you which states are underserved relative to expectation. The county level desert count tells you that even within the states that look fine on average, large pockets of zero access exist on the ground.
 
 ## Related Files
 
