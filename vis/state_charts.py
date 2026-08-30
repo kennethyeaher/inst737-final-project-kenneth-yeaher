@@ -125,11 +125,16 @@ def build_bar(
     a residual ranking and a tier breakdown. When a user clicks a state on
     the map, the chart filters to that selected state.
     """
+    # plotly draws the first row at the bottom of a horizontal bar chart, so
+    # sort descending to put the largest access gap at the top where the title
+    # points. sorting ascending led the chart with the smallest of the ten.
     if selected_states:
-        subset = df[df["practice_state"].isin(selected_states)].sort_values("residual")
+        subset = df[df["practice_state"].isin(selected_states)].sort_values(
+            "residual", ascending=False
+        )
         title_text = f"Access Gap for {', '.join(selected_states)}"
     else:
-        subset = df.nsmallest(10, "residual").sort_values("residual")
+        subset = df.nsmallest(10, "residual").sort_values("residual", ascending=False)
         title_text = "Top 10 Most Underserved States"
 
     x_min = subset["residual"].min() if len(subset) > 0 else -4
