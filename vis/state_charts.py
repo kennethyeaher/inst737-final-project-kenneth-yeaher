@@ -2,29 +2,31 @@
 State level chart builders for the Ovara dashboard.
 
 Three figures live here:
-- build_bar:        horizontal bar of the most underserved states
-- build_scatter:    predicted vs actual density with outlier annotations
-- build_choropleth: US map colored by access gap or risk tier
+- build_bar:        horizontal bar of the ten thinnest states by density
+- build_scatter:    model diagnostic, predicted against actual density
+- build_choropleth: US map on a continuous provider density scale
 
-Plus a few small helpers for validating the input frame and assigning
-risk tiers from regression residuals.
+Everything here reads observed provider density. The residual based risk
+tiers this module used to draw were retired: they cut quartiles, so exactly a
+quarter of states were labelled high risk whatever the data said, and they did
+it on residuals from a model whose honest cross validated R2 is about 0.12.
+The scatter survives as a labelled diagnostic, not as a finding.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Final
 
 import pandas as pd
 import plotly.graph_objects as go
 
+from vis._brand import SUPPLY_TIER_RAMP
 from vis._styles import (
     BASE_LAYOUT,
     CHART_TITLE_FONT,
     COLORS,
-    PUBLISHED_TIER_LABELS,
-    RISK_COLORSCALE,
-    RISK_TIER_LABELS,
     UNIFIED_COLORSCALE,
     apply_axis_defaults,
 )
@@ -36,22 +38,32 @@ REQUIRED_COLUMNS: Final[set[str]] = {
     "provider_count",
     "state_population",
     "providers_per_100k",
+    "density_rank",
+    "density_percentile",
     "predicted_provider_density",
-    "residual",
+    "regression_residual_diagnostic",
     "taxonomy_diversity",
-    "recent_provider_growth",
 }
 
-# default file path for the regression results frame
-INPUT_FILE: Final[Path] = Path("data/model_outputs/regression_results.csv")
+# the published state ranking, which needs no model
+INPUT_FILE: Final[Path] = Path("data/model_outputs/state_density_ranking.csv")
 
-# the published risk classification, which is where tiers are decided
-RISK_FILE: Final[Path] = Path("data/model_outputs/access_risk_classified.csv")
+# evaluation output, read only to print the model's skill on the diagnostic figure
+EVALUATION_FILE: Final[Path] = Path("data/model_outputs/evaluation_results.json")
+
+# how many states the bar chart shows
+THINNEST_STATE_COUNT: Final[int] = 10
+
+# sequential density scale built from the brand supply ramp, thinnest to densest
+DENSITY_COLORSCALE: Final[list[list]] = [
+    [index / (len(SUPPLY_TIER_RAMP) - 1), color]
+    for index, color in enumerate(SUPPLY_TIER_RAMP)
+]
 
 
 def validate_columns(df: pd.DataFrame) -> None:
     """
-    Stop early if the regression output is missing fields the dashboard needs.
+    Stop early if the ranking is missing fields the dashboard needs.
 
     Parameters
     df : pd.DataFrame to check.
@@ -61,61 +73,18 @@ def validate_columns(df: pd.DataFrame) -> None:
     """
     missing = REQUIRED_COLUMNS - set(df.columns)
     if missing:
-        raise ValueError(f"regression_results.csv missing: {sorted(missing)}")
+        raise ValueError(f"state_density_ranking.csv missing: {sorted(missing)}")
 
 
-def attach_published_risk_tiers(df: pd.DataFrame, path: Path = RISK_FILE) -> pd.DataFrame:
+def load_state_density_ranking(path: Path = INPUT_FILE) -> pd.DataFrame:
     """
-    Join each state to the risk tier the model already published.
+    Load the published state density ranking, thinnest state first.
 
-    The dashboard used to recompute tiers here with pd.qcut on the residual,
-    which put a second copy of a modeling decision in the presentation layer.
-    The two agreed only because the quartile boundaries happened to line up.
-    This reads analysis/access_risk_model.py's own output instead and maps its
-    stored names onto the display labels.
-
-    Adds two columns to a copy of df:
-    - risk_tier: ordered categorical display label from RISK_TIER_LABELS
-    - risk_tier_num: integer code 0..3 for use as a colorscale value
+    This replaces the old loader, which read the regression output and then
+    recomputed or joined risk tiers. There are no tiers now.
 
     Parameters
-    df : pd.DataFrame with a practice_state column.
-    path : Path to the published risk classification csv.
-
-    Returns
-    pd.DataFrame copy with the two new columns.
-    """
-    published = pd.read_csv(path, usecols=["practice_state", "risk_tier"])
-    published["risk_tier"] = published["risk_tier"].map(PUBLISHED_TIER_LABELS)
-
-    unmapped = published["risk_tier"].isna().sum()
-    if unmapped > 0:
-        raise ValueError(
-            f"{unmapped} states carry a tier name that is not in PUBLISHED_TIER_LABELS"
-        )
-
-    df = df.drop(columns=["risk_tier"], errors="ignore").merge(
-        published, on="practice_state", how="left", validate="one_to_one"
-    )
-
-    missing = df.loc[df["risk_tier"].isna(), "practice_state"].tolist()
-    if missing:
-        raise ValueError(f"states with no published risk tier: {missing}")
-
-    df["risk_tier"] = pd.Categorical(
-        df["risk_tier"], categories=RISK_TIER_LABELS, ordered=True
-    )
-    df["risk_tier_num"] = df["risk_tier"].cat.codes
-    return df
-
-
-def load_regression_results(path: Path = INPUT_FILE) -> pd.DataFrame:
-    """
-    Load regression results, drop rows with missing required values, and
-    classify risk tiers.
-
-    Parameters
-    path : Path to the regression results csv.
+    path : Path to the state density ranking csv.
 
     Returns
     pd.DataFrame ready to feed into any chart builder in this module.
@@ -123,24 +92,32 @@ def load_regression_results(path: Path = INPUT_FILE) -> pd.DataFrame:
     df = pd.read_csv(path)
     validate_columns(df)
 
-    # drop rows that are missing values the dashboard cannot render
+    # drop rows the dashboard cannot render
     before = df.shape[0]
-    df = df.dropna(
-        subset=["practice_state", "providers_per_100k", "predicted_provider_density", "residual"]
-    ).copy()
-    dropped = before - df.shape[0]
+    df = df.dropna(subset=["practice_state", "providers_per_100k"]).copy()
+    df.attrs["dropped_rows"] = before - df.shape[0]
 
-    if dropped > 0:
-        # logging is the caller's job, but we keep the count visible in the return
-        # so the orchestrator can choose to log it
-        df.attrs["dropped_rows"] = dropped
+    return df.sort_values("density_rank").reset_index(drop=True)
 
-    return attach_published_risk_tiers(df)
+
+def read_cross_validated_r2(path: Path = EVALUATION_FILE) -> float | None:
+    """Read the model's cross validated R2 so the diagnostic figure can print it."""
+    if not path.exists():
+        return None
+
+    with open(path) as handle:
+        return json.load(handle).get("cv5_r2_mean")
+
+
+def national_density(df: pd.DataFrame) -> float:
+    """Providers per 100k across every state, used as the reference line."""
+    return df["provider_count"].sum() / df["state_population"].sum() * 100000
 
 
 def _shared_residual_range(df: pd.DataFrame) -> float:
-    """Pick a symmetric residual range so zero stays at the center of the color scale."""
-    return max(abs(df["residual"].min()), abs(df["residual"].max()))
+    """Pick a symmetric residual range so zero stays at the center of the diagnostic scale."""
+    residual = df["regression_residual_diagnostic"]
+    return max(abs(residual.min()), abs(residual.max()))
 
 
 def build_bar(
@@ -148,65 +125,100 @@ def build_bar(
     selected_states: list[str] | None = None,
 ) -> go.Figure:
     """
-    Build the horizontal bar chart for the most underserved states.
+    Build the horizontal bar chart of the thinnest states by provider density.
 
-    Bars are colored by each state's risk tier so the chart works as both
-    a residual ranking and a tier breakdown. When a user clicks a state on
-    the map, the chart filters to that selected state.
+    Lowest density sits at the top, matching the county chart. Bars are shaded
+    along the supply ramp by density rather than by a tier, because there are
+    no state tiers. A dashed line marks the national rate.
+
+    Parameters
+    df : pd.DataFrame from load_state_density_ranking.
+    selected_states : list of state abbreviations to filter to, from a map click.
+
+    Returns
+    plotly Figure.
     """
-    # plotly draws the first row at the bottom of a horizontal bar chart, so
-    # sort descending to put the largest access gap at the top where the title
-    # points. sorting ascending led the chart with the smallest of the ten.
+    national = national_density(df)
+
+    # plotly draws the first row at the bottom, so sort descending to put the
+    # thinnest state at the top where the title points
     if selected_states:
         subset = df[df["practice_state"].isin(selected_states)].sort_values(
-            "residual", ascending=False
+            "providers_per_100k", ascending=False
         )
-        title_text = f"Access Gap for {', '.join(selected_states)}"
+        title_text = f"Provider Density for {', '.join(selected_states)}"
     else:
-        subset = df.nsmallest(10, "residual").sort_values("residual", ascending=False)
-        title_text = "Top 10 Most Underserved States"
+        subset = df.nsmallest(THINNEST_STATE_COUNT, "providers_per_100k").sort_values(
+            "providers_per_100k", ascending=False
+        )
+        title_text = f"{THINNEST_STATE_COUNT} Thinnest States by Provider Density"
 
-    x_min = subset["residual"].min() if len(subset) > 0 else -4
-
-    # color each bar by risk tier so the chart is easier to read at a glance
-    from vis._styles import RISK_TIER_COLORS as TIER_COLORS
-
-    bar_colors = [
-        TIER_COLORS.get(tier, COLORS["neg_mid"])
-        for tier in subset["risk_tier"].astype(str)
-    ]
+    bar_colors = _density_ramp_colors(subset["providers_per_100k"], df)
 
     fig = go.Figure(go.Bar(
-        x=subset["residual"],
+        x=subset["providers_per_100k"],
         y=subset["practice_state"],
         orientation="h",
-        text=subset["residual"].round(2),
+        text=subset["providers_per_100k"].round(1),
         textposition="outside",
         textfont={"size": 12, "color": COLORS["text"]},
         marker={"color": bar_colors},
-        hovertemplate="<b>%{y}</b><br>Residual: %{x:.2f}<extra></extra>",
+        customdata=subset["density_rank"],
+        hovertemplate=(
+            "<b>%{y}</b><br>%{x:.2f} per 100k<br>"
+            "National rank: %{customdata} of 51<extra></extra>"
+        ),
     ))
+
+    x_max = max(subset["providers_per_100k"].max(), national) if len(subset) else national
 
     fig.update_layout(
         **BASE_LAYOUT,
         title={"text": title_text, "font": CHART_TITLE_FONT, "x": 0.02, "xanchor": "left"},
-        xaxis={"title": "Residual (actual − predicted)", "range": [x_min * 1.30, 0.3]},
+        xaxis={"title": "Providers per 100k residents", "range": [0, x_max * 1.18]},
         yaxis={"title": ""},
+        shapes=[{
+            "type": "line", "x0": national, "x1": national,
+            "y0": -0.5, "y1": len(subset) - 0.5,
+            "line": {"color": COLORS["text_muted"], "width": 1.5, "dash": "dash"},
+        }],
+        annotations=[{
+            "x": national, "y": len(subset) - 0.5,
+            "text": f"National {national:.1f}",
+            "showarrow": False, "yshift": 12,
+            "font": {"size": 10, "color": COLORS["text_muted"]},
+        }],
     )
     apply_axis_defaults(fig)
     return fig
 
 
+def _density_ramp_colors(values: pd.Series, df: pd.DataFrame) -> list[str]:
+    """Shade each bar along the supply ramp by where its density sits nationally."""
+    low = df["providers_per_100k"].min()
+    high = df["providers_per_100k"].max()
+    span = high - low if high > low else 1.0
+
+    colors = []
+    for value in values:
+        position = (value - low) / span
+        index = min(int(position * len(SUPPLY_TIER_RAMP)), len(SUPPLY_TIER_RAMP) - 1)
+        colors.append(SUPPLY_TIER_RAMP[index])
+
+    return colors
+
+
 def build_scatter(df: pd.DataFrame) -> go.Figure:
     """
-    Predicted vs actual provider density with outlier annotations.
+    Model diagnostic: predicted against actual provider density.
 
-    The dashed diagonal is the ideal fit line. Points above the line
-    have more providers than the model predicted, points below have fewer.
-    Annotations call out the single biggest over and under supply states.
+    This figure is a diagnostic, not a finding. The dashed diagonal is the
+    ideal fit line, and the spread around it is the point: the model explains
+    little of the variation between states. Its cross validated R2 is printed
+    on the figure so the scatter cannot be read as more than it is.
 
     Parameters
-    df : pd.DataFrame with risk tiers assigned.
+    df : pd.DataFrame from load_state_density_ranking.
 
     Returns
     plotly Figure.
@@ -236,7 +248,7 @@ def build_scatter(df: pd.DataFrame) -> go.Figure:
         text=df["practice_state"],
         marker={
             "size": 11,
-            "color": df["residual"],
+            "color": df["regression_residual_diagnostic"],
             "colorscale": UNIFIED_COLORSCALE,
             "cmin": -res_max, "cmax": res_max,
             "showscale": True,
@@ -250,10 +262,24 @@ def build_scatter(df: pd.DataFrame) -> go.Figure:
     # call out the single biggest over supply and the two biggest under supply states
     annotations = _build_outlier_annotations(df, axis_min, axis_max, pad)
 
+    # print the model's skill on the figure so nobody reads the scatter as a result
+    cv_r2 = read_cross_validated_r2()
+    skill_text = (
+        f"Model diagnostic only. Cross validated R2 {cv_r2:+.3f} across 5 folds"
+        if cv_r2 is not None
+        else "Model diagnostic only"
+    )
+    annotations.append({
+        "x": 0.02, "y": 1.02, "xref": "paper", "yref": "paper",
+        "text": skill_text,
+        "showarrow": False, "xanchor": "left", "yanchor": "bottom",
+        "font": {"size": 11, "color": COLORS["text_muted"]},
+    })
+
     fig.update_layout(
         **BASE_LAYOUT,
         title={
-            "text": "Predicted vs Actual Reproductive Health Provider Density",
+            "text": "Model Diagnostic: Predicted against Actual Density",
             "font": CHART_TITLE_FONT,
             "x": 0.02,
             "xanchor": "left",
@@ -280,23 +306,23 @@ def _build_outlier_annotations(
     }
 
     # biggest over supply state (positive residual)
-    top = df.nlargest(1, "residual").iloc[0]
+    top = df.nlargest(1, "regression_residual_diagnostic").iloc[0]
     annotations.append({
         **anno_base,
         "x": top["predicted_provider_density"], "y": top["providers_per_100k"],
-        "text": f"<b>{top['practice_state']}</b><br>+{top['residual']:.1f} above expected",
+        "text": f"<b>{top['practice_state']}</b><br>+{top['regression_residual_diagnostic']:.1f} above expected",
         "arrowcolor": COLORS["pos_strong"], "bordercolor": COLORS["pos_strong"],
         "font": {"size": 11, "color": COLORS["pos_strong"]},
         "ax": 50, "ay": 40,
     })
 
     # two biggest under supply states (most negative residuals)
-    for i, (_, row) in enumerate(df.nsmallest(2, "residual").iterrows()):
+    for i, (_, row) in enumerate(df.nsmallest(2, "regression_residual_diagnostic").iterrows()):
         offsets = [{"ax": -60, "ay": -30}, {"ax": -60, "ay": 35}]
         annotations.append({
             **anno_base,
             "x": row["predicted_provider_density"], "y": row["providers_per_100k"],
-            "text": f"<b>{row['practice_state']}</b><br>{row['residual']:.1f} below expected",
+            "text": f"<b>{row['practice_state']}</b><br>{row['regression_residual_diagnostic']:.1f} below expected",
             "arrowcolor": COLORS["neg_strong"], "bordercolor": COLORS["neg_strong"],
             "font": {"size": 11, "color": COLORS["neg_strong"]},
             **offsets[i],
@@ -318,18 +344,19 @@ def _build_outlier_annotations(
 def build_choropleth(
     df: pd.DataFrame,
     selected_state: str | None = None,
-    view_mode: str = "gap",
 ) -> go.Figure:
     """
-    US choropleth in either access gap or risk tier mode.
+    US choropleth on a continuous provider density scale.
+
+    This used to offer a second mode that coloured states by risk tier. That
+    classification is retired, so the map shows observed density only, shaded
+    along the supply ramp from thinnest to densest.
 
     Parameters
-    df : pd.DataFrame with risk tiers assigned.
+    df : pd.DataFrame from load_state_density_ranking.
     selected_state : str or None
         State abbreviation passed in from a map click. Highlights the
         selected state with a thicker border and dims the others.
-    view_mode : str
-        Either "gap" (continuous residual scale) or "tier" (four discrete bands).
 
     Returns
     plotly Figure.
@@ -347,20 +374,31 @@ def build_choropleth(
 
     marker = {"line": {"color": line_colors, "width": line_widths}, "opacity": opacities}
 
-    # mode specific values: z, colorscale, colorbar, hover, title
-    z, colorscale, zmin, zmax, colorbar, hover, title_text = _resolve_choropleth_mode(
-        df, selected_state, view_mode,
-    )
+    title_text = "Reproductive Health Provider Density by State"
+    if selected_state:
+        row = df[df["practice_state"] == selected_state]
+        if len(row) > 0:
+            title_text = (
+                f"{selected_state}: {row.iloc[0]['providers_per_100k']:.1f} per 100k, "
+                f"rank {int(row.iloc[0]['density_rank'])} of {n}"
+            )
 
     fig = go.Figure(go.Choropleth(
-        locations=states, z=z,
+        locations=states,
+        z=df["providers_per_100k"],
         locationmode="USA-states",
-        colorscale=colorscale,
-        zmin=zmin, zmax=zmax,
+        colorscale=DENSITY_COLORSCALE,
         marker=marker,
-        colorbar=colorbar,
-        customdata=df["risk_tier"].astype(str),
-        hovertemplate=hover,
+        colorbar={
+            "title": "Per 100k", "thickness": 14, "len": 0.75,
+            "x": 1.01, "y": 0.5,
+            "tickfont": {"size": 11}, "title_font": {"size": 12},
+        },
+        customdata=df["density_rank"],
+        hovertemplate=(
+            "<b>%{location}</b><br>%{z:.2f} per 100k<br>"
+            "National rank: %{customdata} of 51<extra></extra>"
+        ),
     ))
 
     fig.update_layout(
@@ -374,47 +412,3 @@ def build_choropleth(
         ),
     )
     return fig
-
-
-def _resolve_choropleth_mode(
-    df: pd.DataFrame,
-    selected_state: str | None,
-    view_mode: str,
-) -> tuple:
-    """Pick z values, colorscale, colorbar, hover template, and title for the chosen view."""
-    if view_mode == "tier":
-        z = df["risk_tier_num"]
-        colorscale = RISK_COLORSCALE
-        zmin, zmax = 0, 3
-        colorbar = {
-            "title": "Risk Tier", "thickness": 14, "len": 0.75,
-            "x": 1.01, "y": 0.5,
-            "tickvals": [0.375, 1.125, 1.875, 2.625],
-            "ticktext": RISK_TIER_LABELS,
-            "tickfont": {"size": 11}, "title_font": {"size": 12},
-        }
-        hover = "<b>%{location}</b><br>Risk Tier: %{customdata}<extra></extra>"
-        title_text = "Reproductive Health Access Risk Tiers"
-        if selected_state:
-            row = df[df["practice_state"] == selected_state]
-            if len(row) > 0:
-                title_text = f"Access Risk {selected_state} ({row.iloc[0]['risk_tier']})"
-        return z, colorscale, zmin, zmax, colorbar, hover, title_text
-
-    # default: continuous access gap view
-    res_max = _shared_residual_range(df)
-    z = df["residual"]
-    colorscale = UNIFIED_COLORSCALE
-    zmin, zmax = -res_max, res_max
-    colorbar = {
-        "title": "Access Gap", "thickness": 14, "len": 0.75,
-        "x": 1.01, "y": 0.5,
-        "tickfont": {"size": 11}, "title_font": {"size": 12},
-    }
-    hover = "<b>%{location}</b><br>Access Gap: %{z:.2f}<br>Risk Tier: %{customdata}<extra></extra>"
-    title_text = "Reproductive Health Access Gap Map"
-    if selected_state:
-        row = df[df["practice_state"] == selected_state]
-        if len(row) > 0:
-            title_text = f"Access Gap {selected_state} (gap: {row.iloc[0]['residual']:.2f})"
-    return z, colorscale, zmin, zmax, colorbar, hover, title_text

@@ -18,7 +18,7 @@ import pandas as pd
 from dash import html
 
 from vis._brand import FONT_HEADING, FONT_MONO
-from vis._styles import CARD_STYLE, COLORS, RISK_TIER_COLORS
+from vis._styles import CARD_STYLE, COLORS
 
 # typography presets used by KPI cards and detail strips
 _EYEBROW_STYLE: dict = {
@@ -103,26 +103,27 @@ def state_detail_card(row: pd.Series) -> dbc.Card:
     """
     Build the detail strip shown when a user clicks a state on the map.
 
-    The card shows the state name, the assigned risk tier, and a row of key
-    metrics. Demand adjusted density is included only when that column exists.
+    The card shows the state name, its national density rank, and a row of key
+    metrics. There is no tier label because state level tiers are retired, so
+    the rank takes that slot. Demand adjusted density is included only when
+    that column exists.
     """
     name = row.get("state_name", row["practice_state"])
-    tier = str(row["risk_tier"])
-    tier_color = RISK_TIER_COLORS.get(tier, COLORS["text"])
+    rank_label = f"Rank {int(row['density_rank'])} of 51"
 
     metrics: list[tuple[str, str]] = [
         ("Providers", f"{int(row['provider_count']):,}"),
         ("Providers / 100k", f"{row['providers_per_100k']:.2f}"),
         ("State Population", f"{int(row['state_population']):,}"),
-        ("Access Gap", f"{row['residual']:.2f}"),
-        ("Predicted Density", f"{row['predicted_provider_density']:.2f}"),
+        ("Density Percentile", f"{row['density_percentile']:.0f}"),
+        ("Model Residual", f"{row['regression_residual_diagnostic']:.2f}"),
     ]
 
     # demand adjusted density only appears if the demand feature stage ran successfully
     if "providers_per_100k_demand" in row.index and pd.notna(row.get("providers_per_100k_demand")):
         metrics.append(("Providers / 100k (demand)", f"{row['providers_per_100k_demand']:.2f}"))
 
-    return _detail_card(name, tier, tier_color, metrics)
+    return _detail_card(name, rank_label, COLORS["accent"], metrics)
 
 
 def county_detail_card(row: pd.Series, tier_color: str, tier_label: str) -> dbc.Card:

@@ -18,7 +18,7 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import html
 
-from vis._brand import BRAND, COUNTY_TIER_COLORS, FONT_HEADING, FONT_MONO, STATE_TIER_COLORS
+from vis._brand import BRAND, COUNTY_TIER_COLORS, FONT_HEADING, FONT_MONO
 from vis._styles import CARD_STYLE, COLORS
 
 
@@ -32,50 +32,6 @@ class _Tier:
     range_text: str
     description: str
     color: str
-
-
-def _state_tiers(df: pd.DataFrame) -> list[_Tier]:
-    """Build the state tier table with quartile cutoffs calculated from the data."""
-    q1, q2, q3 = df["residual"].quantile([0.25, 0.5, 0.75]).tolist()
-
-    return [
-        _Tier(
-            "Critical",
-            "Q1 · Most Underserved",
-            "Critical",
-            f"Residual < {q1:.1f}",
-            "Largest negative residual. Actual provider density falls well below model "
-            "expectations. Structural intervention and provider recruitment are likely needed.",
-            STATE_TIER_COLORS["Critical"],
-        ),
-        _Tier(
-            "At Risk",
-            "Q2 · Below Expected",
-            "At Risk",
-            f"{q1:.1f} ≤ Residual < {q2:.1f}",
-            "Supply is meaningfully below expectations. Workforce and geographic barriers "
-            "still compound, but the gap is smaller than the Critical tier.",
-            STATE_TIER_COLORS["At Risk"],
-        ),
-        _Tier(
-            "Adequate",
-            "Q3 · Near Expected",
-            "Adequate",
-            f"{q2:.1f} ≤ Residual < {q3:.1f}",
-            "Supply is close to expected. There can still be local gaps, but the state level "
-            "residual is closer to the middle of the distribution.",
-            STATE_TIER_COLORS["Adequate"],
-        ),
-        _Tier(
-            "Well Served",
-            "Q4 · Above Expected",
-            "Well Served",
-            f"Residual ≥ {q3:.1f}",
-            "Density meets or exceeds expectations. This is often consistent with hub effects "
-            "where a state draws providers from surrounding regions.",
-            STATE_TIER_COLORS["Well Served"],
-        ),
-    ]
 
 
 _COUNTY_TIERS: list[_Tier] = [
@@ -285,19 +241,6 @@ def _render_grid(
     return html.Div(
         [_section_header(subtitle), grid],
         style={"paddingTop": "32px", "marginTop": "16px"},
-    )
-
-
-def state_tier_grid(df: pd.DataFrame) -> html.Div:
-    """Build the state level tier grid with quartile based thresholds."""
-    counts = df["risk_tier"].value_counts().to_dict()
-
-    return _render_grid(
-        _state_tiers(df),
-        counts,
-        len(df),
-        "states",
-        "Quartile framework · 2026 model",
     )
 
 

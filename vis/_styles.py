@@ -15,7 +15,6 @@ from vis._brand import (
     FONT_BODY,
     FONT_HEADING,
     FONT_MONO,
-    STATE_TIER_COLORS,
     UI,
 )
 
@@ -45,41 +44,6 @@ UNIFIED_COLORSCALE: Final[list[list]] = [
     [0.5, UI["surface_alt"]],
     [0.75, "#7FB389"],
     [1.0, BRAND["sage"]],
-]
-
-# state level risk tiers ordered from most underserved to best served
-RISK_TIERS: Final[list[dict]] = [
-    {"label": "Critical", "color": STATE_TIER_COLORS["Critical"]},
-    {"label": "At Risk", "color": STATE_TIER_COLORS["At Risk"]},
-    {"label": "Adequate", "color": STATE_TIER_COLORS["Adequate"]},
-    {"label": "Well Served", "color": STATE_TIER_COLORS["Well Served"]},
-]
-
-RISK_TIER_LABELS: Final[list[str]] = [tier["label"] for tier in RISK_TIERS]
-
-# access_risk_model.py publishes these tier names, the dashboard displays the
-# labels above. This is the only place the two vocabularies meet.
-PUBLISHED_TIER_LABELS: Final[dict[str, str]] = {
-    "high_risk": "Critical",
-    "moderate_risk": "At Risk",
-    "adequate": "Adequate",
-    "well_served": "Well Served",
-}
-RISK_TIER_COLORS: Final[dict[str, str]] = {
-    tier["label"]: tier["color"]
-    for tier in RISK_TIERS
-}
-
-# discrete colorscale so each risk tier renders as one solid map color
-RISK_COLORSCALE: Final[list[list]] = [
-    [0.0, STATE_TIER_COLORS["Critical"]],
-    [0.249, STATE_TIER_COLORS["Critical"]],
-    [0.25, STATE_TIER_COLORS["At Risk"]],
-    [0.499, STATE_TIER_COLORS["At Risk"]],
-    [0.5, STATE_TIER_COLORS["Adequate"]],
-    [0.749, STATE_TIER_COLORS["Adequate"]],
-    [0.75, STATE_TIER_COLORS["Well Served"]],
-    [1.0, STATE_TIER_COLORS["Well Served"]],
 ]
 
 # layout tokens shared by every chart

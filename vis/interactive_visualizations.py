@@ -29,7 +29,7 @@ _warnings.filterwarnings("ignore", message=".*LibreSSL.*")
 from utils.logging_config import setup_logger
 from vis.dashboard import run_dashboard
 from vis.exports import write_state_exports
-from vis.state_charts import INPUT_FILE, load_regression_results
+from vis.state_charts import INPUT_FILE, load_state_density_ranking
 
 logger = setup_logger("ovara.visualizations")
 
@@ -59,7 +59,7 @@ def run_interactive_visualizations(launch_dashboard: bool | None = None) -> None
     None
     """
     try:
-        df = load_regression_results()
+        df = load_state_density_ranking()
         dropped = df.attrs.get("dropped_rows", 0)
         if dropped:
             logger.warning(f"dropped {dropped} rows with missing required values")

@@ -58,27 +58,24 @@ def write_state_exports(
     logger: logging.Logger | None = None,
 ) -> None:
     """
-    Write the four state level static html exports.
+    Write the three state level static html exports.
 
     Files produced:
-    - underserved_bar_chart.html
+    - thinnest_states_bar_chart.html
     - predicted_vs_actual_scatter.html
-    - access_gap_choropleth.html
-    - risk_tier_choropleth.html
+    - provider_density_choropleth.html
 
     Parameters
-    df : pd.DataFrame from load_regression_results.
+    df : pd.DataFrame from load_state_density_ranking.
     output_dir : Path for the html files.
     logger : optional logger.
 
     Returns
     None
     """
-    write_html(build_bar(df), "underserved_bar_chart.html",
+    write_html(build_bar(df), "thinnest_states_bar_chart.html",
                output_dir=output_dir, logger=logger)
     write_html(build_scatter(df), "predicted_vs_actual_scatter.html",
                output_dir=output_dir, logger=logger)
-    write_html(build_choropleth(df), "access_gap_choropleth.html",
-               output_dir=output_dir, logger=logger)
-    write_html(build_choropleth(df, view_mode="tier"), "risk_tier_choropleth.html",
+    write_html(build_choropleth(df), "provider_density_choropleth.html",
                output_dir=output_dir, logger=logger)
