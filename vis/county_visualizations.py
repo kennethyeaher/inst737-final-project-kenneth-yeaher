@@ -34,7 +34,7 @@ TIER_LABELS = {
     "well_served": "Well Served",
 }
 
-# mapbox view settings used when the user filters down to one state
+# map view settings used when the user filters down to one state
 STATE_VIEW_PARAMS: dict[str, dict] = {
     "AL": {"center": {"lat": 32.8, "lon": -86.8}, "zoom": 5.5},
     "AK": {"center": {"lat": 64.2, "lon": -153.4}, "zoom": 3.5},
@@ -117,7 +117,7 @@ def build_county_choropleth(
     """
     Build a county level map that users can zoom and pan.
 
-    Selection is shown through county borders because mapbox choropleth opacity
+    Selection is shown through county borders because map choropleth opacity
     only works for the full trace, not each county separately.
     """
     plot_df = df.copy()
@@ -170,7 +170,7 @@ def build_county_choropleth(
     if state_filter:
         title = f"County Access for {state_filter}"
 
-    fig = go.Figure(go.Choroplethmapbox(
+    fig = go.Figure(go.Choroplethmap(
         geojson=geojson,
         locations=plot_df["county_fips"],
         z=plot_df["tier_num"],
@@ -196,9 +196,9 @@ def build_county_choropleth(
     ))
 
     fig.update_layout(
-        mapbox_style="carto-positron",
-        mapbox_zoom=map_zoom,
-        mapbox_center=map_center,
+        map_style="carto-positron",
+        map_zoom=map_zoom,
+        map_center=map_center,
         margin={"l": 0, "r": 0, "t": 50, "b": 0},
         height=560,
         font={"family": FONT_STACK, "size": 12, "color": COLORS["text"]},
