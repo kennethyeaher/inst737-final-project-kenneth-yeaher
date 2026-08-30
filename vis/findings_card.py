@@ -15,6 +15,8 @@ county_findings_card(df, state_filter=None): county level findings
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import html
@@ -171,38 +173,99 @@ def state_findings_card(df: pd.DataFrame) -> dbc.Card:
     return _card(eyebrow, headline, body)
 
 
-def county_findings_card(
-    df: pd.DataFrame,
-    state_filter: str | None = None,
-) -> dbc.Card:
-    """
-    Build the county level findings card.
+# density tier labels, mirroring RISK_TIERS in analysis/county_risk_classification.py
+# kept local so the visualization layer does not import from the analysis layer
 
-    The headline and body text adapt when a state filter is active. All numbers
-    are recomputed across the filtered scope so the card stays accurate as the
-    user drills into a state.
-    """
+_DENSITY_TIERS: list[tuple[float, str]] = [
+    (0.0, "an Access Desert"),
+    (5.0, "Critical"),
+    (10.0, "Underserved"),
+    (20.0, "Adequate"),
+    (float("inf"), "Well Served"),
+]
+
+
+@dataclass(frozen=True)
+class _CountyScope:
+    """Counts the county findings prose is written from."""
+
+    label: str
+    n_counties: int
+    n_desert: int
+    pct_desert: int
+    pop_desert: int
+    n_critical: int
+    n_underserved: int
+    n_concern: int
+    med_density: float
+
+
+def _density_tier(density: float) -> str:
+    """Return the tier label a provider density falls into."""
+    for upper, label in _DENSITY_TIERS:
+        if density <= upper:
+            return label
+
+    return _DENSITY_TIERS[-1][1]
+
+
+def _summarize_county_scope(
+    df: pd.DataFrame,
+    state_filter: str | None,
+) -> _CountyScope:
+    """Reduce the county table to the counts the findings prose needs."""
     scope = df[df["practice_state"] == state_filter] if state_filter else df
 
     n_counties = len(scope)
     n_desert = int((scope["provider_count"] == 0).sum())
-    pct_desert = round(n_desert / n_counties * 100) if n_counties > 0 else 0
-    pop_desert = int(scope[scope["provider_count"] == 0]["total_population"].sum())
-
     n_critical = int((scope["risk_tier"] == "critical").sum())
     n_underserved = int((scope["risk_tier"] == "underserved").sum())
-    n_concern = n_desert + n_critical + n_underserved
 
     populated = scope[scope["total_population"] > 0]
-    med_density = populated["providers_per_100k"].median() if len(populated) > 0 else 0.0
 
-    scope_label = state_filter if state_filter else "the United States"
-
-    eyebrow = (
-        f"Model Findings · County Level · {state_filter}"
-        if state_filter else "Model Findings · County Level · 2026"
+    return _CountyScope(
+        label=state_filter if state_filter else "the United States",
+        n_counties=n_counties,
+        n_desert=n_desert,
+        pct_desert=round(n_desert / n_counties * 100) if n_counties > 0 else 0,
+        pop_desert=int(scope[scope["provider_count"] == 0]["total_population"].sum()),
+        n_critical=n_critical,
+        n_underserved=n_underserved,
+        n_concern=n_desert + n_critical + n_underserved,
+        med_density=float(populated["providers_per_100k"].median()) if len(populated) else 0.0,
     )
 
+
+def _median_density_sentence(scope: _CountyScope) -> str:
+    """State the median density and name the tier it sits in."""
+    tier = _density_tier(scope.med_density)
+    article = "" if tier.startswith("an ") else "the "
+
+    return (
+        f"The median county sits at {scope.med_density:.1f} providers per 100k, "
+        f"inside {article}{tier} tier."
+    )
+
+
+def _coverage_caveat() -> html.P:
+    """
+    The limitation that applies to every tier, including the good ones.
+
+    Density counts providers registered at an address. It says nothing about
+    whether a patient can get an appointment, so clearing a threshold is not
+    the same as having access.
+    """
+    return _paragraph(
+        "Clearing a density threshold is not the same as having access. These tiers "
+        "count providers registered at a practice address in the federal registry. "
+        "They carry no information about appointment availability, accepted insurance, "
+        "clinical hours, or travel time, so a county can sit in a healthy tier and "
+        "still be hard to be seen in.",
+    )
+
+
+def _desert_findings(scope: _CountyScope) -> tuple[list, list]:
+    """Prose for a scope that contains at least one access desert."""
     headline = [
         "County level data exposes ",
         _emphasis("access deserts"),
@@ -211,32 +274,110 @@ def county_findings_card(
 
     body = [
         _paragraph(
-            f"Of the {n_counties:,} counties analyzed across {scope_label}, ",
-            _bold(f"{n_desert:,} have no registered reproductive health provider"),
-            f", roughly {pct_desert}% of the analyzed counties. ",
+            f"Of the {scope.n_counties:,} counties analyzed across {scope.label}, ",
+            _bold(f"{scope.n_desert:,} have no registered reproductive health provider"),
+            f", roughly {scope.pct_desert}% of the analyzed counties. ",
             "These are not low density counties. They are access deserts where the local "
             "workforce is missing from the federal registry entirely.",
         ),
         _paragraph(
             "The ",
-            _bold(f"{pop_desert:,} residents"),
+            _bold(f"{scope.pop_desert:,} residents"),
             " living in those access desert counties likely travel to a neighboring "
             "county for fertility care, prenatal services, or gynecological treatment, a "
             "burden that falls hardest on communities with the fewest transportation options.",
         ),
         _paragraph(
             "Beyond the access deserts, another ",
-            _bold(f"{n_critical:,} counties are classified as Critical"),
-            f" with fewer than 5 providers per 100k, and {n_underserved:,} are classified "
-            f"as Underserved with 5 to 10 providers per 100k. Combined, {n_concern:,} "
-            f"counties fall into a tier of concern, against a median density of just "
-            f"{med_density:.1f} providers per 100k.",
+            _bold(f"{scope.n_critical:,} counties are classified as Critical"),
+            f" with fewer than 5 providers per 100k, and {scope.n_underserved:,} are "
+            f"classified as Underserved with 5 to 10 providers per 100k. Combined, "
+            f"{scope.n_concern:,} counties fall into a tier of concern. "
+            + _median_density_sentence(scope),
+        ),
+        _coverage_caveat(),
+    ]
+
+    return headline, body
+
+
+def _thin_supply_findings(scope: _CountyScope) -> tuple[list, list]:
+    """Prose for a scope with no access deserts but some counties of concern."""
+    headline = [
+        "No county here is an access desert, but ",
+        _emphasis("supply still thins out"),
+        " toward the edges.",
+    ]
+
+    body = [
+        _paragraph(
+            f"Every one of the {scope.n_counties:,} counties analyzed across {scope.label} has ",
+            _bold("at least one registered reproductive health provider"),
+            ". No county in this scope is an access desert.",
         ),
         _paragraph(
-            "County level resolution matters because state averages can hide the real "
-            "access problem. A state can look adequate overall while still containing "
-            "dozens of counties where no reproductive health provider is registered at all.",
+            _bold(f"{scope.n_critical:,} counties are classified as Critical"),
+            f" with fewer than 5 providers per 100k, and {scope.n_underserved:,} are "
+            f"classified as Underserved with 5 to 10 providers per 100k. That puts "
+            f"{scope.n_concern:,} of {scope.n_counties:,} counties in a tier of concern. "
+            + _median_density_sentence(scope),
+        ),
+        _coverage_caveat(),
+    ]
+
+    return headline, body
+
+
+def _no_shortage_findings(scope: _CountyScope) -> tuple[list, list]:
+    """Prose for a scope where every county clears the concern thresholds."""
+    headline = [
+        "Every county here clears the ",
+        _emphasis("access thresholds"),
+        ", which is not the same as adequate access.",
+    ]
+
+    body = [
+        _paragraph(
+            f"All {scope.n_counties:,} counties analyzed across {scope.label} have ",
+            _bold("at least one registered reproductive health provider"),
+            ", and none falls below 10 providers per 100k. No county in this scope is "
+            "an access desert, Critical, or Underserved. "
+            + _median_density_sentence(scope),
+        ),
+        _coverage_caveat(),
+        _paragraph(
+            "County level resolution still matters elsewhere. A state can look adequate "
+            "on average while containing counties where no reproductive health provider "
+            "is registered at all, which is exactly what the national view shows.",
         ),
     ]
+
+    return headline, body
+
+
+def county_findings_card(
+    df: pd.DataFrame,
+    state_filter: str | None = None,
+) -> dbc.Card:
+    """
+    Build the county level findings card.
+
+    The prose branches on what the filtered scope actually contains. A scope
+    with no access deserts gets a card that says so, rather than describing a
+    category with no members and reporting how far its zero residents travel.
+    """
+    scope = _summarize_county_scope(df, state_filter)
+
+    eyebrow = (
+        f"Model Findings · County Level · {state_filter}"
+        if state_filter else "Model Findings · County Level · 2026"
+    )
+
+    if scope.n_desert > 0:
+        headline, body = _desert_findings(scope)
+    elif scope.n_concern > 0:
+        headline, body = _thin_supply_findings(scope)
+    else:
+        headline, body = _no_shortage_findings(scope)
 
     return _card(eyebrow, headline, body)
