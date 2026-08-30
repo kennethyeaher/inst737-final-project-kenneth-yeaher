@@ -56,6 +56,15 @@ RISK_TIERS: Final[list[dict]] = [
 ]
 
 RISK_TIER_LABELS: Final[list[str]] = [tier["label"] for tier in RISK_TIERS]
+
+# access_risk_model.py publishes these tier names, the dashboard displays the
+# labels above. This is the only place the two vocabularies meet.
+PUBLISHED_TIER_LABELS: Final[dict[str, str]] = {
+    "high_risk": "Critical",
+    "moderate_risk": "At Risk",
+    "adequate": "Adequate",
+    "well_served": "Well Served",
+}
 RISK_TIER_COLORS: Final[dict[str, str]] = {
     tier["label"]: tier["color"]
     for tier in RISK_TIERS

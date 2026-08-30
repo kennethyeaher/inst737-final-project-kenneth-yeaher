@@ -22,6 +22,7 @@ from vis._styles import (
     BASE_LAYOUT,
     CHART_TITLE_FONT,
     COLORS,
+    PUBLISHED_TIER_LABELS,
     RISK_COLORSCALE,
     RISK_TIER_LABELS,
     UNIFIED_COLORSCALE,
@@ -44,6 +45,9 @@ REQUIRED_COLUMNS: Final[set[str]] = {
 # default file path for the regression results frame
 INPUT_FILE: Final[Path] = Path("data/model_outputs/regression_results.csv")
 
+# the published risk classification, which is where tiers are decided
+RISK_FILE: Final[Path] = Path("data/model_outputs/access_risk_classified.csv")
+
 
 def validate_columns(df: pd.DataFrame) -> None:
     """
@@ -60,22 +64,47 @@ def validate_columns(df: pd.DataFrame) -> None:
         raise ValueError(f"regression_results.csv missing: {sorted(missing)}")
 
 
-def classify_risk_tiers(df: pd.DataFrame) -> pd.DataFrame:
+def attach_published_risk_tiers(df: pd.DataFrame, path: Path = RISK_FILE) -> pd.DataFrame:
     """
-    Assign each state to a risk tier using residual quartiles.
+    Join each state to the risk tier the model already published.
+
+    The dashboard used to recompute tiers here with pd.qcut on the residual,
+    which put a second copy of a modeling decision in the presentation layer.
+    The two agreed only because the quartile boundaries happened to line up.
+    This reads analysis/access_risk_model.py's own output instead and maps its
+    stored names onto the display labels.
 
     Adds two columns to a copy of df:
-    - risk_tier: ordered categorical label from RISK_TIER_LABELS
+    - risk_tier: ordered categorical display label from RISK_TIER_LABELS
     - risk_tier_num: integer code 0..3 for use as a colorscale value
 
     Parameters
-    df : pd.DataFrame with a residual column.
+    df : pd.DataFrame with a practice_state column.
+    path : Path to the published risk classification csv.
 
     Returns
     pd.DataFrame copy with the two new columns.
     """
-    df = df.copy()
-    df["risk_tier"] = pd.qcut(df["residual"], q=4, labels=RISK_TIER_LABELS)
+    published = pd.read_csv(path, usecols=["practice_state", "risk_tier"])
+    published["risk_tier"] = published["risk_tier"].map(PUBLISHED_TIER_LABELS)
+
+    unmapped = published["risk_tier"].isna().sum()
+    if unmapped > 0:
+        raise ValueError(
+            f"{unmapped} states carry a tier name that is not in PUBLISHED_TIER_LABELS"
+        )
+
+    df = df.drop(columns=["risk_tier"], errors="ignore").merge(
+        published, on="practice_state", how="left", validate="one_to_one"
+    )
+
+    missing = df.loc[df["risk_tier"].isna(), "practice_state"].tolist()
+    if missing:
+        raise ValueError(f"states with no published risk tier: {missing}")
+
+    df["risk_tier"] = pd.Categorical(
+        df["risk_tier"], categories=RISK_TIER_LABELS, ordered=True
+    )
     df["risk_tier_num"] = df["risk_tier"].cat.codes
     return df
 
@@ -106,7 +135,7 @@ def load_regression_results(path: Path = INPUT_FILE) -> pd.DataFrame:
         # so the orchestrator can choose to log it
         df.attrs["dropped_rows"] = dropped
 
-    return classify_risk_tiers(df)
+    return attach_published_risk_tiers(df)
 
 
 def _shared_residual_range(df: pd.DataFrame) -> float:
