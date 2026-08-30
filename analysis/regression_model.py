@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import KFold, cross_val_predict
 from utils.io import save_csv
 from utils.logging_config import setup_logger
 
@@ -22,6 +23,10 @@ FEATURE_COLUMNS = [
 ]
 
 TARGET_COLUMN = "providers_per_100k"
+
+# residuals that feed the risk tiers are scored out of fold on this split,
+# which matches the split analysis/evaluate.py reports against
+CV_SPLITTER = KFold(n_splits=5, shuffle=True, random_state=42)
 
 
 def load_model_data() -> pd.DataFrame:
@@ -55,8 +60,17 @@ def load_model_data() -> pd.DataFrame:
 
 def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
     """
-    Estimate expected reproductive health provider density per state.
-    Residuals capture the gap between predicted and actual supply.
+    Fit the density model on every state and record the in sample prediction.
+
+    This fit exists to report coefficients on the full sample. Its predictions
+    are in sample, so they are saved under their own names and are not what the
+    risk tiers are cut from. See score_out_of_fold for the ones that are.
+
+    Parameters
+    df : pd.DataFrame with the feature columns and the target.
+
+    Returns
+    tuple of the fitted model and the frame with in sample columns added.
     """
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
@@ -64,17 +78,49 @@ def fit_regression(df: pd.DataFrame) -> tuple[LinearRegression, pd.DataFrame]:
     model = LinearRegression()
     model.fit(X, y)
 
-    df["predicted_provider_density"] = model.predict(X)
-    df["residual"] = df[TARGET_COLUMN] - df["predicted_provider_density"]
+    df["predicted_density_in_sample"] = model.predict(X)
+    df["residual_in_sample"] = y - df["predicted_density_in_sample"]
+
+    mae = mean_absolute_error(y, df["predicted_density_in_sample"])
+    r2 = r2_score(y, df["predicted_density_in_sample"])
+
+    logger.info(f"in sample MAE: {mae:.4f}")
+    logger.info(f"in sample R2: {r2:.4f}")
+
+    return model, df
+
+
+def score_out_of_fold(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Predict each state from folds it was held out of, and residual against that.
+
+    With 51 rows an in sample fit partly interpolates, so a state's own
+    influence on the coefficients leaks into its residual and then into its
+    risk tier. Predicting each state from a model it did not help fit removes
+    that leak. These are the columns the risk classification reads.
+
+    Parameters
+    df : pd.DataFrame with the feature columns and the target.
+
+    Returns
+    pd.DataFrame with predicted_provider_density and residual added.
+    """
+    X = df[FEATURE_COLUMNS]
+    y = df[TARGET_COLUMN]
+
+    df["predicted_provider_density"] = cross_val_predict(
+        LinearRegression(), X, y, cv=CV_SPLITTER
+    )
+    df["residual"] = y - df["predicted_provider_density"]
 
     mae = mean_absolute_error(y, df["predicted_provider_density"])
     r2 = r2_score(y, df["predicted_provider_density"])
 
-    logger.info(f"MAE: {mae:.4f}")
-    logger.info(f"R2: {r2:.4f}")
+    logger.info(f"out of fold MAE: {mae:.4f}")
+    logger.info(f"out of fold R2: {r2:.4f}")
     logger.info(f"residual range: [{df['residual'].min():.2f}, {df['residual'].max():.2f}]")
 
-    return model, df
+    return df
 
 
 def save_results(df: pd.DataFrame) -> None:
@@ -87,6 +133,7 @@ def run_regression_model() -> pd.DataFrame:
     try:
         df = load_model_data()
         _, results = fit_regression(df)
+        results = score_out_of_fold(results)
         save_results(results)
         return results
 

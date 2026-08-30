@@ -2,34 +2,34 @@
   "tier_thresholds": {
     "high_risk": {
       "quantile": 0.25,
-      "residual_cutoff": -3.6768
+      "residual_cutoff": -3.6087
     },
     "moderate_risk": {
       "quantile": 0.5,
-      "residual_cutoff": -0.8146
+      "residual_cutoff": -1.1371
     },
     "adequate": {
       "quantile": 0.75,
-      "residual_cutoff": 1.0935
+      "residual_cutoff": 1.4261
     },
     "well_served": {
       "quantile": 1.0,
-      "residual_cutoff": 21.8351
+      "residual_cutoff": 23.7503
     }
   },
   "total_states": 51,
   "high_risk_states": [
-    "Alabama",
     "Arizona",
     "California",
     "Florida",
-    "Georgia",
+    "Indiana",
     "Kansas",
     "Maryland",
     "Mississippi",
     "Nebraska",
     "Nevada",
     "South Carolina",
+    "Tennessee",
     "Texas",
     "Virginia"
   ]

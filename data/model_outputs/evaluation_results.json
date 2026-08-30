@@ -14,12 +14,13 @@
     "growth_per_100k": 2.7918
   },
   "intercept": -6.688,
-  "residual_std": 6.3187,
-  "residual_skewness": 1.4877,
-  "residual_kurtosis": 3.2248,
+  "residual_std": 6.7507,
+  "residual_skewness": 1.3693,
+  "residual_kurtosis": 3.6586,
   "outlier_states": [
     "Alaska",
     "District of Columbia",
+    "Maryland",
     "Vermont"
   ]
 }
