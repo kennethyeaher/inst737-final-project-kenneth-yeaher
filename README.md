@@ -26,15 +26,35 @@ Ovara started from a simple observation: fertility and reproductive healthcare a
 
 The challenge is that much of the data needed to study this problem already exists, but it sits inside fragmented federal registries that are difficult to work with. This project builds a data science pipeline that turns raw provider registry data into measurable access intelligence.
 
-The pipeline ingests the CMS National Provider Identifier registry, also known as NPPES, which includes over 8 million healthcare providers. It filters that data to reproductive health specialties including OB/GYNs, Reproductive Endocrinologists, Certified Nurse Midwives, and Women's Health Nurse Practitioners. It then joins providers with Census population data to create geographic density features, estimate expected provider supply through regression modeling, and classify states and counties by access risk.
+The pipeline ingests the CMS National Provider Identifier registry, also known as NPPES, which includes over 8 million healthcare providers. It filters that data to reproductive health specialties including OB/GYNs, Reproductive Endocrinologists, Certified Nurse Midwives, and Women's Health Nurse Practitioners. It then joins providers with Census population data to create geographic density features, ranks states by observed density, and classifies counties by access tier.
 
 > **Core question:** Given a state's population and workforce characteristics, how many reproductive health providers should we expect, and where does reality fall short?
 
-States with large negative residuals between predicted and actual provider density are flagged as potentially underserved. This turns a basic mapping project into an access gap detection framework.
+**The headline finding is at county level.** 1,029 US counties have zero registered reproductive health providers, and 10,917,875 people live in them. That is a direct count of registered providers against ACS population, classified by fixed density thresholds, with no model involved.
+
+The state level regression that this project started from is reported as a **negative result**. Workforce composition features do not explain state level provider density, and the residual based risk tiers built on them have been retired. See [Known Limitations](#known-limitations).
 
 ---
 
 ## Known Limitations
+
+**A feature contained the answer, and the model's score was leakage.** The winning feature set used `growth_per_100k`, which is `recent_provider_growth` divided by `state_population`. The target is `provider_count` divided by `state_population`. Recently enumerated providers are a strict subset of the provider count, in all 51 states, averaging 5.8% nationally and ranging 3.0% to 12.9% by state. The feature was a component of the target over the same denominator.
+
+Replacing the level with a composition measure, `pct_recent_entrants`, the share of a state's workforce that is new, which is not a component of density:
+
+| Feature set | CV R2 |
+|---|---:|
+| `taxonomy_diversity` + `growth_per_100k`, leaking | +0.3253 |
+| `taxonomy_diversity` + `pct_recent_entrants`, leak free | +0.0352 |
+| `taxonomy_diversity` alone, selected | +0.1244 |
+
+`pct_recent_entrants` correlates with density at r = -0.0891, p = 0.534. The growth signal was entirely a level effect. **The honest ceiling for this model is about R2 0.12**, and even that is partly mechanical, since a ZIP with more providers has more chances to contain more taxonomies.
+
+A test in `tests/test_access_model_dataset.py` now fails if any feature derived from `provider_count` reappears in `FEATURE_COLUMNS`, and `feature_selection.json` carries a `leakage_check` block recording the subset relationship and the cost of removing it.
+
+**Nothing at state level validates externally.** Against HRSA burden per 100,000 residents, observed density correlates at +0.002, -0.015, -0.109 and -0.240 for shortage population, FTE shortage, designated area count and average HPSA score. Density should correlate negatively with shortage burden. It does not, at any useful strength. The county grain does not rescue it either, for reasons set out in the HRSA section.
+
+Together these two findings changed what this project claims. **The county analysis is the headline finding.** The state regression is reported as a negative result, and the residual based state risk tiers have been retired.
 
 **The state provider density denominator was wrong, and every state level number moved.** `build_population_proxy` summed the CBSA reference table by state. That table has one row per county with the whole metro's population on each row, so the 29 county Atlanta MSA added its 6,411,149 residents 29 times. Georgia's denominator came to 198,940,717 against a true 10,722,325, New Jersey to 266,785,188 against 9,249,063, and Wyoming was under counted at 182,193 against 577,929. Because CBSAs cross state lines, the Washington MSA's population was credited whole to DC, whose real population is 670,587. The 51 state populations summed to 2,187,759,309, about 6.6 times the country.
 
@@ -50,7 +70,7 @@ The inflation ran 0.32x to 28.8x, so it scrambled the state ranking rather than 
 | 51 state total | 2,187,759,309 | 331,097,593 |
 | Thinnest states | NJ, VA, GA, IN | AR, AL, ND, MS, NV, IA |
 
-The corrected ordering matches published maternity care desert research. The shipped ordering contradicted it. The regression, the residuals, the risk tiers, the clustering, both state maps and the HRSA validation all changed as a result. The county layer was never affected, because county density always divided by ACS county population.
+The corrected ordering matches published maternity care desert research. The shipped ordering contradicted it. The regression, the residuals, the clustering, both state maps and the HRSA validation all changed as a result. The county layer was never affected, because county density always divided by ACS county population.
 
 **Connecticut was reported as a statewide access desert, and that was wrong.** The county layer assigned zero providers to all of Connecticut because two Census vintages disagreed. The ZIP to county crosswalk came from the 2020 ZCTA relationship file, which still emits Connecticut's eight legacy county codes 09001 through 09015. County population came from the 2022 ACS, the first vintage in which the nine planning regions are the county equivalent, so it holds 09110 through 09190. The two sets share no codes, the population join dropped every matched Connecticut provider, and the nine planning regions were published as access deserts with zero providers each. Nothing warned.
 
@@ -97,12 +117,12 @@ The NPPES registry provides provider identity, taxonomy classification, practice
 | Technique | Library | Purpose |
 |---|---|---|
 | Linear Regression | scikit learn | Estimate expected provider density |
-| Quartile Classification | pandas | Assign access risk tiers from residuals |
+| Density Ranking | pandas | Rank states by observed provider density, no model |
 | Density Threshold Classification | pandas | Assign county level access tiers from raw provider density |
 | K Means Clustering | scikit learn | Segment states into supply archetypes |
 | Silhouette Scoring | scikit learn | Select optimal cluster count |
 | Cross Validation | scikit learn | Evaluate model generalization |
-| External Validation | requests and scipy | Benchmark risk tiers against HRSA HPSA designations |
+| External Validation | requests and scipy | Benchmark county access tiers against HRSA HPSA designations |
 | Interactive Dashboard | Dash and Plotly | Explore access gaps by state and county |
 | County Choropleth | Plotly Choroplethmapbox | Pan and scroll zoom across 3,144 counties |
 | EDA Visualization | matplotlib | Show specialty distribution and growth trends |
@@ -169,7 +189,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | Type | Path | Description |
 |---|---|---|
 | **Folder** | **`analysis/`** | **Modeling and analytics modules** |
-| File | `access_risk_model.py` | Residual based state risk classification |
+| File | `state_density_ranking.py` | Ranks states by observed provider density, no model |
 | File | `build_access_model_dataset.py` | State level supply plus population merge |
 | File | `build_county_dataset.py` | County level provider features and density build |
 | File | `build_county_population.py` | Census ACS 5 year county population reference |
@@ -198,7 +218,7 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `findings_card.py` | Cream editorial findings card with state and county variants |
 | File | `interactive_visualizations.py` | Thin entry point that runs the dashboard workflow |
 | File | `state_charts.py` | State level chart builders for bar, scatter, and choropleth charts |
-| File | `tier_grid.py` | Risk tier explainer grid with live state and county counts |
+| File | `tier_grid.py` | County access tier explainer grid with live counts |
 | **Folder** | **`utils/`** | **Shared configuration and helpers** |
 | File | `cache.py` | `load_or_fetch` wrapper for cached external downloads |
 | File | `fips.py` | Single source FIPS to state mapping |
@@ -236,12 +256,12 @@ flowchart TD
     subgraph COUNTY ["County Analysis"]
         Q([ZIP County Crosswalk]) --> R([County Population])
         R --> S([County Dataset])
-        S --> T([County Risk Tiers])
+        S --> T([County Access Tiers])
     end
 
     subgraph MODELING ["State Modeling"]
         G([Regression]) --> H([Evaluation])
-        H --> I([Access Risk])
+        H --> I([State Density Ranking])
         I --> N([HRSA Validation])
         N --> J([Clustering])
     end
@@ -390,14 +410,16 @@ Merges state level supply features with state population and fertility age deman
 
 <br>
 
-Fits a linear regression estimating expected reproductive health provider density from two features chosen by cross validation: taxonomy diversity and `growth_per_100k`. The residual for each state, meaning the difference between actual and predicted density, is the core analytical signal. States where actual density falls well below the prediction are candidates for access concern.
+Fits a linear regression estimating expected provider density from one feature chosen by cross validation: `taxonomy_diversity`. **This stage is a documented negative result.** Its cross validated R2 is +0.1244, barely better than predicting the national mean, so nothing downstream classifies states from its residuals.
 
-Residuals are scored **out of fold** with `cross_val_predict` on `KFold(5, shuffle=True, random_state=42)`. With 51 rows an in sample fit partly interpolates, so a state's own influence on the coefficients would otherwise leak into its own residual and then into its risk tier. The in sample fit is kept only for reporting coefficients, under `predicted_density_in_sample` and `residual_in_sample`.
+An earlier version of this model scored +0.3253 and that score was leakage. See [Known Limitations](#known-limitations).
+
+Residuals are still scored **out of fold** with `cross_val_predict` on `KFold(5, shuffle=True, random_state=42)`, because an in sample fit on 51 rows partly interpolates. The in sample fit is kept only for reporting coefficients, under `predicted_density_in_sample` and `residual_in_sample`.
 
 | | in sample | out of fold |
 |---|---:|---:|
-| R2 | 0.4375 | 0.3580 |
-| MAE | 4.3302 | 4.5011 |
+| R2 | 0.3439 | 0.2500 |
+| MAE | 4.8703 | 5.0564 |
 
 </details>
 
@@ -412,29 +434,39 @@ The stage also fits three candidate feature sets on the same folds and saves the
 
 | Feature set | Features | CV R2 | CV MAE |
 |---|---:|---:|---:|
-| `shipped_five` | 5 | +0.1140 | 5.0977 |
-| `four_rates` | 4 | +0.2292 | 4.8801 |
-| `two_rates` | 2 | +0.3253 | 4.4821 |
+| `four_composition` | 4 | -0.2997 | 5.5022 |
+| `two_composition` | 2 | +0.0352 | 5.3935 |
+| `taxonomy_only` | 1 | +0.1244 | 5.0397 |
 
-Fewer features win. On 51 rows the five feature set mixed counts with rates against a rate target and carried two collinear population proxies whose coefficients came out with opposite signs. The two rate model also has the lowest fold to fold variance, at 0.2467 against 0.4319. `FEATURE_COLUMNS` in `analysis/regression_model.py` is set to the winner, and the stage logs a warning if the two ever drift apart.
+Every candidate is leak free, meaning no feature is arithmetically derived from `provider_count`. The stage also writes a `leakage_check` block recording why `growth_per_100k` was retired and what removing it cost. `FEATURE_COLUMNS` in `analysis/regression_model.py` is set to the winner, and the stage logs a warning if the two ever drift apart.
 
 | Metric | Value |
 |---|---:|
-| 5 fold CV R2 | 0.3253 +/- 0.2467 |
-| 5 fold CV MAE | 4.4821 |
+| 5 fold CV R2 | 0.1244 +/- 0.3153 |
+| 5 fold CV MAE | 5.0397 |
 | Mean baseline MAE | 6.03 |
-| Intercept | -6.688 |
-| Standardized coefficient, taxonomy diversity | +3.761 |
-| Standardized coefficient, growth per 100k | +2.7918 |
+| Intercept | -8.5184 |
+| Standardized coefficient, taxonomy diversity | +4.8918 |
+
+Even this ceiling is partly mechanical: a ZIP with more providers has more chances to contain more taxonomies, so `taxonomy_diversity` is not fully independent of density.
 
 </details>
 
 <details>
-<summary><strong>14. Access Risk Classification</strong> | <code>data/model_outputs/access_risk_classified.csv</code></summary>
+<summary><strong>14. State Density Ranking</strong> | <code>data/model_outputs/state_density_ranking.csv</code></summary>
 
 <br>
 
-Converts the out of fold regression residuals into usable risk labels. Each state receives a continuous risk score from 0 to 100, where 100 is most underserved. Each state also receives a categorical tier assignment based on residual quartile position: high risk, moderate risk, adequate, or well served. Supply gap magnitude, severity ranking, and threshold metadata are saved for reproducibility.
+Ranks all 51 states by observed providers per 100,000 residents. This replaces the residual based access risk classification, which cut quartiles so exactly a quarter of states were labelled high risk whatever the data said, on residuals from a model with a cross validated R2 of +0.1244.
+
+The output is a continuous ranking that needs no model: `providers_per_100k`, `density_rank`, and `density_percentile`. The regression residual is kept as `regression_residual_diagnostic` so the model stays inspectable, but nothing is classified from it. No state level density thresholds are invented, because the county thresholds are calibrated for counties and every state clears them.
+
+| Measure | Value |
+|---|---:|
+| National rate | 30.0649 per 100k |
+| Median state | 30.757 per 100k |
+| States below the national rate | 25 of 51 |
+| Thinnest states | AR, AL, ND, MS, NV |
 
 </details>
 
@@ -443,22 +475,34 @@ Converts the out of fold regression residuals into usable risk labels. Each stat
 
 <br>
 
-Benchmarks Ovara's access risk tiers against HRSA Health Professional Shortage Area Primary Care designations fetched from the HRSA data warehouse. Active HPSA designations are aggregated to the state level to produce shortage burden metrics, including count of designated areas, total shortage population, average HPSA score, and estimated FTE shortage.
+Benchmarks Ovara against HRSA Health Professional Shortage Area Primary Care designations, at **two grains**. HPSAs are designated at service area level, often below the county, so the county grain keeps geographic resolution that rolling the same designations up to 51 states destroys.
 
-These metrics are joined with Ovara's risk output and compared by **rank agreement**: Spearman correlation between Ovara's continuous risk score and each HRSA burden measure, expressed per 100,000 residents. HRSA data is cached locally after the first fetch.
+Burden is expressed per 100,000 residents at both grains. A place with more providers per resident should carry **less** shortage burden, so every correlation here is expected to be negative.
 
-This stage used to report precision, recall, F1 and an agreement rate for the `high_risk` tier against HRSA flagged states, with a saved confusion matrix of tp 13, fp 0, fn 38, tn 0. There were no true negatives because every state has at least one designated Primary Care HPSA, so the ground truth label was positive for all 51 rows and a precision of 1.0 was an artefact of a constant label rather than a result. Those metrics have been removed.
+**County grain.** 2,812 of 2,813 in universe HRSA counties resolve to an Ovara county, a **99.96% join match rate**. The one failure is `09001`, a Connecticut legacy county code still in HRSA's file. 102 HRSA counties are territories outside the modeled 51 states. Separately, 2,812 of 3,144 counties carry a designation (89.4%); the rest are real zeros, not failed matches.
 
-| HRSA burden measure, per 100k | Spearman rho | p | rho unnormalized |
-|---|---:|---:|---:|
-| Shortage population | +0.0953 | 0.5059 | +0.4108 |
-| FTE shortage | +0.2400 | 0.0898 | +0.4410 |
-| Designated area count | -0.2947 | 0.0358 | +0.3079 |
-| Average HPSA score, already a 0 to 25 scale | +0.1814 | 0.2026 | not applicable |
+| Measure, per 100k | County rho | p | State rho | p |
+|---|---:|---:|---:|---:|
+| Shortage population | -0.1153 | 0 | +0.0021 | 0.988 |
+| FTE shortage | +0.0419 | 0.019 | -0.0149 | 0.917 |
+| Designated area count | -0.3834 | 0 | -0.1090 | 0.446 |
+| Average HPSA score | +0.0549 | 0.0036 | -0.2405 | 0.089 |
 
-**The model does not show meaningful agreement with HRSA burden on a size neutral basis.** The last column is the same correlation before dividing by population, and the gap between the two columns is the finding: most of the apparent agreement is state size. Large states have both large HRSA shortage populations and higher risk scores. Per resident, shortage population agreement is +0.10 and not significant, FTE shortage reaches +0.24 at p = 0.09, and designated area count runs the wrong way at -0.29. The unnormalized figures are kept in the metadata under `size_confounded_rho` so the difference stays visible rather than being hidden by whichever scale looks better.
+Kruskal Wallis across the five county access tiers on shortage population per 100k: **H = 54.0014, p = 5.26e-11**.
 
-One caveat on the measure itself: HRSA designation populations overlap within a state, so `hrsa_shortage_pop` sums to more than the resident population in many states. DC totals 12,073,756 against 670,587 residents. Per 100k it is a designation intensity index, not a share of residents.
+**Neither grain validates the density measure.** The county numbers look stronger, and the strongest of them does not survive inspection. Provider density and every burden rate divide by the same population, and county population spans four orders of magnitude, so two ratios can correlate through the shared denominator alone. Correlating within population quartiles instead:
+
+| Measure | Pooled | Within quartiles | Median within | Survives |
+|---|---:|---|---:|---|
+| Designated area count | -0.3834 | -0.088 · -0.001 · +0.043 · +0.036 | +0.0176 | no |
+| Shortage population | -0.1153 | +0.007 · -0.040 · -0.013 · +0.117 | -0.0033 | no |
+| FTE shortage | +0.0419 | +0.035 · -0.011 · -0.032 · +0.054 | +0.0117 | no |
+
+The −0.38 collapses to a median +0.018 and flips sign. The mechanism is visible directly: access deserts average 17.8 HPSA designations per 100k against 3.2 for well served counties, which is fewer people rather than more designations. Raw counts confirm it, with `provider_count` against `hrsa_hpsa_count` at **+0.2549**, positive, because both scale with population. The `check_shared_denominator` function writes this test into the metadata on every run.
+
+At n = 3,144 the county p values are also doing very little work: +0.042 reaches p = 0.019 while explaining nothing. Effect size is the only thing worth reading.
+
+This stage previously reported precision, recall, F1 and an agreement rate for a `high_risk` tier, with a confusion matrix of tp 13, fp 0, fn 38, tn 0. Every state has at least one designated Primary Care HPSA, so the label was positive for all 51 rows and precision of 1.0 was an artefact of a constant label. Those metrics, and the tier they scored, are both gone.
 
 </details>
 
@@ -492,9 +536,9 @@ Cluster ids are relabeled by ascending mean density so cluster 1 is always the l
 
 A Dash web application with two views, controlled by a State Level vs County Level toggle below the page header. The dashboard runs on a dark mode interface built around the Ovara brand palette and typography stack: Fraunces, Inter, and JetBrains Mono. Design tokens are centralized in `vis/_brand.py` and `vis/_styles.py` so the visual identity stays consistent across every chart, card, and panel.
 
-Both views follow the same structure: KPI tiles, a data visualization block, a US map, a click activated detail strip, a cream colored findings card with the model's main takeaways, and a risk tier explainer grid that defines each tier with live counts.
+Both views follow the same structure: KPI tiles, a data visualization block, a US map, a click activated detail strip, and a cream colored findings card. The county view also carries a tier explainer grid. The state view does not, because state tiers are retired.
 
-**State view** shows residual based access tiers across the 51 states. It includes a USA choropleth that toggles between Access Gap and Risk Tier coloring, a tier colored bar chart of the most underserved states, a predicted vs actual scatter with outlier annotations, four KPI cards, a state level findings card, and a four card tier grid for Critical, At Risk, Adequate, and Well Served states. Clicking a state filters the bar chart and opens a detail strip with that state's main metrics.
+**State view** ranks the 51 states by observed provider density. It includes a continuous sequential density choropleth, a bar chart of the ten thinnest states with the national rate marked, four KPI cards, and a findings card that states the negative result directly. The predicted against actual scatter remains as a labelled model diagnostic with the cross validated R2 printed on the figure. Clicking a state filters the bar chart and opens a detail strip showing its density, national rank, and percentile.
 
 **County view** shows density threshold tiers across all 3,144 counties on a light Carto basemap so the brand colored tiers stay easy to read. It uses Plotly Choroplethmapbox so users can pan and scroll zoom into individual counties. A state filter dropdown reframes the map, KPI tiles, findings card, and tier grid around the chosen state in one callback so every county level section stays in sync. The bar chart shows the most underserved counties that have at least one provider, while access deserts get their own KPI tile. Clicking a county opens a detail card. The map uses Dash Patch on click so selecting a county does not re render all 3,144 polygons.
 
@@ -510,7 +554,7 @@ The pipeline uses Python's `logging` module with centralized configuration in `u
 
 Each pipeline stage is declared in `main.py` as a `Stage` dataclass defined in `utils/pipeline.py`. Each stage has a runner function and a critical flag. The list of stages is handed to `run_pipeline`, which executes them in order with consistent banner logging and error handling.
 
-Critical stages stop the pipeline on failure because downstream stages depend on their output. These include extract, transform, model dataset, metro reference, access model, and regression. Noncritical stages log a warning and let the pipeline continue. These include EDA, demand features, county work, evaluation, access risk, HRSA validation, clustering, and visualization.
+Critical stages stop the pipeline on failure because downstream stages depend on their output. These include extract, transform, model dataset, metro reference, access model, and regression. Noncritical stages log a warning and let the pipeline continue. These include EDA, demand features, county work, evaluation, the state density ranking, HRSA validation, clustering, and visualization.
 
 Individual modules use targeted exception handling for common failure modes: `FileNotFoundError` for missing upstream outputs, `ValueError` for column validation failures, and `KeyError` for schema mismatches. Data quality signals such as dropped rows and missing merge keys are logged at the `WARNING` level for easier filtering.
 
@@ -532,8 +576,6 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_access_model_dataset.csv` | State level access modeling dataset | 10 |
 | `data_dictionary_acs_female_25_44_by_state.csv` | Fertility age demand features by state | 6 |
 | `data_dictionary_regression_results.csv` | Regression model outputs with residuals | 10 |
-| `data_dictionary_access_risk_classified.csv` | Access risk tier classification by state | 13 |
-| `data_dictionary_access_risk_summary.csv` | Risk tier aggregate statistics | 6 |
 | `data_dictionary_evaluation_detail.csv` | Per state model evaluation detail | 6 |
 | `data_dictionary_clustering_results.csv` | State supply archetype clustering output | 8 |
 | `data_dictionary_hrsa_validation.csv` | HRSA HPSA external validation output | 10 |
@@ -566,7 +608,7 @@ The manifest exists because two Census vintages drifted apart unnoticed and cost
 |---|---|---|
 | **CDC ART Integration** | Join CDC fertility clinic treatment data from roughly 500 clinics | Add treatment volume and outcomes as a second access dimension |
 | **Network Modeling** | Neo4j graph analysis of provider, clinic, metro, and referral relationships | Shift from density based access measurement to connectivity based access measurement |
-| **ZIP Level Drill Down** | ZIP level choropleth with risk tier overlays | Push geographic resolution below county level for more targeted planning |
+| **ZIP Level Drill Down** | ZIP level choropleth using the same density thresholds as the county layer | Push geographic resolution below county level for more targeted planning |
 
 ---
 
