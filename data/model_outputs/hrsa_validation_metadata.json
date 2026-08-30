@@ -3,116 +3,281 @@
   "hpsa_discipline_filter": "Primary Care",
   "hpsa_status_filter": "Designated",
   "total_states": 51,
-  "correlated_against": "providers_per_100k",
-  "expected_direction": "negative, more providers per resident means less shortage burden",
-  "rank_agreement": {
-    "hrsa_shortage_pop_per_100k": {
-      "spearman_rho": 0.0021,
-      "p_value": 0.9884,
-      "n_states": 51,
-      "size_confounded_rho": -0.0538,
-      "size_confounded_p_value": 0.7075
+  "state_grain": {
+    "correlated_against": "providers_per_100k",
+    "expected_direction": "negative, more providers per resident means less shortage burden",
+    "rank_agreement": {
+      "hrsa_shortage_pop_per_100k": {
+        "spearman_rho": 0.0021,
+        "p_value": 0.9884,
+        "n_states": 51,
+        "size_confounded_rho": -0.0538,
+        "size_confounded_p_value": 0.7075
+      },
+      "hrsa_fte_shortage_per_100k": {
+        "spearman_rho": -0.0149,
+        "p_value": 0.9172,
+        "n_states": 51,
+        "size_confounded_rho": -0.0663,
+        "size_confounded_p_value": 0.6437
+      },
+      "hrsa_hpsa_count_per_100k": {
+        "spearman_rho": -0.109,
+        "p_value": 0.4462,
+        "n_states": 51,
+        "size_confounded_rho": -0.0867,
+        "size_confounded_p_value": 0.5454
+      },
+      "hrsa_avg_score": {
+        "spearman_rho": -0.2405,
+        "p_value": 0.0892,
+        "n_states": 51
+      }
     },
-    "hrsa_fte_shortage_per_100k": {
-      "spearman_rho": -0.0149,
-      "p_value": 0.9172,
-      "n_states": 51,
-      "size_confounded_rho": -0.0663,
-      "size_confounded_p_value": 0.6437
-    },
-    "hrsa_hpsa_count_per_100k": {
-      "spearman_rho": -0.109,
-      "p_value": 0.4462,
-      "n_states": 51,
-      "size_confounded_rho": -0.0867,
-      "size_confounded_p_value": 0.5454
-    },
-    "hrsa_avg_score": {
-      "spearman_rho": -0.2405,
-      "p_value": 0.0892,
-      "n_states": 51
-    }
+    "thinnest_state_detail": [
+      {
+        "practice_state": "AR",
+        "providers_per_100k": 20.5057,
+        "density_rank": 1,
+        "hrsa_hpsa_count": 149,
+        "hrsa_shortage_pop_per_100k": 164242.2207,
+        "hrsa_avg_score": 15.2483
+      },
+      {
+        "practice_state": "AL",
+        "providers_per_100k": 21.4197,
+        "density_rank": 2,
+        "hrsa_hpsa_count": 105,
+        "hrsa_shortage_pop_per_100k": 96377.3336,
+        "hrsa_avg_score": 16.2571
+      },
+      {
+        "practice_state": "ND",
+        "providers_per_100k": 21.4964,
+        "density_rank": 3,
+        "hrsa_hpsa_count": 135,
+        "hrsa_shortage_pop_per_100k": 92183.932,
+        "hrsa_avg_score": 15.1481
+      },
+      {
+        "practice_state": "MS",
+        "providers_per_100k": 21.9004,
+        "density_rank": 4,
+        "hrsa_hpsa_count": 181,
+        "hrsa_shortage_pop_per_100k": 179277.394,
+        "hrsa_avg_score": 19.6409
+      },
+      {
+        "practice_state": "NV",
+        "providers_per_100k": 22.5778,
+        "density_rank": 5,
+        "hrsa_hpsa_count": 99,
+        "hrsa_shortage_pop_per_100k": 166705.0264,
+        "hrsa_avg_score": 15.2323
+      },
+      {
+        "practice_state": "IA",
+        "providers_per_100k": 23.206,
+        "density_rank": 6,
+        "hrsa_hpsa_count": 323,
+        "hrsa_shortage_pop_per_100k": 342053.5895,
+        "hrsa_avg_score": 14.1517
+      },
+      {
+        "practice_state": "OK",
+        "providers_per_100k": 23.2465,
+        "density_rank": 7,
+        "hrsa_hpsa_count": 268,
+        "hrsa_shortage_pop_per_100k": 257255.5023,
+        "hrsa_avg_score": 17.1604
+      },
+      {
+        "practice_state": "SD",
+        "providers_per_100k": 23.4741,
+        "density_rank": 8,
+        "hrsa_hpsa_count": 113,
+        "hrsa_shortage_pop_per_100k": 119406.9245,
+        "hrsa_avg_score": 14.6726
+      },
+      {
+        "practice_state": "KS",
+        "providers_per_100k": 23.7745,
+        "density_rank": 9,
+        "hrsa_hpsa_count": 156,
+        "hrsa_shortage_pop_per_100k": 100999.3454,
+        "hrsa_avg_score": 14.0705
+      },
+      {
+        "practice_state": "WV",
+        "providers_per_100k": 24.3172,
+        "density_rank": 10,
+        "hrsa_hpsa_count": 123,
+        "hrsa_shortage_pop_per_100k": 154989.3556,
+        "hrsa_avg_score": 16.9106
+      }
+    ]
   },
-  "thinnest_state_detail": [
-    {
-      "practice_state": "AR",
-      "providers_per_100k": 20.5057,
-      "density_rank": 1,
-      "hrsa_hpsa_count": 149,
-      "hrsa_shortage_pop_per_100k": 164242.2207,
-      "hrsa_avg_score": 15.2483
+  "county_grain": {
+    "join": {
+      "ovara_counties": 3144,
+      "hrsa_counties": 2915,
+      "hrsa_counties_in_modeled_states": 2813,
+      "matched_counties": 2812,
+      "join_match_rate": 0.9996,
+      "unresolved_in_universe_fips": [
+        "09001"
+      ],
+      "out_of_universe_hrsa_counties": 102,
+      "out_of_universe_state_prefixes": [
+        "60",
+        "64",
+        "66",
+        "68",
+        "69",
+        "70",
+        "72",
+        "78",
+        "XX"
+      ],
+      "ovara_counties_with_a_designation": 2812,
+      "designation_coverage": 0.8944
     },
-    {
-      "practice_state": "AL",
-      "providers_per_100k": 21.4197,
-      "density_rank": 2,
-      "hrsa_hpsa_count": 105,
-      "hrsa_shortage_pop_per_100k": 96377.3336,
-      "hrsa_avg_score": 16.2571
+    "rank_agreement": {
+      "hrsa_shortage_pop_per_100k": {
+        "spearman_rho": -0.1153,
+        "p_value": 0.0,
+        "n_counties": 3144
+      },
+      "hrsa_fte_shortage_per_100k": {
+        "spearman_rho": 0.0419,
+        "p_value": 0.018914,
+        "n_counties": 3144
+      },
+      "hrsa_hpsa_count_per_100k": {
+        "spearman_rho": -0.3834,
+        "p_value": 0.0,
+        "n_counties": 3144
+      },
+      "hrsa_avg_score": {
+        "spearman_rho": 0.0549,
+        "p_value": 0.00359,
+        "n_counties": 2812
+      }
     },
-    {
-      "practice_state": "ND",
-      "providers_per_100k": 21.4964,
-      "density_rank": 3,
-      "hrsa_hpsa_count": 135,
-      "hrsa_shortage_pop_per_100k": 92183.932,
-      "hrsa_avg_score": 15.1481
+    "tier_test": {
+      "test": "Kruskal Wallis",
+      "burden_measure": "hrsa_shortage_pop_per_100k",
+      "statistic": 54.0014,
+      "p_value": 5.259e-11,
+      "n_tiers": 5,
+      "median_by_tier": {
+        "access_desert": 101245.13,
+        "critical": 97738.07,
+        "underserved": 100849.38,
+        "adequate": 98153.53,
+        "well_served": 78868.23
+      }
     },
-    {
-      "practice_state": "MS",
-      "providers_per_100k": 21.9004,
-      "density_rank": 4,
-      "hrsa_hpsa_count": 181,
-      "hrsa_shortage_pop_per_100k": 179277.394,
-      "hrsa_avg_score": 19.6409
-    },
-    {
-      "practice_state": "NV",
-      "providers_per_100k": 22.5778,
-      "density_rank": 5,
-      "hrsa_hpsa_count": 99,
-      "hrsa_shortage_pop_per_100k": 166705.0264,
-      "hrsa_avg_score": 15.2323
-    },
-    {
-      "practice_state": "IA",
-      "providers_per_100k": 23.206,
-      "density_rank": 6,
-      "hrsa_hpsa_count": 323,
-      "hrsa_shortage_pop_per_100k": 342053.5895,
-      "hrsa_avg_score": 14.1517
-    },
-    {
-      "practice_state": "OK",
-      "providers_per_100k": 23.2465,
-      "density_rank": 7,
-      "hrsa_hpsa_count": 268,
-      "hrsa_shortage_pop_per_100k": 257255.5023,
-      "hrsa_avg_score": 17.1604
-    },
-    {
-      "practice_state": "SD",
-      "providers_per_100k": 23.4741,
-      "density_rank": 8,
-      "hrsa_hpsa_count": 113,
-      "hrsa_shortage_pop_per_100k": 119406.9245,
-      "hrsa_avg_score": 14.6726
-    },
-    {
-      "practice_state": "KS",
-      "providers_per_100k": 23.7745,
-      "density_rank": 9,
-      "hrsa_hpsa_count": 156,
-      "hrsa_shortage_pop_per_100k": 100999.3454,
-      "hrsa_avg_score": 14.0705
-    },
-    {
-      "practice_state": "WV",
-      "providers_per_100k": 24.3172,
-      "density_rank": 10,
-      "hrsa_hpsa_count": 123,
-      "hrsa_shortage_pop_per_100k": 154989.3556,
-      "hrsa_avg_score": 16.9106
+    "shared_denominator_checks": {
+      "hrsa_shortage_pop_per_100k": {
+        "burden_measure": "hrsa_shortage_pop_per_100k",
+        "pooled_spearman_rho": -0.1153,
+        "pooled_p_value": 8.894e-11,
+        "within_population_strata": [
+          {
+            "population_stratum": 1,
+            "n_counties": 786,
+            "spearman_rho": 0.0069,
+            "p_value": 0.8477
+          },
+          {
+            "population_stratum": 2,
+            "n_counties": 786,
+            "spearman_rho": -0.0395,
+            "p_value": 0.2685
+          },
+          {
+            "population_stratum": 3,
+            "n_counties": 786,
+            "spearman_rho": -0.0134,
+            "p_value": 0.707
+          },
+          {
+            "population_stratum": 4,
+            "n_counties": 786,
+            "spearman_rho": 0.1166,
+            "p_value": 0.001053
+          }
+        ],
+        "median_within_stratum_rho": -0.0033,
+        "survives_stratification": false
+      },
+      "hrsa_fte_shortage_per_100k": {
+        "burden_measure": "hrsa_fte_shortage_per_100k",
+        "pooled_spearman_rho": 0.0419,
+        "pooled_p_value": 0.01891,
+        "within_population_strata": [
+          {
+            "population_stratum": 1,
+            "n_counties": 786,
+            "spearman_rho": 0.0349,
+            "p_value": 0.3285
+          },
+          {
+            "population_stratum": 2,
+            "n_counties": 786,
+            "spearman_rho": -0.0115,
+            "p_value": 0.7465
+          },
+          {
+            "population_stratum": 3,
+            "n_counties": 786,
+            "spearman_rho": -0.0315,
+            "p_value": 0.3777
+          },
+          {
+            "population_stratum": 4,
+            "n_counties": 786,
+            "spearman_rho": 0.0538,
+            "p_value": 0.1315
+          }
+        ],
+        "median_within_stratum_rho": 0.0117,
+        "survives_stratification": false
+      },
+      "hrsa_hpsa_count_per_100k": {
+        "burden_measure": "hrsa_hpsa_count_per_100k",
+        "pooled_spearman_rho": -0.3834,
+        "pooled_p_value": 1.211e-110,
+        "within_population_strata": [
+          {
+            "population_stratum": 1,
+            "n_counties": 786,
+            "spearman_rho": -0.0885,
+            "p_value": 0.01308
+          },
+          {
+            "population_stratum": 2,
+            "n_counties": 786,
+            "spearman_rho": -0.0013,
+            "p_value": 0.97
+          },
+          {
+            "population_stratum": 3,
+            "n_counties": 786,
+            "spearman_rho": 0.0433,
+            "p_value": 0.2254
+          },
+          {
+            "population_stratum": 4,
+            "n_counties": 786,
+            "spearman_rho": 0.0365,
+            "p_value": 0.3062
+          }
+        ],
+        "median_within_stratum_rho": 0.0176,
+        "survives_stratification": false
+      }
     }
-  ]
+  }
 }
