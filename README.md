@@ -9,7 +9,6 @@
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikit-learn&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-6.6-3F4F75?style=flat&logo=plotly&logoColor=white)
 ![Dash](https://img.shields.io/badge/Dash-2.14-008DE4?style=flat&logo=plotly&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
 **University of Maryland, College of Information | INST737: Data Science Techniques | Final Project**
@@ -19,6 +18,11 @@
 ---
 
 </div>
+
+
+![Ovara dashboard showing reproductive health provider access tiers on a United States county map.](docs/readme/preview.jpg)
+
+Dashboard capture retained in my portfolio. Connecticut is missing from this county map because of the documented geographic boundary mismatch; see the limitations below.
 
 ## Project Overview
 
@@ -478,15 +482,11 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 
 ---
 
-<div>
-
 ## Author
 
 **Kenneth Yeaher**  
-Master of Information Management, Class of 2027  
+Master of Information Management  
 University of Maryland, College Park  
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Kenneth_Yeaher-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kennethyeaher/)
+[![LinkedIn: Kenneth Yeaher](https://img.shields.io/badge/LinkedIn-Kenneth_Yeaher-0A66C2?style=flat)](https://www.linkedin.com/in/kennethyeaher/)
 
 `Healthcare Analytics` · `Data Science` · `Data Visualization` · `Geographic Modeling`
-
-</div>
