@@ -1,42 +1,3 @@
-<p align="center">
-  <img src="docs/readme/banner.svg" alt="Ovara. Making geographic gaps in care easier to examine." width="100%">
-</p>
-
-<p align="center">
-  <img alt="Python + Dash" src="https://img.shields.io/badge/Python%20%2B%20Dash-244C50?style=flat-square">
-</p>
-
-<p align="center"><a href="METHODOLOGY.md">Methodology</a> &nbsp; · &nbsp; <a href="analysis/">Analysis modules</a> &nbsp; · &nbsp; <a href="data/model_outputs/">Saved model outputs</a></p>
-
-## Overview
-
-A data pipeline and interactive dashboard for studying geographic access to reproductive health providers. The project joins provider registries with population references, builds geographic features, and explores differences between observed and modeled supply.
-
-## At a glance
-
-| Area | What to look for |
-| --- | --- |
-| **Prepare** | Filter provider taxonomies, clean registry data, and join geographic reference tables. |
-| **Model** | Estimate provider density, examine residuals, and group states into supply patterns. |
-| **Explore** | Inspect state and county results through a Dash and Plotly dashboard, with methodology and data dictionaries alongside the code. |
-
-## Start here
-
-Follow the dataset and environment setup in the detailed guide before running the pipeline. To launch the dashboard after its input files are available:
-
-```sh
-python -m vis.interactive_visualizations
-```
-
-## Scope
-
-Registry counts and model residuals are access proxies, not direct measures of appointment availability or patient outcomes. Data provenance, model assumptions, and geographic coverage matter when interpreting results.
-
----
-
-<details>
-<summary><strong>Data sources, pipeline stages, setup, and methodology notes</strong></summary>
-
 <div align="center">
 
 # Ovara
@@ -48,6 +9,7 @@ Registry counts and model residuals are access proxies, not direct measures of a
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikit-learn&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-6.6-3F4F75?style=flat&logo=plotly&logoColor=white)
 ![Dash](https://img.shields.io/badge/Dash-2.14-008DE4?style=flat&logo=plotly&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
 **University of Maryland, College of Information | INST737: Data Science Techniques | Final Project**
@@ -528,5 +490,3 @@ University of Maryland, College Park
 `Healthcare Analytics` · `Data Science` · `Data Visualization` · `Geographic Modeling`
 
 </div>
-
-</details>
