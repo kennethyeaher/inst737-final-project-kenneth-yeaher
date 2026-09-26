@@ -4,11 +4,11 @@
 
 ### Reproductive Health Provider Access Modeling
 
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat&logo=python&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-2.3-150458?style=flat&logo=pandas&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikit-learn&logoColor=white)
-![Plotly](https://img.shields.io/badge/Plotly-6.6-3F4F75?style=flat&logo=plotly&logoColor=white)
-![Dash](https://img.shields.io/badge/Dash-2.14-008DE4?style=flat&logo=plotly&logoColor=white)
+![Python](docs/readme/badges/python-3776AB.svg)
+![pandas](docs/readme/badges/pandas-150458.svg)
+![scikit-learn](docs/readme/badges/scikitlearn-F7931E.svg)
+![Plotly](docs/readme/badges/plotly-3F4F75.svg)
+![Dash](docs/readme/badges/plotly-008DE4.svg)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
 **University of Maryland, College of Information | INST737: Data Science Techniques | Final Project**
