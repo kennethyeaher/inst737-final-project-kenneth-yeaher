@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1188" height="174" viewBox="0 0 1188 174" role="img" aria-labelledby="title description">
+  <title id="title">Ovara results at a glance</title>
+  <desc id="description">1,029: Counties with no provider. of 3,144 US counties; 10,917,875: Residents in those counties. ACS population, no model involved; 30.06: Providers per 100k nationally. 25 of 51 states fall below it; R² +0.12: State regression fit. Cross validated, a negative result</desc>
+  <rect x="0.5" y="0.5" width="1187" height="173" rx="16" fill="#2F1A3E" stroke="#4A3460"/>
+  <rect x="12" y="12" width="282" height="150" rx="10" fill="#3A2550"/>
+  <rect x="12" y="12" width="4" height="150" rx="2" fill="#E87A3C"/>
+  <text x="36" y="70" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="36" font-weight="700">1,029</text>
+  <text x="36" y="108" fill="#F5EFE4" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="600">Counties with no provider</text>
+  <text x="36" y="138" fill="#C9BFD6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15">of 3,144 US counties</text>
+  <rect x="306" y="12" width="282" height="150" rx="10" fill="#3A2550"/>
+  <rect x="306" y="12" width="4" height="150" rx="2" fill="#E87A3C"/>
+  <text x="330" y="70" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="36" font-weight="700">10,917,875</text>
+  <text x="330" y="108" fill="#F5EFE4" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="600">Residents in those counties</text>
+  <text x="330" y="138" fill="#C9BFD6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15">ACS population, no model involved</text>
+  <rect x="600" y="12" width="282" height="150" rx="10" fill="#3A2550"/>
+  <rect x="600" y="12" width="4" height="150" rx="2" fill="#6B4FBF"/>
+  <text x="624" y="70" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="36" font-weight="700">30.06</text>
+  <text x="624" y="108" fill="#F5EFE4" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="600">Providers per 100k nationally</text>
+  <text x="624" y="138" fill="#C9BFD6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15">25 of 51 states fall below it</text>
+  <rect x="894" y="12" width="282" height="150" rx="10" fill="#3A2550"/>
+  <rect x="894" y="12" width="4" height="150" rx="2" fill="#C9A652"/>
+  <text x="918" y="70" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="36" font-weight="700">R² +0.12</text>
+  <text x="918" y="108" fill="#F5EFE4" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="600">State regression fit</text>
+  <text x="918" y="138" fill="#C9BFD6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15">Cross validated, a negative result</text>
+</svg>
