@@ -1,38 +1,58 @@
-<div align="center">
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Ovara. Where reproductive health providers are missing, county by county. A grid of tiles in the access tier colors, about a third of them coral for access desert counties." width="100%">
+</p>
 
-# Ovara
+<p align="center">
+  <strong>Reproductive health provider access modeling, from the federal provider registry down to the county.</strong><br>
+  University of Maryland, College of Information · INST737: Data Science Techniques · Final Project
+</p>
 
-### Reproductive Health Provider Access Modeling
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="pandas" src="https://img.shields.io/badge/pandas-150458?style=flat-square&logo=pandas&logoColor=white">
+  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white">
+  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-3F4F75?style=flat-square&logo=plotly&logoColor=white">
+  <img alt="Dash" src="https://img.shields.io/badge/Dash-008DE4?style=flat-square&logo=plotly&logoColor=white">
+  <img alt="Status active" src="https://img.shields.io/badge/status-active-6B4FBF?style=flat-square">
+</p>
 
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat&logo=python&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-2.3-150458?style=flat&logo=pandas&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikit-learn&logoColor=white)
-![Plotly](https://img.shields.io/badge/Plotly-6.6-3F4F75?style=flat&logo=plotly&logoColor=white)
-![Dash](https://img.shields.io/badge/Dash-2.14-008DE4?style=flat&logo=plotly&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
-
-**University of Maryland, College of Information | INST737: Data Science Techniques | Final Project**
-
-[View Dashboard](#running-the-project) · [Known Limitations](#known-limitations) · [Pipeline Stages](#pipeline-stages) · [Data Sources](#data-and-sources) · [Methodology](METHODOLOGY.md) · [Future Work](#next-steps-and-future-considerations)
+<p align="center">
+  <a href="#what-the-county-data-shows"><strong>County finding</strong></a> &nbsp; · &nbsp;
+  <a href="#the-state-model-is-a-negative-result">State negative result</a> &nbsp; · &nbsp;
+  <a href="#known-limitations">Known limitations</a> &nbsp; · &nbsp;
+  <a href="#run-it">Run it</a> &nbsp; · &nbsp;
+  <a href="METHODOLOGY.md">Methodology</a>
+</p>
 
 ---
 
-</div>
-
-## Project Overview
+## Why this exists
 
 Ovara started from a simple observation: fertility and reproductive healthcare access in the United States is not evenly distributed. I first noticed this while working as a Healthcare Data Analyst for a management consulting company that operated multiple Minimally Invasive Gynecologic Surgery focused Ambulatory Surgery Centers across major East Coast metro areas. The centers were consistently full, patients often traveled long distances for care, and specialty referrals were a normal part of operations. That made me question whether this was just a local business issue or part of a larger access problem.
 
 The challenge is that much of the data needed to study this problem already exists, but it sits inside fragmented federal registries that are difficult to work with. This project builds a data science pipeline that turns raw provider registry data into measurable access intelligence.
 
+<img src="docs/assets/at_a_glance.svg" alt="Results at a glance. 1,029 of 3,144 US counties have no registered reproductive health provider. 10,917,875 residents live in those counties, counted from ACS population with no model. The national rate is 30.06 providers per 100k and 25 of 51 states fall below it. The state regression's cross validated R2 is +0.12, published as a negative result." width="100%">
+
+## What the county data shows
+
+**The headline finding is at county level.** 1,029 US counties have zero registered reproductive health providers, and 10,917,875 people live in them. That is a direct count of registered providers against ACS population, classified by fixed density thresholds, with no model involved.
+
+<img src="docs/assets/dashboard-county-1440.png" alt="Ovara dashboard, county view at desktop width. KPI tiles read 3,144 counties analyzed, 1,029 access deserts with 10,917,875 residents affected, a median density of 11.2 providers per 100k, and Cass County as the lowest density county at 0.9 per 100k. Below is a bar chart of the 15 lowest density counties that have at least one provider." width="100%">
+
+<img src="docs/assets/dashboard-county-map.png" alt="County choropleth of reproductive health access across the United States. Access desert counties in coral cluster across the Great Plains, the Mountain West, and the rural South, set among lavender counties shaded from critical to well served." width="100%">
+
+## What I built
+
 The pipeline ingests the CMS National Provider Identifier registry, also known as NPPES, which includes over 8 million healthcare providers. It filters that data to reproductive health specialties including OB/GYNs, Reproductive Endocrinologists, Certified Nurse Midwives, and Women's Health Nurse Practitioners. It then joins providers with Census population data to create geographic density features, ranks states by observed density, and classifies counties by access tier.
 
 > **Core question:** Given a state's population and workforce characteristics, how many reproductive health providers should we expect, and where does reality fall short?
 
-**The headline finding is at county level.** 1,029 US counties have zero registered reproductive health providers, and 10,917,875 people live in them. That is a direct count of registered providers against ACS population, classified by fixed density thresholds, with no model involved.
+## The state model is a negative result
 
 The state level regression that this project started from is reported as a **negative result**. Workforce composition features do not explain state level provider density, and the residual based risk tiers built on them have been retired. See [Known Limitations](#known-limitations).
+
+<img src="docs/assets/dashboard-state-findings.png" alt="Findings card from the dashboard state view, labeled state level negative result. It says workforce composition does not explain state level provider density, that the best model reaches a cross validated R2 of +0.12, that an earlier version scored higher because a feature contained the answer, and that the finding in this project is at county level." width="100%">
 
 ---
 
@@ -148,7 +168,7 @@ The full code to label mapping is defined in `REPRODUCTIVE_HEALTH_TAXONOMY` in `
 
 ---
 
-## Setup Instructions
+## Run it
 
 ```bash
 # 1. Clone the repository
@@ -168,10 +188,6 @@ pip install -e .
 
 > **Note:** The raw NPPES file is not included because it is roughly 11 GB. Download the latest weekly NPI data file from [CMS NPPES](https://download.cms.gov/nppes/NPI_Files.html), place the extracted CSV in `data/extracted/nppes_weekly_raw/`, then run `python etl/preprocess_nppes.py` to filter to reproductive health providers before running the full pipeline.
 
----
-
-## Running the Project
-
 ```bash
 # Run the full pipeline
 python main.py
@@ -182,9 +198,9 @@ python -m vis.interactive_visualizations
 
 Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any state on the map to filter the bar chart. Use **Reset** to return to the default view.
 
----
-
-## Code Package Structure
+<details>
+<summary><strong>Code package structure</strong></summary>
+<br>
 
 | Type | Path | Description |
 |---|---|---|
@@ -235,6 +251,8 @@ Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in your browser. Click any s
 | File | `main.py` | Full pipeline entry point |
 | File | `pyproject.toml` | Package metadata for `pip install -e .` |
 | File | `requirements.txt` | Pinned dependencies |
+
+</details>
 
 ---
 
@@ -548,7 +566,9 @@ Both views follow the same structure: KPI tiles, a data visualization block, a U
 
 ---
 
-## Logging and Error Handling
+<details>
+<summary><strong>Logging and error handling</strong></summary>
+<br>
 
 The pipeline uses Python's `logging` module with centralized configuration in `utils/logging_config.py`. All output is written to both the console and `logs/ovara_pipeline.log`, replacing earlier `print()` statements with structured logging.
 
@@ -560,11 +580,13 @@ Individual modules use targeted exception handling for common failure modes: `Fi
 
 Save and load patterns also live in shared helpers. `utils/io.py` provides `save_csv` and `save_json`, which handle directory creation and consistent logging. `utils/cache.py` provides `load_or_fetch` for cached external downloads used by the Census ACS, ZCTA crosswalk, and HRSA stages.
 
----
+</details>
 
-## Data Management
+<details>
+<summary><strong>Data management</strong></summary>
+<br>
 
-### Data Dictionaries
+#### Data Dictionaries
 
 Each analytical dataset has a corresponding data dictionary stored in `data/reference_tables/` following the naming convention `data_dictionary_[dataset_name].csv`.
 
@@ -580,13 +602,13 @@ Each analytical dataset has a corresponding data dictionary stored in `data/refe
 | `data_dictionary_clustering_results.csv` | State supply archetype clustering output | 8 |
 | `data_dictionary_hrsa_validation.csv` | HRSA HPSA external validation output | 10 |
 
-### Data Vintages
+#### Data Vintages
 
 Every run writes `data/model_outputs/run_manifest.json`, which records the vintage behind each output: the NPPES source file and its size, the ACS year used for county population and the one used for demand features, the CBSA delineation and population files, the ZCTA relationship file vintage, the CT planning region crosswalk source and vendoring date, the HRSA cache timestamp, the git commit, and the installed pandas, numpy, and scikit learn versions.
 
 The manifest exists because two Census vintages drifted apart unnoticed and cost Connecticut its entire county layer. Read it before comparing numbers across runs. Values are pulled from the module constants the stages themselves use, so the manifest cannot fall out of step with the pipeline.
 
-### Reference Tables
+#### Reference Tables
 
 | File | Purpose |
 |---|---|
@@ -600,6 +622,8 @@ The manifest exists because two Census vintages drifted apart unnoticed and cost
 | `REPRODUCTIVE_HEALTH_TAXONOMY` | In code reference table in `etl/transform.py` defining 13 NUCC codes |
 | `FIPS_TO_STATE` | In code reference table in `utils/fips.py` mapping FIPS codes to state abbreviations |
 
+</details>
+
 ---
 
 ## Next Steps and Future Considerations
@@ -612,15 +636,11 @@ The manifest exists because two Census vintages drifted apart unnoticed and cost
 
 ---
 
-<div>
-
 ## Author
 
 **Kenneth Yeaher**  
-Master of Information Management, Class of 2027  
+MS in Human Computer Interaction, Class of 2027  
 University of Maryland, College Park  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Kenneth_Yeaher-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kennethyeaher/)
 
 `Healthcare Analytics` · `Data Science` · `Data Visualization` · `Geographic Modeling`
-
-</div>
