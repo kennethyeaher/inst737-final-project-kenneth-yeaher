@@ -35,8 +35,8 @@ from vis._styles import (
     FONT_STACK,
 )
 from vis.findings_card import county_findings_card, state_findings_card
-from vis.state_charts import build_bar, build_choropleth, build_scatter
-from vis.tier_grid import county_tier_grid, state_tier_grid
+from vis.state_charts import build_bar, build_choropleth, build_scatter, national_density
+from vis.tier_grid import county_tier_grid
 
 
 # small bundle so callbacks have all the data they need without globals
@@ -85,12 +85,12 @@ def _state_kpi_row(state_df: pd.DataFrame) -> dbc.Row:
     """Build the four KPI tiles that sit above the state level charts."""
     n_states = int(state_df["practice_state"].nunique())
     total_providers = int(state_df["provider_count"].sum())
-    avg_dens = state_df["providers_per_100k"].mean()
+    national = national_density(state_df)
     med_dens = state_df["providers_per_100k"].median()
-    worst_row = state_df.nsmallest(1, "residual").iloc[0]
-    worst_name = worst_row.get("state_name", worst_row["practice_state"])
-    n_critical = int((state_df["risk_tier"] == "Critical").sum())
-    n_at_risk = int((state_df["risk_tier"] == "At Risk").sum())
+
+    thinnest_row = state_df.nsmallest(1, "providers_per_100k").iloc[0]
+    thinnest_name = thinnest_row.get("state_name", thinnest_row["practice_state"])
+    below_national = int((state_df["providers_per_100k"] < national).sum())
 
     return dbc.Row([
     dbc.Col(kpi_card(
@@ -100,25 +100,24 @@ def _state_kpi_row(state_df: pd.DataFrame) -> dbc.Row:
         accent=COLORS["pos_strong"],
     ), md=3),
     dbc.Col(kpi_card(
-        "Avg Providers / 100k",
-        f"{avg_dens:.2f}",
-        subtitle=f"Median: {med_dens:.2f}",
+        "National Providers / 100k",
+        f"{national:.2f}",
+        subtitle=f"Median state: {med_dens:.2f}",
         accent=COLORS["accent"],
     ), md=3),
     dbc.Col(kpi_card(
-        "Critical + At Risk",
-        f"{n_critical + n_at_risk}",
-        subtitle=f"{n_critical} critical, {n_at_risk} at risk",
-        color=COLORS["kpi_bad"],
-        accent=COLORS["kpi_bad"],
-    ), md=3),
-    dbc.Col(kpi_card(
-        "Most Underserved",
-        worst_name,
-        subtitle=f"Gap: {worst_row['residual']:.2f}",
+        "Thinnest State",
+        thinnest_name,
+        subtitle=f"{thinnest_row['providers_per_100k']:.1f} per 100k",
         color=COLORS["kpi_bad"],
         accent=COLORS["neg_mid"],
         style="serif",
+    ), md=3),
+    dbc.Col(kpi_card(
+        "Below the National Rate",
+        f"{below_national}",
+        subtitle=f"of {n_states} states",
+        accent=COLORS["accent"],
     ), md=3),
 ], className="g-3 mb-3")
 
@@ -144,26 +143,7 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
             ), md=7),
         ], className="g-3 mb-3"),
 
-        # toggle between continuous gap and discrete tier views
-        dbc.Row(dbc.Col(html.Div(
-            dcc.RadioItems(
-                id="map-view-toggle",
-                options=[
-                    {"label": " Access Gap", "value": "gap"},
-                    {"label": " Risk Tier", "value": "tier"},
-                ],
-                value="gap",
-                inline=True,
-                inputStyle={"marginRight": "6px"},
-                labelStyle={
-                    "marginRight": "24px", "fontSize": "0.9rem",
-                    "cursor": "pointer", "color": COLORS["text"],
-                },
-            ),
-            style={"textAlign": "center", "padding": "6px 0"},
-        ), width=12)),
-
-        # main state choropleth
+        # main state choropleth, a continuous density scale with no tiers
         dbc.Row(dbc.Col(dbc.Card(
             dcc.Graph(id="choropleth", figure=build_choropleth(state_df), config=CHART_CONFIG),
             style=CARD_STYLE,
@@ -174,9 +154,6 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
 
         # findings card gives the map a clearer written takeaway before the rest of the page
         dbc.Row(dbc.Col(state_findings_card(state_df), width=12)),
-
-        # framework reference grid at the bottom defines each tier
-        dbc.Row(dbc.Col(state_tier_grid(state_df), width=12)),
     ])
 
 
@@ -248,6 +225,27 @@ def _county_view(county: _CountyBundle) -> html.Div:
     ])
 
 
+# view copy, kept together so the two views cannot drift apart.
+# the county tiers come from fixed density thresholds, not from the regression,
+# and the copy has to say so
+
+STATE_SUBHEAD = (
+    "States are ranked by observed reproductive health providers per 100,000 "
+    "residents, a direct count with no model behind it. Click a state on the "
+    "map to filter. The state regression is a negative result and appears only "
+    "as a labelled diagnostic."
+)
+
+COUNTY_SUBHEAD = (
+    "County tiers come from fixed provider density thresholds, not from the "
+    "regression model. Counties are ranked by registered providers per 100,000 "
+    "residents. Filter to a state, then click a county for its detail."
+)
+
+STATE_CONTEXT_TAG = "State · 2026"
+COUNTY_CONTEXT_TAG = "County · 2026"
+
+
 def _header() -> dbc.Row:
     """
     The page header: Fraunces serif title with italic coral accent on
@@ -271,9 +269,8 @@ def _header() -> dbc.Row:
     )
 
     subhead = html.P(
-        "Residuals highlight where reproductive health provider supply "
-        "falls below or exceeds model expectations. Click a state on the "
-        "map to filter. Toggle between access gap and risk tier views.",
+        STATE_SUBHEAD,
+        id="view-subhead",
         style={
             "fontSize": "13px",
             "color": COLORS["text_muted"],
@@ -363,7 +360,7 @@ def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
         "padding": "0 40px 40px 40px",
     })
 
-    return html.Div([topnav(context_tag="State · 2026"), page])
+    return html.Div([topnav(context_tag=STATE_CONTEXT_TAG), page])
 
 
 def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
@@ -371,16 +368,15 @@ def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
 
     @app.callback(
         Output("choropleth", "figure"),
-        Input("map-view-toggle", "value"),
         Input("choropleth", "clickData"),
         Input("reset-bar", "n_clicks"),
     )
-    def update_map(view_mode, click_data, _n_clicks):
-        """Redraw the state map when the view mode changes or a state is clicked."""
+    def update_map(click_data, _n_clicks):
+        """Redraw the state map when a state is clicked or the filter is reset."""
         if ctx.triggered_id == "reset-bar" or click_data is None:
-            return build_choropleth(state_df, view_mode=view_mode)
+            return build_choropleth(state_df)
         state = click_data["points"][0]["location"]
-        return build_choropleth(state_df, selected_state=state, view_mode=view_mode)
+        return build_choropleth(state_df, selected_state=state)
 
     @app.callback(
         Output("bar-chart", "figure"),
@@ -515,13 +511,33 @@ def _register_view_toggle(app: Dash) -> None:
         Output("state-view", "style"),
         Output("county-view", "style"),
         Output("county-state-filter-wrap", "style"),
+        Output("view-subhead", "children"),
+        Output("view-context-tag", "children"),
         Input("geo-level-toggle", "value"),
     )
     def toggle_view(level):
-        """Show either the state or county dashboard based on the radio button."""
+        """
+        Show either the state or county dashboard based on the radio button.
+
+        The subhead and the context tag switch with the view so the page never
+        describes the county tiers as model residuals.
+        """
         if level == "county":
-            return {"display": "none"}, {"display": "block"}, {"display": "block"}
-        return {"display": "block"}, {"display": "none"}, {"display": "none"}
+            return (
+                {"display": "none"},
+                {"display": "block"},
+                {"display": "block"},
+                COUNTY_SUBHEAD,
+                COUNTY_CONTEXT_TAG,
+            )
+
+        return (
+            {"display": "block"},
+            {"display": "none"},
+            {"display": "none"},
+            STATE_SUBHEAD,
+            STATE_CONTEXT_TAG,
+        )
 
 
 def run_dashboard(

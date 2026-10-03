@@ -31,6 +31,10 @@ CLUSTERING_FEATURES = [
 K_RANGE = range(2, 7)
 RANDOM_STATE = 42
 
+# a cluster smaller than this is a handful of outliers rather than an archetype,
+# so any k that produces one is rejected even if its silhouette is the highest
+MIN_CLUSTER_SIZE = 5
+
 # label sets keyed by k so cluster ids map to interpretable archetypes
 
 CLUSTER_LABEL_SETS: dict[int, list[str]] = {
@@ -50,7 +54,7 @@ def load_clustering_data() -> pd.DataFrame:
     required = {
         "practice_state", "state_name", "providers_per_100k",
         "taxonomy_diversity", "recent_provider_growth",
-        "avg_provider_enum_year", "metro_population",
+        "avg_provider_enum_year", "state_population",
     }
     missing = required - set(df.columns)
     if missing:
@@ -60,7 +64,7 @@ def load_clustering_data() -> pd.DataFrame:
 
     # convert raw growth count into a population normalized rate so the clustering captures growth intensity rather than state size
     df["recent_growth_per_100k"] = (
-        df["recent_provider_growth"] / df["metro_population"] * 100000
+        df["recent_provider_growth"] / df["state_population"] * 100000
     )
 
     before = df.shape[0]
@@ -74,18 +78,67 @@ def load_clustering_data() -> pd.DataFrame:
 
 
 def select_optimal_k(X_scaled: np.ndarray) -> tuple[int, dict]:
-    """sweep K_RANGE and pick the k with the highest silhouette score."""
+    """
+    Sweep K_RANGE and pick the highest silhouette among k values with usable clusters.
+
+    Silhouette rewards a split that isolates a few extreme states, which is how
+    k=2 once won by putting 47 states against 4. A cluster that small is a set
+    of outliers, not a supply archetype, so any k whose smallest cluster holds
+    fewer than MIN_CLUSTER_SIZE states is rejected. If no k qualifies the
+    highest silhouette is used anyway, with a warning.
+
+    Parameters
+    X_scaled : np.ndarray of standardized clustering features.
+
+    Returns
+    tuple of the selected k and the per k silhouette scores.
+    """
     scores = {}
+    sizes = {}
+
     logger.info("silhouette sweep:")
     for k in K_RANGE:
         model = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10)
         labels = model.fit_predict(X_scaled)
-        score = float(silhouette_score(X_scaled, labels))
-        scores[k] = round(score, 4)
-        logger.info(f"  k={k}  silhouette={score:.4f}")
 
-    best_k = max(scores, key=scores.get)
-    logger.info(f"selected k={best_k}  silhouette={scores[best_k]:.4f}")
+        scores[k] = round(float(silhouette_score(X_scaled, labels)), 4)
+        sizes[k] = sorted(np.bincount(labels, minlength=k).tolist())
+
+        logger.info(f"  k={k}  silhouette={scores[k]:.4f}  cluster sizes={sizes[k]}")
+
+    eligible = [k for k in scores if min(sizes[k]) >= MIN_CLUSTER_SIZE]
+
+    if eligible:
+        ranked = sorted(eligible, key=lambda k: scores[k], reverse=True)
+    else:
+        logger.warning(
+            f"no k produces clusters of at least {MIN_CLUSTER_SIZE} states, "
+            "falling back to the highest silhouette"
+        )
+        ranked = sorted(scores, key=lambda k: scores[k], reverse=True)
+
+    best_k = ranked[0]
+    logger.info(
+        f"selected k={best_k}  silhouette={scores[best_k]:.4f}  "
+        f"cluster sizes={sizes[best_k]}"
+    )
+
+    # the runner up is logged so a close second choice is visible rather than hidden
+    if len(ranked) > 1:
+        runner_up = ranked[1]
+        logger.info(
+            f"runner up k={runner_up}  silhouette={scores[runner_up]:.4f}  "
+            f"cluster sizes={sizes[runner_up]}"
+        )
+
+    rejected = [k for k in scores if k not in eligible]
+    if eligible and rejected:
+        logger.info(
+            "rejected for a cluster under "
+            f"{MIN_CLUSTER_SIZE} states: "
+            + ", ".join(f"k={k} (sizes {sizes[k]})" for k in rejected)
+        )
+
     return best_k, scores
 
 

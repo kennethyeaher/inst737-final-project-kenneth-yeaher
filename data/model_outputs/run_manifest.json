@@ -1,0 +1,46 @@
+{
+  "run_timestamp": "2026-08-30T03:08:08.260164+00:00",
+  "git_commit": "ea280cd175a3712e95f03d161483216d2d3abeab",
+  "package_versions": {
+    "pandas": "2.3.3",
+    "numpy": "2.0.2",
+    "scikit-learn": "1.6.1"
+  },
+  "nppes_source_file": {
+    "name": "npidata_reproductive_health.csv",
+    "path": "data/extracted/nppes_weekly_raw/npidata_reproductive_health.csv",
+    "size_bytes": 56876684,
+    "modified": "2026-05-10T04:33:33.667364+00:00"
+  },
+  "acs_year_county_population": 2022,
+  "acs_year_demand_features": 2024,
+  "cbsa_delineation_file": {
+    "name": "list1_2023.xlsx",
+    "path": "data/external/list1_2023.xlsx",
+    "size_bytes": 143798,
+    "modified": "2026-05-10T04:17:29.879124+00:00"
+  },
+  "cbsa_population_file": {
+    "name": "cbsa-met-est2024-pop.xlsx",
+    "path": "data/external/cbsa-met-est2024-pop.xlsx",
+    "size_bytes": 41931,
+    "modified": "2026-05-10T04:17:29.878044+00:00"
+  },
+  "zcta_relationship_file_vintage": 2020,
+  "ct_planning_region_crosswalk": {
+    "source_url": "https://github.com/CT-Data-Collaborative/zip-to-planningregion/raw/main/ZIP-to-PlanningRegion.xlsx",
+    "licence": "MIT, CTData Collaborative",
+    "vendored": {
+      "name": "ct_zip_planning_region.csv",
+      "path": "data/reference_tables/ct_zip_planning_region.csv",
+      "size_bytes": 13271,
+      "modified": "2026-08-29T22:36:04.212545+00:00"
+    }
+  },
+  "hrsa_cache_file": {
+    "name": "hrsa_hpsa_raw.csv",
+    "path": "data/reference_tables/hrsa_hpsa_raw.csv",
+    "size_bytes": 37627123,
+    "modified": "2026-05-10T04:02:35.559381+00:00"
+  }
+}

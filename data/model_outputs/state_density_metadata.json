@@ -1,0 +1,31 @@
+{
+  "total_states": 51,
+  "national_providers_per_100k": 30.0649,
+  "median_providers_per_100k": 30.757,
+  "states_below_national_rate": 25,
+  "thinnest_states": [
+    "AR",
+    "AL",
+    "ND",
+    "MS",
+    "NV",
+    "IA",
+    "OK",
+    "SD",
+    "KS",
+    "WV"
+  ],
+  "densest_states": [
+    "DC",
+    "AK",
+    "VT",
+    "CO",
+    "NH",
+    "RI",
+    "OR",
+    "MD",
+    "CT",
+    "ME"
+  ],
+  "classification": "none. state level output is a continuous ranking of observed density, not a tier assignment"
+}

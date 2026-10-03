@@ -1,0 +1,68 @@
+{
+  "n_states": 51,
+  "cv": "KFold 5 shuffle True random_state 42",
+  "baseline_mae": 6.03,
+  "leakage_check": {
+    "retired_feature": "growth_per_100k",
+    "reason": "recent_provider_growth is a strict subset of provider_count, and growth_per_100k divides it by the same denominator as the target",
+    "subset_holds_for_all_states": true,
+    "recent_share_of_workforce": {
+      "min": 0.0299,
+      "max": 0.1286,
+      "national": 0.0583
+    },
+    "cv5_r2_with_leaking_feature": 0.3253,
+    "cv5_r2_with_leak_free_replacement": 0.0352,
+    "cv5_r2_taxonomy_diversity_only": 0.1244,
+    "replacement_correlation_with_target": {
+      "pearson_r": -0.0891,
+      "p_value": 0.534
+    }
+  },
+  "candidates": {
+    "four_composition": {
+      "features": [
+        "taxonomy_diversity",
+        "pct_recent_entrants",
+        "pct_female_25_44",
+        "provider_enum_year_centered"
+      ],
+      "n_features": 4,
+      "cv5_r2_mean": -0.2997,
+      "cv5_r2_std": 0.5929,
+      "cv5_mae_mean": 5.5022,
+      "cv5_mae_std": 0.9739,
+      "beats_baseline_mae": true
+    },
+    "two_composition": {
+      "features": [
+        "taxonomy_diversity",
+        "pct_recent_entrants"
+      ],
+      "n_features": 2,
+      "cv5_r2_mean": 0.0352,
+      "cv5_r2_std": 0.4226,
+      "cv5_mae_mean": 5.3935,
+      "cv5_mae_std": 0.5189,
+      "beats_baseline_mae": true
+    },
+    "taxonomy_only": {
+      "features": [
+        "taxonomy_diversity"
+      ],
+      "n_features": 1,
+      "cv5_r2_mean": 0.1244,
+      "cv5_r2_std": 0.3153,
+      "cv5_mae_mean": 5.0397,
+      "cv5_mae_std": 0.5929,
+      "beats_baseline_mae": true
+    }
+  },
+  "selected": "taxonomy_only",
+  "selected_features": [
+    "taxonomy_diversity"
+  ],
+  "in_use": [
+    "taxonomy_diversity"
+  ]
+}

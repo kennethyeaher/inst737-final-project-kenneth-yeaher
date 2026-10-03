@@ -13,6 +13,7 @@ Usage
 from __future__ import annotations
 
 from utils.logging_config import setup_logger
+from utils.manifest import write_run_manifest
 from utils.pipeline import Stage, run_pipeline
 
 logger = setup_logger("ovara.pipeline")
@@ -30,7 +31,6 @@ def _build_stages() -> list[Stage]:
     """
     # imports live inside the function so a missing dependency in one stage
     # does not break the whole module load
-    from analysis.access_risk_model import run_access_risk_model
     from analysis.build_access_model_dataset import build_access_model_dataset
     from analysis.build_county_dataset import build_county_dataset
     from analysis.build_county_population import build_county_population
@@ -44,6 +44,7 @@ def _build_stages() -> list[Stage]:
     from analysis.evaluate import run_evaluation
     from analysis.hrsa_validation import run_hrsa_validation
     from analysis.regression_model import run_regression_model
+    from analysis.state_density_ranking import run_state_density_ranking
     from etl.extract import extract_nppes
     from etl.transform import transform_nppes
     from vis.interactive_visualizations import run_interactive_visualizations
@@ -74,10 +75,10 @@ def _build_stages() -> list[Stage]:
         Stage("ACCESS MODEL", build_access_model_dataset, critical=True),
         Stage("REGRESSION MODEL", run_regression_model, critical=True),
 
-        # evaluation, access risk, hrsa validation, and clustering are
-        # diagnostic outputs. Failing any of these should not block the dashboard
+        # evaluation, the density ranking, hrsa validation, and clustering are
+        # reporting outputs. Failing any of these should not block the dashboard
         Stage("EVALUATION", run_evaluation, critical=False),
-        Stage("ACCESS RISK", run_access_risk_model, critical=False),
+        Stage("STATE DENSITY RANKING", run_state_density_ranking, critical=False),
         Stage("HRSA VALIDATION", run_hrsa_validation, critical=False),
         Stage("CLUSTERING", run_clustering_model, critical=False),
 
@@ -92,6 +93,11 @@ def main() -> None:
     """Run the full Ovara pipeline from extract through dashboard exports."""
     logger.info("starting Ovara pipeline...\n")
     run_pipeline(_build_stages(), logger)
+
+    # record the data vintages behind this run so two Census vintages
+    # cannot drift apart unnoticed again
+    write_run_manifest()
+
     logger.info("Ovara pipeline finished")
 
 

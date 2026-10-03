@@ -75,7 +75,7 @@ def topnav(context_tag: str | None = None) -> html.Nav:
     right_children: list = []
 
     if context_tag is not None:
-        right_children.append(html.Span(context_tag, style={
+        right_children.append(html.Span(context_tag, id="view-context-tag", style={
             "fontFamily": FONT_MONO,
             "fontSize": "9px",
             "letterSpacing": "0.12em",
