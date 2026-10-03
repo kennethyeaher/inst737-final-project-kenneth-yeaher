@@ -639,7 +639,7 @@ The manifest exists because two Census vintages drifted apart unnoticed and cost
 ## Author
 
 **Kenneth Yeaher**  
-MS in Human Computer Interaction, Class of 2027  
+MS in Human Computer Interaction  
 University of Maryland, College Park  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Kenneth_Yeaher-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kennethyeaher/)
 
