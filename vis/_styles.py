@@ -75,12 +75,12 @@ CHART_AXIS_TITLE_FONT: Final[dict] = {
 CARD_STYLE: Final[dict] = {
     "border": f"1px solid {COLORS['card_border']}",
     "borderRadius": "10px",
-    "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.25)",
+    "boxShadow": "none",
     "backgroundColor": COLORS["card_bg"],
 }
 
 # variant card style for the written summary panels.
-# uses surface_alt so the summary reads as a distinct block from charts without leaving the dark theme.
+# uses a light iris tint to distinguish interpretation from plotted measures.
 SUMMARY_CARD_STYLE: Final[dict] = {
     **CARD_STYLE,
     "backgroundColor": UI["surface_alt"],
@@ -100,8 +100,8 @@ BASE_LAYOUT: Final[dict] = {
 AXIS_DEFAULTS: Final[dict] = {
     "tickfont": CHART_AXIS_TICK_FONT,
     "title_font": CHART_AXIS_TITLE_FONT,
-    "gridcolor": "rgba(245,239,228,0.06)",
-    "zerolinecolor": "rgba(245,239,228,0.12)",
+    "gridcolor": "rgba(47,26,62,0.08)",
+    "zerolinecolor": "rgba(47,26,62,0.16)",
 }
 
 

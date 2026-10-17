@@ -22,12 +22,12 @@ from typing import Final
 # brand palette
 
 BRAND: Final[dict[str, str]] = {
-    "iris":       "#6B4FBF",
+    "iris":       "#6846AA",
     "iris_deep":  "#4A3698",
-    "coral":      "#E87A3C",
+    "coral":      "#C45B32",
     "sage":       "#5B9066",
     "marigold":   "#C9A652",
-    "cream":      "#F5EFE4",
+    "cream":      "#F7F4EE",
     "cream_deep": "#ECE3D2",
     "plum_ink":   "#2F1A3E",
     "teal":       "#1A89C5",
@@ -41,22 +41,13 @@ FONT_BODY: Final[str] = "'Inter', 'Segoe UI', sans-serif"
 FONT_MONO: Final[str] = "'JetBrains Mono', 'Menlo', monospace"
 
 
-# access tiers are ordered, so they get one hue at rising lightness rather than
-# four unrelated hues. lightness is the channel that survives greyscale, poor
-# screens and colour blindness, so severity stays readable when hue does not.
-#
-# the band is constrained from both ends. the county map draws these on a light
-# carto basemap, so the lightest step has to stay dark enough to see. every
-# other surface, the bars, the badges, the state choropleth, is dark plum, so
-# the darkest step has to stay light enough to read there. L 0.53 to 0.80 is
-# the window that satisfies both, measured at 1.78 minimum contrast on the
-# basemap and 3.03 on the dark surface.
-
+# County tiers use an ordered iris ramp. Zero registered supply stays separate
+# in burnt coral. Labels and exact values provide the same meaning without hue.
 SUPPLY_TIER_RAMP: Final[list[str]] = [
-    "#6E57BB",  # worst supply
-    "#8775D1",
-    "#A294E4",
-    "#BDB5EE",  # best supply
+    "#6041A0",  # lowest supply
+    "#8A6CBD",
+    "#B59DD6",
+    "#DBCEEE",  # highest supply
 ]
 
 # zero providers is a different state rather than a smaller amount, so it sits
@@ -71,8 +62,8 @@ ACCESS_DESERT_COLOR: Final[str] = BRAND["coral"]
 NO_DATA_COLOR: Final[str] = "#CFCBC4"
 
 
-# state level risk tiers, ordered most underserved to best served so quartile
-# codes 0..3 line up with the residual ranking
+# Legacy color names retained for exported analysis consumers.
+# The interactive state overview does not classify states into risk tiers.
 
 STATE_TIER_COLORS: Final[dict[str, str]] = dict(
     zip(["Critical", "At Risk", "Adequate", "Well Served"], SUPPLY_TIER_RAMP)
@@ -88,21 +79,18 @@ COUNTY_TIER_COLORS: Final[dict[str, str]] = {
 }
 
 
-# semantic ui 
-# dark mode by default to match the brand guide's primary aesthetic.
-# bg and surface are derived from plum ink with depth steps, text is cream with alpha for muted variants.
-
+# Iris atlas semantic surfaces shared by the interactive dashboard and charts.
 UI: Final[dict[str, str]] = {
-    "bg":          "#17102C",
-    "surface":     "#201440",
-    "surface_alt": "#2A1A52",
-    "border":      "rgba(245, 239, 228, 0.10)",
-    "text":        BRAND["cream"],
-    "text_muted":  "rgba(245, 239, 228, 0.65)",
-    "accent":      BRAND["iris"],
-    "accent_deep": BRAND["iris_deep"],
-    "attention":   BRAND["coral"],
-    "good":        BRAND["sage"],
-    "warn":        BRAND["marigold"],
-    "bad":         BRAND["coral"],
+    "bg": "#F7F4EE",
+    "surface": "#FFFFFF",
+    "surface_alt": "#EEE7FA",
+    "border": "#DCD5E2",
+    "text": "#2F1A3E",
+    "text_muted": "#645B6F",
+    "accent": "#6846AA",
+    "accent_deep": "#54388F",
+    "attention": "#C45B32",
+    "good": "#5B9066",
+    "warn": "#C9A652",
+    "bad": "#C45B32",
 }

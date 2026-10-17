@@ -40,3 +40,6 @@ dependencies = [
 # the project is structured as a flat workspace of folders rather than one
 # package, so list each top level folder explicitly
 packages = ["analysis", "etl", "utils", "vis"]
+
+[tool.setuptools.package-data]
+vis = ["assets/*.css", "assets/*.js"]
