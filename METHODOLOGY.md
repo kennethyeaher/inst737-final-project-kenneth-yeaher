@@ -32,8 +32,8 @@ University of Maryland, College of Information
 - [Regression Model](#regression-model)
   - [Features](#features)
   - [Results](#results)
-  - [Why the Model Underperforms Out of Sample](#why-the-model-underperforms-out-of-sample)
-  - [Why the Residuals Are Still Useful](#why-the-residuals-are-still-useful)
+  - [Why the Model Fails](#why-the-model-fails)
+  - [What the Residuals Are Still Good For](#what-the-residuals-are-still-good-for)
 - [HRSA External Validation](#hrsa-external-validation)
 - [County Level Analysis](#county-level-analysis)
 - [K Means Clustering](#k-means-clustering)
@@ -50,7 +50,7 @@ If you want a quick overview, start with the Research Question, Methodology Flow
 This document explains the analytical choices I made while building Ovara, including the parts that did not work as cleanly as I expected. It is meant to be read alongside the code, not as a replacement for it. My goal is to be honest about what the model can and cannot tell us, while also explaining why I still think the output is useful despite its statistical limits.
 
 > **Key takeaway:**  
-> Ovara should not be treated as a perfect prediction model. It is better understood as a relative access signal that shows which states appear more underserved compared to similar states in the dataset.
+> The county count is the main finding: 1,029 county equivalents have no registered reproductive health provider. State density is an observed ranking. The state regression is a negative result, and its residuals are diagnostics rather than a validated access classification.
 
 ## Methodology Flow
 
@@ -429,7 +429,7 @@ The NPPES registry reflects who is licensed, not who is accessible. A provider r
 
 ### Geographic Aggregation
 
-The regression model is at the state level. State level aggregation hides major variation within states. Rural West Virginia and Charleston, WV have very different access realities even though both contribute to the same state residual. The state level model is useful as a first cut for national scope analysis, but it should not be used to make access claims about specific communities.
+The regression model is at the state level. State level aggregation hides major variation within states. Rural West Virginia and Charleston, WV have very different access realities even though both contribute to the same state residual. Observed state density supports national comparison, but the regression does not support access claims about specific communities.
 
 The county level threshold analysis was added to make some of that within state variation visible. It does not solve the problem fully because counties still aggregate cities, towns, and rural areas together, but it pushes the resolution one level closer to the communities being analyzed. The two views are complementary rather than substitutes.
 
@@ -459,11 +459,11 @@ These limitations are not really fixable within the current scope because they c
 
 ### Policy Environment
 
-This analysis does not directly model the post Dobbs policy environment. Several states with restrictive abortion laws have reported signs of OB/GYN workforce pressure since 2022. The NPPES data reflects a current registration snapshot that may not fully capture provider relocation, reduced practice activity, or retirement driven by policy changes. States like Texas and Florida, classified as `adequate` or `well_served` in this analysis, may still be experiencing access deterioration that trailing NPPES data does not yet reflect.
+The dashboard does not model state policy environments. A registry address cannot explain a provider's practice decisions, relocation or available services. Density tiers describe registered supply, not the legal availability of a particular service.
 
 ### Ethical Considerations
 
-This analysis flags states as underserved relative to a statistical model, not relative to a clinical standard of adequacy. The residuals do not tell us whether any state's provider supply is truly enough to meet patient need. They tell us which states are most underserved relative to the cross state pattern. A state ranked `well_served` by this model may still have communities with serious access gaps, especially rural communities and communities of color.
+County tiers describe registered provider density using fixed project thresholds. They do not establish clinical adequacy or whether a patient can obtain care. State risk tiers are retired, and model residuals do not support labeling states underserved. Even a county in the well served density tier can have serious gaps in capacity, specialty coverage, insurance acceptance or travel access.
 
 > **Ethical framing:**  
 > The goal of this analysis is to show where federal workforce data points to structural supply gaps, so that people working in policy, advocacy, and resource allocation have a clearer picture to start from. It is a starting point, not a verdict.
@@ -517,6 +517,6 @@ This analysis flags states as underserved relative to a statistical model, not r
 
 ## Final Note
 
-Ovara is not a final answer to reproductive healthcare access. It is a data pipeline that turns fragmented federal workforce records into a clearer access signal. The model has real limitations, especially around prediction, sample size, and missing structural features. But it still shows a useful pattern: some states have fewer reproductive health providers than expected, and the highest risk states line up with independent federal shortage designations. That makes the project useful as an early access intelligence tool, especially for identifying where deeper policy, clinical, and geographic analysis should happen next.
+The strongest result is the county count: 1,029 county equivalents have no registered reproductive health provider in the tracked taxonomies. The state regression is a negative result, and HRSA comparisons do not validate the former state risk tiers. The pipeline and dashboard support further investigation of registered supply; local capacity, service availability and travel access still require other evidence.
 
 *Kenneth Yeaher INST737 Final Project University of Maryland, Spring 2026*
