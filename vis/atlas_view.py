@@ -45,6 +45,12 @@ def summary_view(frame: pd.DataFrame | None):
                f'{values["share"]:.1f}% of {values["counties"]:,} counties'),
         metric("Residents in those counties", population, f"{residents:,} residents · ACS 2022"),
         metric("Counties analyzed", f'{values["counties"]:,}', "County equivalents included"),
+        html.Div([
+            html.Strong(f'{values["deserts"]:,} counties'),
+            html.P("have zero registered providers"),
+            html.P(f'{population} residents · {values["share"]:.1f}% of counties'),
+            html.P(f'Of {values["counties"]:,} county equivalents analyzed'),
+        ], className="mobile-summary"),
     ]
 
 
@@ -284,7 +290,14 @@ def build_atlas_layout(state_view, state_options, default_county):
         html.Div([
             html.Div([
                 html.H2(id="atlas-map-heading", className="section-title"),
-                html.Div(id="atlas-map", className="atlas-map"),
+                html.Div([
+                    html.Div(id="atlas-map", className="atlas-map"),
+                    html.Div([
+                        button("+", "atlas-zoom-in", **{"aria-label": "Zoom in on county map"}),
+                        button("−", "atlas-zoom-out", **{"aria-label": "Zoom out on county map"}),
+                        button("Reset map", "atlas-zoom-reset"),
+                    ], className="map-tools", **{"aria-label": "Map zoom controls"}),
+                ], className="atlas-map-frame"),
                 html.Div(id="atlas-map-render-status", className="sr-only", **{"aria-live": "polite"}),
                 html.P(id="atlas-map-caption", className="map-caption"),
                 legend(),

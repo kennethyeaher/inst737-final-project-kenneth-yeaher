@@ -9,7 +9,7 @@ from vis.atlas_model import (
     comparison_rows, comparison_selection, county_scope, state_names, tier_label,
 )
 from vis.atlas_view import (
-    PAGE_SIZE, comparison_view, county_list, detail_view, distribution, summary_view,
+    comparison_view, county_list, detail_view, distribution, summary_view,
 )
 from vis.county_visualizations import TIER_ORDER
 
@@ -269,7 +269,12 @@ def register_atlas_callbacks(app, snapshot, refresh):
             "county_hidden": view != "county" or frame is None,
             "state_hidden": view != "state", "method_hidden": view != "method",
             "compare_hidden": view != "compare", "unavailable": frame is not None or view != "county",
-            "title": title, "breadcrumb": f'COUNTY EXPLORER / {state.upper()} / {tier.upper()}'
+            "title": [
+                html.Span(title, className="desktop-title"),
+                html.Span({"county": "County explorer", "compare": "Compare counties",
+                           "state": "State overview", "method": "How to read the data"}.get(view, title),
+                          className="mobile-title"),
+            ], "breadcrumb": f'COUNTY EXPLORER / {state.upper()} / {tier.upper()}'
             if view == "county" else f'OVARA / {view.upper()}',
             "subhead": subhead, "back_style": {} if view == "compare" else {"display": "none"},
             "compare_style": {} if view == "county" else {"display": "none"},

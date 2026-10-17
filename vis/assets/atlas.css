@@ -198,3 +198,23 @@ hr { border: 0; border-top: 1px solid var(--border); opacity: 1; margin: 18px 0;
 @media (forced-colors: active) { .tier-swatch { border: 1px solid CanvasText; } .county-row.selected { outline: 2px solid Highlight; } }
 
 .search-field:has(input:placeholder-shown) #clear-search { display: none; }
+
+
+/* Compact mobile hierarchy follows the selected atlas concept. */
+.mobile-summary, .mobile-title { display: none; }
+@media (max-width: 760px) {
+  .desktop-title { display: none; }
+  .mobile-title { display: inline; }
+  .header-actions #open-comparison:disabled { display: none; }
+  .atlas-summary > .atlas-metric { display: none; }
+  .mobile-summary { display: grid; gap: 10px; }
+  .mobile-summary strong { font-size: 30px; line-height: 1.3; font-weight: 600; }
+  .mobile-summary p { font-size: 13px; }
+  .mobile-summary p:nth-child(2) { font-size: 14px; }
+}
+
+.atlas-map-frame { position: relative; }
+.map-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+.map-tools .atlas-button { min-width: 44px; padding: 8px 12px; }
+.atlas-map { touch-action: pan-y; }
+.atlas-map svg { user-select: none; }
