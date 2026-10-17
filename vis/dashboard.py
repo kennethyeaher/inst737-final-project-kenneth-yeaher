@@ -1,84 +1,18 @@
-"""
-Dash dashboard assembly.
-
-This module pulls the chart builders, summary prose, and styling tokens
-together into a runnable interactive dashboard. The build is split into
-three pieces:
-
-- _build_layout            assembles the full app.layout tree
-- _register_callbacks      wires up every interactivity callback
-- run_dashboard            boots the app
-
-Splitting layout from callbacks makes each piece much easier to read
-than the original single 350 line function.
-"""
+"""Application factory and preserved state diagnostics for the Ovara dashboard."""
 
 from __future__ import annotations
 
 import logging as _logging
 import os
-from typing import Any
 
 import dash_bootstrap_components as dbc
 import pandas as pd
-import plotly.graph_objects as go
-from dash import Dash, Input, Output, Patch, ctx, dcc, html
+from dash import Dash, Input, Output, ctx, dcc, html
 
-from vis._brand import BRAND, FONT_HEADING
-from vis._branding import topnav
 from vis._components import kpi_card, state_detail_card
-from vis._styles import (
-    CARD_STYLE,
-    CHART_CONFIG,
-    COLORS,
-    COUNTY_MAP_CONFIG,
-    FONT_STACK,
-)
-from vis.findings_card import county_findings_card, state_findings_card
+from vis._styles import CARD_STYLE, CHART_CONFIG, COLORS
+from vis.findings_card import state_findings_card
 from vis.state_charts import build_bar, build_choropleth, build_scatter, national_density
-from vis.tier_grid import county_tier_grid
-
-
-# small bundle so callbacks have all the data they need without globals
-class _CountyBundle:
-    """Lightweight container for the optional county data."""
-
-    def __init__(
-        self,
-        df: pd.DataFrame | None,
-        geojson: dict | None,
-        available: bool,
-    ):
-        self.df = df
-        self.geojson = geojson
-        self.available = available
-
-
-def _try_load_county_data(logger: _logging.Logger | None) -> _CountyBundle:
-    """
-    Try to load the county risk classified data and the county geojson.
-
-    The state dashboard runs fine without these, so a missing file is
-    logged as a warning rather than an error.
-
-    Returns
-    _CountyBundle with available=True only when both files loaded cleanly.
-    """
-    # imports happen here so the dashboard module loads even if the
-    # county helper module is broken
-    from vis.county_visualizations import load_county_risk_data, load_geojson
-
-    try:
-        df = load_county_risk_data()
-        geojson = load_geojson()
-        if logger is not None:
-            logger.info(f"county data loaded: {len(df):,} counties")
-        return _CountyBundle(df=df, geojson=geojson, available=True)
-
-    except FileNotFoundError:
-        if logger is not None:
-            logger.warning("county data not available, county view disabled")
-        return _CountyBundle(df=None, geojson=None, available=False)
 
 
 def _state_kpi_row(state_df: pd.DataFrame) -> dbc.Row:
@@ -157,212 +91,6 @@ def _state_view(state_df: pd.DataFrame) -> html.Div:
     ])
 
 
-def _county_view(county: _CountyBundle) -> html.Div:
-    """Build the county level dashboard view, or an empty container if county data is missing."""
-    # imports here so this file does not require county_visualizations
-    # to import successfully when county data is absent
-    from vis.county_visualizations import (
-        build_county_bar,
-        build_county_choropleth,
-        county_kpi_cards,
-    )
-
-    return html.Div(id="county-view", style={"display": "none"}, children=[
-        dbc.Row(
-            county_kpi_cards(county.df) if county.available else [],
-            id="county-kpi-row",
-            className="g-3 mb-3",
-        ),
-
-        # bar chart now spans the full row since the analysis panel moved
-        # into the cream findings card below the map
-        dbc.Row(dbc.Col(dbc.Card([
-            dcc.Graph(
-                id="county-bar-chart",
-                figure=build_county_bar(county.df) if county.available else go.Figure(),
-                config=CHART_CONFIG,
-            ),
-            html.Div(
-                dbc.Button("Reset", id="county-reset", size="sm",
-                           color="secondary", outline=True),
-                style={"textAlign": "right", "padding": "6px 12px 10px 0"},
-            ),
-        ], style=CARD_STYLE), width=12), className="mb-3"),
-
-        # county map with scroll zoom enabled for smaller counties
-        dbc.Row(dbc.Col(dbc.Card(
-            dcc.Loading(
-                dcc.Graph(
-                    id="county-choropleth",
-                    figure=build_county_choropleth(county.df, county.geojson)
-                    if county.available else go.Figure(),
-                    config=COUNTY_MAP_CONFIG,
-                ),
-                type="circle",
-            ),
-            style=CARD_STYLE,
-        ), width=12), className="mb-3"),
-
-       dbc.Row(dbc.Col(html.Div(id="county-detail-panel"), width=12), className="mb-3"),
-
-        # editorial findings card, rebuilt by callback when the state filter changes
-        dbc.Row(dbc.Col(
-            html.Div(
-                county_findings_card(county.df) if county.available else None,
-                id="county-findings-slot",
-            ),
-            width=12,
-        )),
-
-        # framework reference grid at the bottom of the county view
-        dbc.Row(dbc.Col(
-            html.Div(
-                county_tier_grid(county.df) if county.available else None,
-                id="county-tier-grid-slot",
-            ),
-            width=12,
-        )),
-    ])
-
-
-# view copy, kept together so the two views cannot drift apart.
-# the county tiers come from fixed density thresholds, not from the regression,
-# and the copy has to say so
-
-STATE_SUBHEAD = (
-    "States are ranked by observed reproductive health providers per 100,000 "
-    "residents, a direct count with no model behind it. Click a state on the "
-    "map to filter. The state regression is a negative result and appears only "
-    "as a labelled diagnostic."
-)
-
-COUNTY_SUBHEAD = (
-    "County tiers come from fixed provider density thresholds, not from the "
-    "regression model. Counties are ranked by registered providers per 100,000 "
-    "residents. Filter to a state, then click a county for its detail."
-)
-
-STATE_CONTEXT_TAG = "State · 2026"
-COUNTY_CONTEXT_TAG = "County · 2026"
-
-
-def _header() -> dbc.Row:
-    """
-    The page header: Fraunces serif title with italic coral accent on
-    'Access', plus a left aligned subhead. Sits below the topnav and
-    above the level toggle.
-    """
-    title = html.H1(
-        [
-            "Provider ",
-            html.Em("Access", style={"color": BRAND["coral"], "fontStyle": "italic"}),
-            " Dashboard",
-        ],
-        style={
-            "fontFamily": FONT_HEADING,
-            "fontWeight": "900",
-            "fontSize": "30px",
-            "letterSpacing": "-0.015em",
-            "color": COLORS["text"],
-            "marginBottom": "8px",
-        },
-    )
-
-    subhead = html.P(
-        STATE_SUBHEAD,
-        id="view-subhead",
-        style={
-            "fontSize": "13px",
-            "color": COLORS["text_muted"],
-            "maxWidth": "820px",
-            "lineHeight": "1.65",
-            "marginBottom": "0",
-        },
-    )
-
-    return dbc.Row(
-        dbc.Col(
-            html.Div([title, subhead], style={"padding": "36px 0 22px 0"}),
-            width=12,
-        ),
-    )
-
-
-def _geo_toggle_row(county: _CountyBundle) -> dbc.Row:
-    """
-    Geographic level toggle (State Level / County Level) plus the
-    optional state filter dropdown. Sits directly below the page header
-    with a thin border separator above the map.
-    """
-    level_options = [{"label": " State Level", "value": "state"}]
-    if county.available:
-        level_options.append({"label": " County Level", "value": "county"})
-
-    state_options: list = []
-    if county.available:
-        state_options = [
-            {"label": s, "value": s}
-            for s in sorted(county.df["practice_state"].unique())
-        ]
-
-    toggle = dcc.RadioItems(
-        id="geo-level-toggle",
-        options=level_options,
-        value="state",
-        inline=True,
-        inputStyle={"marginRight": "8px"},
-        labelStyle={
-            "marginRight": "28px",
-            "fontSize": "13px",
-            "cursor": "pointer",
-            "color": COLORS["text"],
-            "fontWeight": "500",
-        },
-    )
-
-    dropdown = dcc.Dropdown(
-        id="county-state-filter",
-        options=state_options,
-        value=None,
-        placeholder="All states",
-        clearable=True,
-        style={"fontSize": "13px"},
-    )
-
-    return dbc.Row(
-        [
-            dbc.Col(toggle, md=8),
-            dbc.Col(
-                html.Div(dropdown, id="county-state-filter-wrap", style={"display": "none"}),
-                md=4,
-            ),
-        ],
-        className="align-items-center",
-        style={
-            "paddingBottom": "24px",
-            "borderBottom": f"1px solid {COLORS['card_border']}",
-            "marginBottom": "20px",
-        },
-    )
-
-
-def _build_layout(state_df: pd.DataFrame, county: _CountyBundle) -> html.Div:
-    """Compose the full app.layout from the topnav, page container, and views."""
-    page = dbc.Container([
-        _header(),
-        _geo_toggle_row(county),
-        _state_view(state_df),
-        _county_view(county),
-    ], fluid=True, style={
-        "backgroundColor": COLORS["bg"],
-        "fontFamily": FONT_STACK,
-        "maxWidth": "1440px",
-        "padding": "0 40px 40px 40px",
-    })
-
-    return html.Div([topnav(context_tag=STATE_CONTEXT_TAG), page])
-
-
 def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
     """Wire up the state level interactivity (map, bar chart, detail panel)."""
 
@@ -405,215 +133,72 @@ def _register_state_callbacks(app: Dash, state_df: pd.DataFrame) -> None:
         return state_detail_card(match.iloc[0])
 
 
-def _register_county_callbacks(app: Dash, county: _CountyBundle) -> None:
-    """Wire up the county level interactivity (state filter, county click, detail panel)."""
-    from vis.county_visualizations import (
-        build_county_bar,
-        build_county_choropleth,
-        county_detail_card,
-        county_kpi_cards,
-    )
 
-    @app.callback(
-        Output("county-choropleth", "figure"),
-        Input("county-state-filter", "value"),
-        Input("county-choropleth", "clickData"),
-        Input("county-reset", "n_clicks"),
-    )
-    def update_county_map(state_filter, click_data, _n_clicks):
-        """
-        Update the county map.
+def create_dashboard(state_df: pd.DataFrame | None = None) -> Dash:
+    """Create the Iris atlas app without exporting files or launching a server.
 
-        State filter change or reset triggers a full rebuild because the
-        polygon set changes. A county click only patches the marker
-        borders, which keeps the map from re rendering all 3,144 polygons.
-        """
-        triggered = ctx.triggered_id
-
-        if triggered == "county-choropleth" and click_data is not None:
-            fips = click_data["points"][0]["location"]
-            sub = county.df.copy()
-            if state_filter:
-                sub = sub[sub["practice_state"] == state_filter]
-
-            line_widths = [3.0 if f == fips else 0.3 for f in sub["county_fips"]]
-            line_colors = ["#000" if f == fips else "#ccc" for f in sub["county_fips"]]
-
-            patched = Patch()
-            patched["data"][0]["marker"]["line"]["width"] = line_widths
-            patched["data"][0]["marker"]["line"]["color"] = line_colors
-            return patched
-
-        return build_county_choropleth(county.df, county.geojson, state_filter=state_filter)
-
-    @app.callback(
-        Output("county-bar-chart", "figure"),
-        Input("county-state-filter", "value"),
-        Input("county-reset", "n_clicks"),
-    )
-    def update_county_bar(state_filter, _n_clicks):
-        """Filter the most underserved bar chart to the selected state, or reset."""
-        if ctx.triggered_id == "county-reset":
-            return build_county_bar(county.df)
-        return build_county_bar(county.df, state_filter=state_filter)
-
-    @app.callback(
-        Output("county-detail-panel", "children"),
-        Input("county-choropleth", "clickData"),
-        Input("county-reset", "n_clicks"),
-        Input("county-state-filter", "value"),
-    )
-    def update_county_detail(click_data, _n_clicks, _state_filter):
-        """
-        Show the clicked county's metric card below the map.
-
-        The state filter is included as a trigger so changing the dropdown
-        clears any old detail card from the previous county view.
-        """
-        triggered = ctx.triggered_id
-
-        # clear the card on reset, filter change, or before any county is selected
-        if triggered in ("county-reset", "county-state-filter") or click_data is None:
-            return None
-
-        fips = click_data["points"][0]["location"]
-        match = county.df[county.df["county_fips"] == fips]
-
-        if len(match) == 0:
-            return None
-
-        return county_detail_card(match.iloc[0])
-
-    @app.callback(
-        Output("county-kpi-row", "children"),
-        Output("county-findings-slot", "children"),
-        Output("county-tier-grid-slot", "children"),
-        Input("county-state-filter", "value"),
-    )
-    def update_county_filtered_blocks(state_filter):
-        """
-        Update every county view section that depends on the state filter.
-
-        This keeps the KPI cards, findings card, and tier grid aligned with
-        the filtered map and bar chart.
-        """
-        kpis = county_kpi_cards(county.df, state_filter=state_filter)
-        findings = county_findings_card(county.df, state_filter=state_filter)
-        tier_grid = county_tier_grid(county.df, state_filter=state_filter)
-
-        return kpis, findings, tier_grid
-
-
-def _register_view_toggle(app: Dash) -> None:
-    """Wire up the State vs County toggle that swaps which view is visible."""
-
-    @app.callback(
-        Output("state-view", "style"),
-        Output("county-view", "style"),
-        Output("county-state-filter-wrap", "style"),
-        Output("view-subhead", "children"),
-        Output("view-context-tag", "children"),
-        Input("geo-level-toggle", "value"),
-    )
-    def toggle_view(level):
-        """
-        Show either the state or county dashboard based on the radio button.
-
-        The subhead and the context tag switch with the view so the page never
-        describes the county tiers as model residuals.
-        """
-        if level == "county":
-            return (
-                {"display": "none"},
-                {"display": "block"},
-                {"display": "block"},
-                COUNTY_SUBHEAD,
-                COUNTY_CONTEXT_TAG,
-            )
-
-        return (
-            {"display": "block"},
-            {"display": "none"},
-            {"display": "none"},
-            STATE_SUBHEAD,
-            STATE_CONTEXT_TAG,
-        )
-
-
-def run_dashboard(
-    state_df: pd.DataFrame,
-    *,
-    debug: bool = False,
-    logger: _logging.Logger | None = None,
-) -> None:
+    The data snapshot is shared read only. County selection, filters and
+    comparison remain in each browser's memory stores.
     """
-    Build and launch the Dash dashboard at http://127.0.0.1:DASH_PORT.
+    from pathlib import Path
 
-    Parameters
-    state_df : pd.DataFrame
-        Regression results frame with risk tiers already assigned.
-    debug : bool
-        Pass through to Dash's run() method.
-    logger : logging.Logger or None
-        Optional logger for the boot messages.
+    from vis.atlas_callbacks import register_atlas_callbacks
+    from vis.atlas_map import CountyAtlas
+    from vis.atlas_model import load_atlas_data, state_names
+    from vis.atlas_view import build_atlas_layout
+    from vis.state_charts import load_state_density_ranking
 
-    Returns
-    None (the call blocks while the server runs).
-    """
-    if logger is not None:
-        logger.info("launching interactive Dash dashboard...")
+    if state_df is None:
+        state_df = load_state_density_ranking()
 
-    county = _try_load_county_data(logger)
+    def refresh():
+        """Reload county files safely and represent failures as unavailable data."""
+        try:
+            frame, geometry = load_atlas_data()
+            return {"frame": frame, "atlas": CountyAtlas(frame, geometry), "error": None}
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            _logging.getLogger(__name__).warning("County snapshot unavailable: %s", error)
+            return {"frame": None, "atlas": None, "error": str(error)}
 
+    snapshot = refresh()
+    frame = snapshot["frame"]
+    names = state_names(frame) if frame is not None else dict(
+        zip(state_df["practice_state"], state_df.get("state_name", state_df["practice_state"]))
+    )
+    options = [{"label": name, "value": code} for code, name in sorted(names.items(), key=lambda pair: pair[1])]
+    default = "29037" if frame is not None and "29037" in set(frame["county_fips"]) else None
     app = Dash(
-        __name__,
+        __name__, assets_folder=str(Path(__file__).parent / "assets"),
         external_stylesheets=[dbc.themes.BOOTSTRAP],
-        title="Ovara: A Reproductive Health Access Dashboard",
+        title="Ovara · Reproductive health provider access", update_title="Updating county view…",
     )
-
-    # set the page background at the body level so the dashboard surface extends to the edges of the viewport instead of bleeding to default white
-    app.index_string = f"""
-<!DOCTYPE html>
-<html>
-    <head>
-        {{%metas%}}
-        <title>{{%title%}}</title>
-        {{%favicon%}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700;1,9..144,900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-        {{%css%}}
-        <style>
-            html, body {{
-                background-color: {COLORS["bg"]};
-                margin: 0;
-                padding: 0;
-                min-height: 100vh;
-            }}
-        </style>
-    </head>
-    <body>
-        {{%app_entry%}}
-        <footer>
-            {{%config%}}
-            {{%scripts%}}
-            {{%renderer%}}
-        </footer>
-    </body>
-</html>
-"""
-
-    app.layout = _build_layout(state_df, county)
-
-    _register_view_toggle(app)
+    app.index_string = """<!DOCTYPE html>
+<html lang="en">
+<head>
+{%metas%}<title>{%title%}</title>{%favicon%}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+{%css%}
+</head>
+<body>{%app_entry%}<footer>{%config%}{%scripts%}{%renderer%}</footer></body>
+</html>"""
+    app.layout = build_atlas_layout(_state_view(state_df), options, default)
+    register_atlas_callbacks(app, snapshot, refresh)
     _register_state_callbacks(app, state_df)
-    if county.available:
-        _register_county_callbacks(app, county)
+    return app
 
-    # silence per request access logs so the terminal stays readable
-    _logging.getLogger("werkzeug").setLevel(_logging.ERROR)
 
+def run_dashboard(state_df, *, debug=False, logger=None) -> None:
+    """Launch the dashboard using the supplied state snapshot and DASH_PORT."""
     port = int(os.environ.get("DASH_PORT", 8050))
     if logger is not None:
-        logger.info(f"dashboard running at http://127.0.0.1:{port}")
-    app.run(debug=debug, port=port)
+        logger.info("Dashboard running at http://127.0.0.1:%s", port)
+    _logging.getLogger("werkzeug").setLevel(_logging.ERROR)
+    create_dashboard(state_df).run(debug=debug, port=port)
+
+
+if __name__ == "__main__":
+    from vis.state_charts import load_state_density_ranking
+
+    run_dashboard(load_state_density_ranking())

@@ -1,0 +1,220 @@
+/* Iris atlas: shared color roles, responsive layout and interaction states. */
+:root {
+  --canvas: #f7f4ee; --panel: #fff; --ink: #2f1a3e; --muted: #645b6f;
+  --border: #dcd5e2; --iris: #6846aa; --soft: #eee7fa; --map: #f4f0f7;
+  --radius: 10px; --control: 44px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--canvas); color: var(--ink); }
+body, button, input, select { font-family: Inter, "Segoe UI", sans-serif; }
+button, input, select { font-size: 14px; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .48; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-family: Fraunces, Georgia, serif; font-size: 36px; font-weight: 600; line-height: 1.25; }
+p { line-height: 1.5; }
+h2 { font-size: 22px; }
+h3 { font-size: 17px; }
+a { color: var(--iris); }
+hr { border: 0; border-top: 1px solid var(--border); opacity: 1; margin: 18px 0; }
+:focus-visible { outline: 3px solid var(--iris) !important; outline-offset: 3px; }
+.skip-link { position: fixed; top: -90px; left: 16px; z-index: 3000; background: var(--panel); padding: 12px; }
+.skip-link:focus { top: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.atlas-sidebar { position: fixed; width: 216px; inset: 0 auto 0 0; padding: 24px; background: var(--panel); display: flex; flex-direction: column; z-index: 100; }
+.wordmark { font: 600 30px/1.45 Fraunces, Georgia, serif; }
+.brand-caption { font-size: 9px; font-weight: 500; white-space: nowrap; }
+.brand-row { padding-bottom: 30px; border-bottom: 1px solid var(--border); }
+#mobile-menu { display: none; }
+.nav-items { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; }
+.atlas-button { min-height: var(--control); border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 10px 16px; font-size: 13px; font-weight: 500; line-height: 1.45; text-align: center; }
+.atlas-button.primary, .atlas-button.active { background: var(--iris); color: white; border-color: var(--iris); }
+.atlas-button:not(:disabled):hover { background: var(--soft); border-color: var(--iris); }
+.atlas-button.primary:not(:disabled):hover, .atlas-button.active:hover { background: #54388f; color: white; }
+.nav-items .atlas-button { border-color: transparent; }
+.sidebar-foot { margin-top: auto; padding-top: 40px; display: grid; gap: 24px; }
+.sidebar-statement { font: 600 14px/1.5 Fraunces, Georgia, serif; }
+.eyebrow { font-size: 11px; font-weight: 500; line-height: 1.5; color: var(--muted); }
+.muted, .metric-label, .metric-note { color: var(--muted); }
+.small { font-size: 12px; }
+.atlas-main { margin-left: 216px; padding: 32px; max-width: 1600px; min-height: 100vh; }
+.atlas-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 12px; }
+.atlas-header h1 { margin: 7px 0; }
+.atlas-header p { font-size: 14px; }
+.header-actions { flex-shrink: 0; }
+.header-actions .atlas-button { min-width: 190px; }
+.feedback { min-height: 20px; margin: 6px 0 8px; font-size: 12px; color: var(--muted); }
+.atlas-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; padding: 0 0 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.atlas-metric { min-width: 0; }
+.metric-label { font-size: 13px; margin-bottom: 5px; }
+.metric-value { font-size: 36px; line-height: 1.4; font-weight: 600; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.metric-note { font-size: 12px; margin-top: 3px; line-height: 1.5; }
+.atlas-filters { display: grid; grid-template-columns: minmax(0,1.9fr) minmax(140px,1fr) minmax(140px,1fr) 154px; gap: 16px; align-items: end; margin-bottom: 24px; }
+.atlas-filters label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.atlas-filters > div > .atlas-button { width: 100%; text-align: left; }
+.atlas-input { display: block; width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--ink); padding: 10px 12px; }
+.search-field { position: relative; }
+.search-field #clear-search { width: auto; text-align: center; position: absolute; right: 4px; bottom: 4px; min-height: 36px; padding: 6px 10px; font-size: 11px; border: 0; }
+.search-field .atlas-input { padding-right: 95px; }
+.county-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 328px; gap: 24px; align-items: start; }
+.section-title { font-size: 18px; line-height: 1.45; font-weight: 600; margin-bottom: 8px; }
+.atlas-map { height: 357px; border-radius: var(--radius); background: var(--map); padding: 6px; overflow: hidden; }
+.atlas-map svg { width: 100%; height: 100%; display: block; }
+.atlas-map path { stroke: #fff; stroke-width: .4; cursor: pointer; }
+.atlas-map path:hover { stroke: var(--ink); stroke-width: 1.5; }
+.atlas-map path.selected { stroke: var(--ink); stroke-width: 2.5; }
+.map-caption { font-size: 10px; padding: 8px 12px; color: var(--muted); }
+.atlas-legend { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; font-size: 11px; }
+.atlas-legend li { display: flex; align-items: center; gap: 7px; }
+.tier-swatch { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 2px; }
+.county-detail { background: var(--panel); border-radius: var(--radius); padding: 20px; }
+.county-title { font-size: 26px; font-weight: 600; line-height: 1.3; margin: 14px 0 8px; overflow-wrap: anywhere; }
+.county-detail p { font-size: 14px; margin-bottom: 12px; }
+.county-detail .small { font-size: 12px; }
+.tier-badge { background: var(--soft); padding: 8px; border-radius: 5px; font-size: 12px; margin: 16px 0; }
+.detail-metrics { display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; }
+.detail-metrics .metric-value { font-size: 22px; }
+.detail-metrics .metric-label { font-size: 12px; }
+.county-detail > .atlas-button { width: 100%; margin-top: 3px; }
+.county-support { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 32px; margin-top: 40px; }
+.list-mode { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; margin: 12px 0; }
+.county-list-heading, .county-row { display: grid; grid-template-columns: minmax(0, 1fr) 85px; gap: 12px; }
+.county-list-heading { font-size: 11px; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--border); }
+.county-row { width: 100%; min-height: 46px; padding: 12px 8px; text-align: left; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--ink); font-size: 13px; }
+.county-row.selected, .county-row:hover { background: var(--soft); }
+.county-row strong { font-size: 14px; }
+.list-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); margin-top: 12px; }
+.list-pagination .atlas-button { min-height: 36px; padding: 6px 12px; font-size: 11px; }
+.distribution-bar { display: flex; width: 100%; height: 14px; gap: 2px; margin: 12px 0; overflow: hidden; }
+.distribution-bar span { display: block; flex-shrink: 1; }
+.distribution-labels { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+.distribution-labels > div { display: flex; flex-direction: column-reverse; }
+.distribution-labels dt { font-size: 11px; color: var(--muted); font-weight: 400; }
+.distribution-labels dd { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+.comparison-tray { margin-top: 24px; padding: 20px; background: var(--soft); border-radius: var(--radius); }
+.saved-counties, .tray-actions { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.saved-county { display: flex; gap: 12px; align-items: center; font-size: 14px; }
+.saved-county .atlas-button { min-height: 34px; padding: 5px 10px; font-size: 11px; }
+.comparison-scope { display: flex; justify-content: space-between; gap: 16px; align-items: center; background: var(--soft); padding: 12px; margin: 22px 0; font-size: 14px; }
+.comparison-matrix { background: var(--panel); border-radius: var(--radius); padding: 24px; }
+.comparison-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.comparison-table th, .comparison-table td { width: 33.333%; padding: 18px 0; vertical-align: middle; }
+.comparison-table thead th { font: 600 26px/1.4 Fraunces, Georgia, serif; padding-bottom: 34px; }
+.comparison-table thead th:first-child { font: 500 12px Inter, sans-serif; text-transform: uppercase; color: var(--muted); }
+.comparison-table tbody tr { border-top: 1px solid var(--border); }
+.comparison-table tbody th { font-weight: 400; font-size: 14px; color: var(--muted); padding-right: 16px; }
+.comparison-table td { font-size: 22px; font-weight: 600; }
+.comparison-mobile { display: none; }
+.comparison-takeaway { padding: 24px; background: var(--soft); border-radius: var(--radius); margin: 24px 0; }
+.comparison-takeaway h2 { font: 600 24px/1.4 Fraunces, Georgia, serif; margin-bottom: 10px; }
+.comparison-takeaway p { font-size: 15px; }
+.comparison-limits { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.comparison-limits h2 { font-size: 18px; margin: 8px 0; }
+.comparison-limits p { font-size: 14px; color: var(--muted); }
+.evidence-footer { margin-top: 40px; padding-bottom: 10px; color: var(--muted); font-size: 11px; }
+.evidence-footer p + p { margin-top: 6px; }
+.methodology-panel { background: var(--panel); border-radius: var(--radius); padding: 32px; max-width: 1000px; }
+.methodology-panel h2 { font: 600 28px/1.4 Fraunces, Georgia, serif; margin-bottom: 16px; }
+.methodology-panel h3 { margin: 28px 0 12px; }
+.methodology-panel p { max-width: 76ch; font-size: 15px; margin: 12px 0; }
+.unavailable-panel, .empty-state { padding: 32px; background: var(--panel); border-radius: var(--radius); }
+.unavailable-panel p { margin: 14px 0 22px; }
+.empty-state h3 { font: 600 22px Fraunces, Georgia, serif; margin: 12px 0; }
+.empty-state p { font-size: 14px; color: var(--muted); }
+.atlas-filter-dialog .modal-content { background: var(--panel); color: var(--ink); border: 0; border-radius: 12px; padding: 16px; }
+.atlas-filter-dialog .modal-title { font: 600 32px/1.3 Fraunces, Georgia, serif; }
+.atlas-filter-dialog .modal-header, .atlas-filter-dialog .modal-footer { border: 0; }
+.atlas-filter-dialog label { display: block; margin: 22px 0 8px; font-weight: 600; font-size: 14px; }
+.atlas-filter-dialog select { min-height: 48px; border-color: var(--border); color: var(--ink); background-color: var(--canvas); }
+.atlas-filter-dialog .modal-body > p:last-child { margin-top: 24px; }
+.atlas-filter-dialog .modal-footer { justify-content: stretch; flex-wrap: nowrap; }
+.atlas-filter-dialog .modal-footer .atlas-button { flex: 1; }
+.mobile-view-switch { display: none; }
+#atlas-state-view .card { box-shadow: none !important; }
+@media (min-width: 1700px) { .atlas-main { margin-right: auto; margin-left: max(216px,calc((100vw - 1600px)/2)); } }
+@media (max-width: 1150px) {
+  .atlas-sidebar { width: 184px; padding: 20px 16px; }
+  .atlas-main { margin-left: 184px; padding: 24px; }
+  .brand-caption { font-size: 8px; }
+  h1 { font-size: 30px; }
+  .header-actions .atlas-button { min-width: 140px; }
+  .atlas-filters { grid-template-columns: minmax(0,2fr) 1fr 1fr; }
+  #reset-atlas { grid-column: 3; }
+  .county-workspace { grid-template-columns: minmax(0,1fr) 280px; gap: 20px; }
+  .atlas-legend { grid-template-columns: 1fr 1fr; }
+  .county-support { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .atlas-sidebar { position: relative; width: auto; padding: 20px 20px 0; background: var(--canvas); }
+  .brand-row { display: flex; justify-content: space-between; align-items: flex-start; border: 0; padding-bottom: 0; }
+  #mobile-menu { display: block; min-width: 100px; }
+  .brand-caption { font-size: 9px; }
+  .sidebar-foot { display: none; }
+  .nav-items { display: none; gap: 10px; }
+  .navigation-open .nav-items { display: flex; }
+  .atlas-main { margin: 0; padding: 24px 20px; }
+  .atlas-header { display: block; }
+  h1 { font-size: 28px; }
+  .atlas-header .header-actions { margin-top: 16px; }
+  .atlas-header .eyebrow { font-size: 10px; }
+  .atlas-summary { grid-template-columns: 1fr; gap: 16px; background: var(--soft); border: 0; padding: 16px; margin-top: 12px; }
+  .atlas-summary .atlas-metric:not(:first-child) .metric-value { font-size: 24px; }
+  .metric-value { font-size: 32px; }
+  .atlas-filters { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .search-field { grid-column: 1 / -1; }
+  #reset-atlas { grid-column: 1 / -1; }
+  .mobile-view-switch { display: flex; gap: 12px; margin-bottom: 20px; }
+  .mobile-view-switch .atlas-button { flex: 1; }
+  .mobile-view-switch [aria-pressed="true"] { background: var(--iris); color: white; }
+  .county-workspace { display: flex; flex-direction: column; gap: 20px; }
+  .map-column { display: none; width: 100%; }
+  .map-column.mobile-map-open { display: block; }
+  .county-detail { width: 100%; }
+  .atlas-map { height: 250px; }
+  .atlas-legend { grid-template-columns: 1fr 1fr; font-size: 11px; gap: 12px; }
+  .county-support { margin-top: 24px; gap: 24px; }
+  .county-title { font-size: 24px; }
+  .comparison-matrix { padding: 0; background: transparent; }
+  .comparison-table { display: none; }
+  .comparison-mobile { display: grid; gap: 20px; }
+  .comparison-card { background: var(--panel); border-radius: var(--radius); padding: 20px; }
+  .comparison-card .county-title { font-family: Fraunces, Georgia, serif; }
+  .comparison-card dl { margin: 20px 0 0; }
+  .comparison-card dl > div { border-top: 1px solid var(--border); padding: 12px 0; }
+  .comparison-card dt { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .comparison-card dd { font-size: 24px; font-weight: 600; margin: 4px 0 0; }
+  .comparison-limits { grid-template-columns: 1fr; gap: 16px; }
+  .comparison-scope, .saved-county { align-items: flex-start; flex-direction: column; }
+  .tray-actions .atlas-button { width: 100%; }
+  .atlas-filter-dialog .modal-dialog { margin: 0; min-height: 100%; display: flex; align-items: flex-end; }
+  .atlas-filter-dialog .modal-content { border-radius: 16px 16px 0 0; padding: 12px 8px 24px; }
+  .atlas-filter-dialog .modal-footer { flex-direction: column-reverse; }
+  .atlas-filter-dialog .modal-footer .atlas-button { width: 100%; flex: auto; }
+  .methodology-panel { padding: 20px; }
+  .distribution-labels { gap: 7px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+@media (forced-colors: active) { .tier-swatch { border: 1px solid CanvasText; } .county-row.selected { outline: 2px solid Highlight; } }
+
+.search-field:has(input:placeholder-shown) #clear-search { display: none; }
+
+
+/* Compact mobile hierarchy follows the selected atlas concept. */
+.mobile-summary, .mobile-title { display: none; }
+@media (max-width: 760px) {
+  .desktop-title { display: none; }
+  .mobile-title { display: inline; }
+  .header-actions #open-comparison:disabled { display: none; }
+  .atlas-summary > .atlas-metric { display: none; }
+  .mobile-summary { display: grid; gap: 10px; }
+  .mobile-summary strong { font-size: 30px; line-height: 1.3; font-weight: 600; }
+  .mobile-summary p { font-size: 13px; }
+  .mobile-summary p:nth-child(2) { font-size: 14px; }
+}
+
+.atlas-map-frame { position: relative; }
+.map-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+.map-tools .atlas-button { min-width: 44px; padding: 8px 12px; }
+.atlas-map { touch-action: pan-y; }
+.atlas-map svg { user-select: none; }

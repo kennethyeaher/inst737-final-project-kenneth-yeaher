@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="380" viewBox="0 0 1300 380" role="img" aria-labelledby="title desc">
+<title id="title">Ovara: reproductive health provider supply</title>
+<desc id="desc">1,029 of 3,144 county equivalents have no registered providers. 10,917,875 residents live in those counties. The stacked bar shows the observed county counts in five density tiers.</desc>
+<rect width="1300" height="380" rx="18" fill="#F7F4EE"/>
+<path d="M45 47H1255" stroke="#DCD5E2"/>
+<text x="50" y="80" fill="#645B6F" font-family="Arial,sans-serif" font-size="13" letter-spacing="2">REPRODUCTIVE HEALTH / DATA SCIENCE + INTERACTION DESIGN</text>
+<text x="45" y="188" fill="#2F1A3E" font-family="Georgia,serif" font-size="104" font-weight="bold">ovara</text>
+<text x="50" y="242" fill="#2F1A3E" font-family="Georgia,serif" font-size="30">Where registered supply is missing.</text>
+<text x="50" y="281" fill="#645B6F" font-family="Arial,sans-serif" font-size="18">County by county. Count, compare, investigate.</text>
+<text x="50" y="340" fill="#645B6F" font-family="Arial,sans-serif" font-size="13">KENNETH YEAHER / UNIVERSITY OF MARYLAND</text>
+<rect x="708" y="110" width="540" height="218" rx="12" fill="#FFFFFF"/>
+<text x="738" y="162" fill="#2F1A3E" font-family="Arial,sans-serif" font-size="40" font-weight="bold">1,029</text>
+<text x="738" y="190" fill="#645B6F" font-family="Arial,sans-serif" font-size="14">counties with zero providers</text>
+<text x="1030" y="162" fill="#2F1A3E" font-family="Arial,sans-serif" font-size="40" font-weight="bold">10.9M</text>
+<text x="1030" y="190" fill="#645B6F" font-family="Arial,sans-serif" font-size="14">residents in those counties</text>
+<text x="738" y="242" fill="#645B6F" font-family="Arial,sans-serif" font-size="13">COUNTY DISTRIBUTION / 3,144 COUNTY EQUIVALENTS</text>
+<rect x="738.00" y="264" width="157.10" height="24" fill="#C45B32"/><rect x="895.10" y="264" width="23.51" height="24" fill="#6041A0"/><rect x="918.61" y="264" width="47.94" height="24" fill="#8A6CBD"/><rect x="966.55" y="264" width="91.15" height="24" fill="#B59DD6"/><rect x="1057.69" y="264" width="160.31" height="24" fill="#DBCEEE"/><text x="738" y="310" fill="#645B6F" font-family="Arial,sans-serif" font-size="12">Access desert</text>
+<text x="1130" y="310" fill="#645B6F" font-family="Arial,sans-serif" font-size="12">Well served</text>
+</svg>
