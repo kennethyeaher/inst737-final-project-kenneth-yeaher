@@ -83,6 +83,26 @@ def test_explorer_and_comparison(page):
     expect(page.locator("#open-comparison")).to_be_disabled()
 
 
+def test_filter_dialog_shows_the_current_scope_on_open(page):
+    """The State and Access tier choices are never blank; they name the scope in effect."""
+    expect = playwright_api.expect
+    shown = "el => el.options[el.selectedIndex].text"
+    page.locator("#open-state-filter").click()
+    expect(page.locator("#draft-state")).to_have_value("all")
+    expect(page.locator("#draft-tier")).to_have_value("all")
+    assert page.locator("#draft-state").evaluate(shown) == "All states"
+    assert page.locator("#draft-tier").evaluate(shown) == "All tiers"
+    page.locator("#draft-state").select_option("MO")
+    page.locator("#apply-filters").click()
+    expect(page.locator("#atlas-summary")).to_contain_text("115")
+    page.locator("#open-tier-filter").click()
+    expect(page.locator("#draft-state")).to_have_value("MO")
+    assert page.locator("#draft-tier").evaluate(shown) == "All tiers"
+    page.locator("#draft-state").select_option("all")
+    page.locator("#apply-filters").click()
+    expect(page.locator("#atlas-summary")).to_contain_text("3,144")
+
+
 def test_draft_cancel_and_applied_state_and_tier(page):
     """Cancel preserves the scope; Apply updates totals, paths and list together."""
     expect = playwright_api.expect

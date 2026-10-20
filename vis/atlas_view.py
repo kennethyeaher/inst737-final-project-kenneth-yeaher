@@ -12,6 +12,8 @@ from vis.county_visualizations import TIER_ORDER
 
 TIER_RANGES = ["0", ">0–5", ">5–10", ">10–20", ">20"]
 PAGE_SIZE = 5
+# dbc.Select adds a hidden blank option valued "", so the dialog's "all" choices need a value of their own.
+ALL_DRAFT = "all"
 
 
 def button(label, component_id, primary=False, **props):
@@ -333,12 +335,13 @@ def build_atlas_layout(state_view, state_options, default_county):
         dbc.ModalBody([
             html.P("Choose a scope, then apply the changes together.", className="muted"),
             html.Label("State", htmlFor="draft-state"),
-            dbc.Select(id="draft-state", options=[{"label": "United States", "value": ""}, *state_options], value=""),
+            dbc.Select(id="draft-state", options=[{"label": "All states", "value": ALL_DRAFT}, *state_options],
+                       value=ALL_DRAFT),
             html.Label("Access tier", htmlFor="draft-tier"),
             dbc.Select(id="draft-tier", options=[
-                {"label": "All tiers", "value": ""},
+                {"label": "All tiers", "value": ALL_DRAFT},
                 *[{"label": tier_label(tier), "value": tier} for tier in TIER_ORDER],
-            ], value=""),
+            ], value=ALL_DRAFT),
             html.P("Cancel keeps your current view.", className="small muted"),
         ]),
         dbc.ModalFooter([button("Cancel", "cancel-filters"),

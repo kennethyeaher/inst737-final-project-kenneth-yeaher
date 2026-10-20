@@ -92,6 +92,18 @@ def test_cancel_preserves_applied_scope_and_saved_comparison(app, monkeypatch):
     assert result["modal"] is False
 
 
+def test_dialog_opens_on_the_current_scope_and_applies_all_as_unfiltered(app, monkeypatch):
+    """An unfiltered scope drafts as the explicit all choices, which apply back to no filter."""
+    opened = action(app, monkeypatch, "open-state-filter")
+    assert (opened["draft_state"], opened["draft_tier"]) == ("all", "all")
+    opened = action(app, monkeypatch, "open-tier-filter",
+                    current_scope={"state": "MO", "tier": "critical"})
+    assert (opened["draft_state"], opened["draft_tier"]) == ("MO", "critical")
+    applied = action(app, monkeypatch, "apply-filters", current_scope={"state": "MO", "tier": ""},
+                     draft_state_value="all", draft_tier_value="all")
+    assert applied["scope"] == {"state": "", "tier": ""}
+
+
 def test_apply_changes_scope_and_clears_outside_selection(app, monkeypatch):
     """Applying Missouri clears a Louisiana selection while retaining saved comparison."""
     result = action(app, monkeypatch, "apply-filters", current_selected="22063",

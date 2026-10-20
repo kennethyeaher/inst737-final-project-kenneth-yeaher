@@ -9,9 +9,19 @@ from vis.atlas_model import (
     comparison_rows, comparison_selection, county_scope, state_names, tier_label,
 )
 from vis.atlas_view import (
-    comparison_view, county_list, detail_view, distribution, summary_view,
+    ALL_DRAFT, comparison_view, county_list, detail_view, distribution, summary_view,
 )
 from vis.county_visualizations import TIER_ORDER
+
+
+def draft_value(scope_value):
+    """Show an unfiltered scope as the dialog's explicit "all" choice."""
+    return scope_value or ALL_DRAFT
+
+
+def scope_value(draft):
+    """Read the dialog's "all" choice back as an unfiltered scope."""
+    return "" if draft in (None, "", ALL_DRAFT) else draft
 
 
 def register_atlas_callbacks(app, snapshot, refresh):
@@ -70,16 +80,16 @@ def register_atlas_callbacks(app, snapshot, refresh):
         elif event == "atlas-map-event":
             selected = (values["map_event"] or {}).get("fips")
         elif event in ("open-state-filter", "open-tier-filter"):
-            result.update(modal=True, draft_state=scope.get("state", ""),
-                          draft_tier=scope.get("tier", ""))
+            result.update(modal=True, draft_state=draft_value(scope.get("state")),
+                          draft_tier=draft_value(scope.get("tier")))
             return result
         elif event == "cancel-filters":
-            result.update(modal=False, draft_state=scope.get("state", ""),
-                          draft_tier=scope.get("tier", ""))
+            result.update(modal=False, draft_state=draft_value(scope.get("state")),
+                          draft_tier=draft_value(scope.get("tier")))
             return result
         elif event == "apply-filters":
-            state = values["draft_state_value"] or ""
-            tier = values["draft_tier_value"] or ""
+            state = scope_value(values["draft_state_value"])
+            tier = scope_value(values["draft_tier_value"])
             if frame is None:
                 result.update(modal=False, feedback="Load county data before applying filters.")
                 return result
@@ -98,7 +108,8 @@ def register_atlas_callbacks(app, snapshot, refresh):
         elif event == "reset-atlas":
             default = "29037" if frame is not None and "29037" in set(frame["county_fips"]) else None
             result.update(scope={"state": "", "tier": ""}, selected=default, comparison=[],
-                          view="county", query="", modal=False, draft_state="", draft_tier="",
+                          view="county", query="", modal=False, draft_state=ALL_DRAFT,
+                          draft_tier=ALL_DRAFT,
                           feedback="National view restored. Filters and comparison cleared.")
             return result
         elif event == "add-comparison":
